@@ -1,0 +1,32 @@
+{
+  "$schema": "https://github.com/ashishrtripathi/pmos",
+  "version": "0.1.0",
+  "name": "PMOS",
+  "description": "AI-Native Product Operating System",
+  "home": "~/.pmos",
+  "projects": [
+    {
+      "slug": "voxstyle",
+      "name": "VOXStyle Video Creator",
+      "path": "~/.pmos/projects/voxstyle",
+      "repo": null,
+      "status": "active",
+      "attachedAt": "2026-07-22",
+      "teams": [],
+      "stories": {
+        "backlog": 4,
+        "inProgress": 0,
+        "review": 0,
+        "done": 0
+      }
+    }
+  ],
+  "agentTeams": [],
+  "createdAt": "2026-07-22",
+  "settings": {
+    "defaultLlmProvider": "anthropic",
+    "defaultLlmModel": "claude-3-opus",
+    "autoSyncGraph": true,
+    "flightRecorder": true
+  }
+}
