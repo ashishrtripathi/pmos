@@ -20,11 +20,70 @@
 
 ---
 
+## ⚡ Quick Start — File-Based OS
+
+PMOS is a **file-based operating system** — not a web app. Any AI agent in any tool (AionUi, Claude Code, Cursor, etc.) can read and write to it natively.
+
+### Install
+
+PMOS lives at `~/.pmos/` on your machine:
+
+```
+~/.pmos/
+├── registry.json              ← All projects + agent teams
+├── README.md                  ← How to use PMOS
+├── commands/                  ← Commands any agent can execute
+│   └── README.md
+└── projects/                  ← Per-project workspaces
+    └── voxstyle/              ← Example: VOXStyle Video Creator
+        ├── project.md         ← Project identity
+        ├── journey/           ← Customer journey + personas
+        ├── stories/           ← Story boards (backlog → done)
+        ├── agents/            ← Agent team definitions
+        └── specs/             ← Feature specifications
+```
+
+### Attach a Project
+
+Tell your AI agent:
+
+> "PMOS: attach project my-app with repo https://github.com/me/my-app"
+
+The agent reads `~/.pmos/commands/README.md` and creates the workspace.
+
+### Create Stories
+
+> "PMOS: create a story for adding user authentication to voxstyle"
+
+The agent creates a story file in `~/.pmos/projects/voxstyle/stories/backlog/`.
+
+### Agent Teams
+
+> "PMOS: create a frontend team for voxstyle"
+
+The agent creates a team definition and can start implementing stories.
+
+### View Status
+
+> "PMOS: what's the status of all projects?"
+
+The agent reads `registry.json` and reports back.
+
+---
+
 ## 🎯 Vision
 
 PMOS is an open-source **Product Management Operating System** that acts as the orchestration layer between Product Managers, UX Designers, AI Coding Agents, GitHub, and deployment environments.
 
 This is **not** another project management tool like Jira or Linear. Instead, PMOS becomes the operating system that manages the complete product lifecycle from customer discovery to production while keeping every artifact connected.
+
+### How It Works
+
+```
+You → Tell AI Agent → Agent reads ~/.pmos → Agent acts on projects
+```
+
+No servers. No databases. No login. Just files that any AI can understand.
 
 ---
 
