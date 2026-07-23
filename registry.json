@@ -8,11 +8,22 @@
     {
       "slug": "voxstyle",
       "name": "VOXStyle Video Creator",
+      "source": "local",
+      "repoUrl": null,
+      "localPath": "C:\\Users\\ashis\\VoxStyle Vdieo Creator",
       "path": "~/.pmos/projects/voxstyle",
-      "repo": null,
-      "status": "active",
+      "status": "attached",
       "attachedAt": "2026-07-22",
-      "teams": [],
+      "projectType": "spec-only",
+      "teams": [
+        "product-manager",
+        "ux-designer",
+        "architect",
+        "software-engineer",
+        "qa-engineer",
+        "documentation-agent",
+        "product-intelligence"
+      ],
       "stories": {
         "backlog": 4,
         "inProgress": 0,
@@ -21,12 +32,11 @@
       }
     }
   ],
-  "agentTeams": [],
-  "createdAt": "2026-07-22",
   "settings": {
     "defaultLlmProvider": "anthropic",
     "defaultLlmModel": "claude-3-opus",
     "autoSyncGraph": true,
     "flightRecorder": true
-  }
+  },
+  "createdAt": "2026-07-22"
 }
