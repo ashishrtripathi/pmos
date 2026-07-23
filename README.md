@@ -20,54 +20,60 @@
 
 ---
 
-## ⚡ Quick Start — File-Based OS
+## ⚡ The 9-Step Pipeline
 
-PMOS is a **file-based operating system** — not a web app. Any AI agent in any tool (AionUi, Claude Code, Cursor, etc.) can read and write to it natively.
+> "PMOS: run the full import pipeline on https://github.com/user/repo"
 
-### Install
+| Step | What Happens | Output |
+|------|-------------|--------|
+| **1. GitHub Import** | Clone, read README, package.json, routes, components, API, database, prompts, agents, tests, env vars | `repo-index.json` |
+| **2. Repository Intelligence** | Analyze architecture, domain model, tech stack, existing features, missing docs | Architecture diagram, domain model, feature inventory |
+| **3. Run Application** | Detect `npm run dev` or `docker compose up`, launch app | Running application at localhost |
+| **4. Journey Discovery** | Playwright crawls the app like a real customer — screenshot every screen | Screenshots, screen inventory, UX notes |
+| **5. Story Mapping** | Each screen → Activities → Tasks → Stories | Jeff Patton story map |
+| **6. Build Backlog** | AI identifies: missing features, tech debt, bugs, UX issues, performance, security | Full story backlog |
+| **7. Agent Kanban** | 7 agents get assigned stories based on their role | Agent work queues |
+| **8. Product Dashboard** | Live metrics: health score, journey steps, screens, stories, improvements, agents | Dashboard |
+| **9. Continuous Learning** | Every commit updates journey, story map, architecture, docs, tasks | Auto-sync |
 
-PMOS lives at `~/.pmos/` on your machine:
+**After completion**: The PM never manually updates Jira again.
 
-```
-~/.pmos/
-├── registry.json              ← All projects + agent teams
-├── README.md                  ← How to use PMOS
-├── commands/                  ← Commands any agent can execute
-│   └── README.md
-└── projects/                  ← Per-project workspaces
-    └── voxstyle/              ← Example: VOXStyle Video Creator
-        ├── project.md         ← Project identity
-        ├── journey/           ← Customer journey + personas
-        ├── stories/           ← Story boards (backlog → done)
-        ├── agents/            ← Agent team definitions
-        └── specs/             ← Feature specifications
-```
+---
 
-### Attach a Project
+## 🤖 The 7 Agent Teams
 
-Tell your AI agent:
+| Agent | Owns |
+|-------|------|
+| **Product Manager** | Roadmap, stories, priorities, customer journey |
+| **UX Designer** | Journey, wireframes, screens, flows, accessibility |
+| **Architect** | Architecture, patterns, tech debt, APIs |
+| **Software Engineer** | Implementation, testing, PRs, commits |
+| **QA Engineer** | Testing, regression, performance, accessibility |
+| **Documentation** | README, architecture, release notes, API docs |
+| **Product Intelligence** | Continuous monitoring, anomaly detection |
 
-> "PMOS: attach project my-app with repo https://github.com/me/my-app"
+### The Product Intelligence Agent
 
-The agent reads `~/.pmos/commands/README.md` and creates the workspace.
+The secret weapon. It continuously watches the repo and asks:
 
-### Create Stories
+- "The upload flow changed. Should the customer journey be updated?"
+- "A new route was added, but no user story references it."
+- "This API has no visible UI. Is it orphaned or planned?"
+- "Three new components were introduced without design approval."
+- "The story map still shows an old onboarding flow."
+- "This feature shipped, but there are no analytics events associated with it."
 
-> "PMOS: create a story for adding user authentication to voxstyle"
+---
 
-The agent creates a story file in `~/.pmos/projects/voxstyle/stories/backlog/`.
+## 🐕 The Dogfood Principle
 
-### Agent Teams
+**VOXStyle Video Creator** is the first project and the reference implementation.
 
-> "PMOS: create a frontend team for voxstyle"
+Every feature added to PMOS must first answer:
 
-The agent creates a team definition and can start implementing stories.
+> "Does this make managing VOXStyle Video Creator easier?"
 
-### View Status
-
-> "PMOS: what's the status of all projects?"
-
-The agent reads `registry.json` and reports back.
+If not, it probably isn't MVP. Real-world validation instead of designing in the abstract.
 
 ---
 
