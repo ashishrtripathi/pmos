@@ -7,9 +7,10 @@
 | **Name** | VOXStyle Video Creator |
 | **Slug** | voxstyle |
 | **Type** | AI Video Creation Platform |
-| **Status** | Spec-Only (Pre-Development) |
-| **Source** | Local directory |
-| **Local Path** | `C:\Users\ashis\VoxStyle Vdieo Creator` |
+| **Status** | Active Development |
+| **Source** | GitHub + Local |
+| **Repo** | https://github.com/ashishrtripathi/vox-style-video |
+| **Local Path** | `C:\Users\ashis\VoxStyle Vdieo Creator\vox-style-video` |
 | **Created** | 2026-07-22 |
 
 ---
@@ -20,20 +21,23 @@ A local web app (deployable later) that takes a **subject** + **target length**,
 
 ---
 
-## Tech Stack (Planned)
+## Tech Stack (Implemented)
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React / Next.js |
-| Video Engine | Remotion Studio |
-| Script Generation | Claude / LLM (Anthropic) |
-| Image Generation | Gemini (fallback) |
-| Stock Images | Pexels / Unsplash / Pixabay (MCP) |
-| Stock Videos | Pexels (MCP) |
+| Frontend | React 19 / Next.js |
+| Video Engine | Remotion 4.0.484 |
+| Script Generation | Gemini / Claude (LLM) |
+| Image Generation | Gemini (Google AI) |
+| Stock Images | Pexels |
+| Stock Videos | Pexels |
 | Image Processing | Python (rembg, onnxruntime, Pillow) |
-| Voiceover | Google Cloud TTS (SSML marks + long-audio synthesis) |
-| Audio Alignment | Whisper / aeneas (forced aligner) |
-| Background Music | Pixabay (free, no attribution) |
+| Voiceover | Google Cloud TTS + Edge TTS (fallback) |
+| Audio Alignment | Whisper (tiny/base) |
+| Background Music | Pixabay (free) |
+| Server | Express.js |
+| Bundler | Webpack + Babel |
+| Types | TypeScript 5 |
 
 ---
 
@@ -81,11 +85,18 @@ A local web app (deployable later) that takes a **subject** + **target length**,
 
 ## Current State
 
-- ✅ Build spec complete (217 lines)
-- ❌ No source code yet
-- ❌ No repo on GitHub
-- ❌ No tests
-- ❌ No documentation beyond spec
+- ✅ Full codebase implemented and committed (10+ commits)
+- ✅ GitHub repo live at https://github.com/ashishrtripathi/vox-style-video
+- ✅ Remotion video engine working (20 scenes, AI history topic)
+- ✅ Python pipeline for halftone processing, background removal, TTS
+- ✅ Pexels API integration for stock assets
+- ✅ Edge TTS fallback (free, no API key)
+- ✅ Gemini AI integration for script generation
+- ✅ Rendered output video at `out/video.mp4`
+- ✅ Environment variable configuration (.env)
+- ⬜ CI/CD pipeline
+- ⬜ Automated tests
+- ⬜ Web-based UI for non-technical users
 
 ---
 

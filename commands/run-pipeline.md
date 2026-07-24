@@ -4,30 +4,81 @@
 
 Tell any AI agent:
 
-> "PMOS: run the full import pipeline on [github-url]"
+> "PMOS: run the full import pipeline on [project-slug]"
 
 The agent reads this file and executes steps 1-9 sequentially.
 
+**PMOS never forces a clone.** It reads code from wherever `source-location.json` points.
+
 ---
 
-## Step 1: GitHub Import
+## Prerequisites
 
-### Agent Instructions
-1. Ask user for GitHub repository URL
-2. Validate the URL exists: `curl -s [repo-url] | head -5`
-3. Clone to `~/.pmos/projects/{slug}/repo/`
-4. Read and index all files
+Before running, PMOS must know where the code lives. Check `~/.pmos/projects/{slug}/source-location.json`:
 
-### Commands
-```bash
-# Clone the repository
-git clone {repo-url} ~/.pmos/projects/{slug}/repo/
-
-# Index the codebase
-find ~/.pmos/projects/{slug}/repo/ -type f -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.json" -o -name "*.md" -o -name "*.yaml" -o -name "*.yml" -o -name "*.env*" -o -name "*.sql" -o -name "*.prisma" | head -500
+```json
+{
+  "mode": "local",
+  "localPath": "C:\\Users\\ashis\\VoxStyle Vdieo Creator\\vox-style-video",
+  "repoUrl": "https://github.com/ashishrtripathi/vox-style-video"
+}
 ```
 
-### Files to Read
+| Mode | Reads From | Notes |
+|------|-----------|-------|
+| `local` | `localPath` on disk | Fast, full access |
+| `github` | `localPath` + GitHub API | Syncs with remote |
+| `github-only` | GitHub API only | No local clone, slower |
+
+---
+
+## Step 1: Resolve Source
+
+### Agent Instructions
+1. Read `source-location.json` for the project
+2. If `mode == "local"` or `mode == "github"`: verify `localPath` exists
+3. If `mode == "github-only"`: prepare to use GitHub API
+4. If `localPath` doesn't exist: ask user to provide the correct path
+
+### Source Resolution
+```powershell
+# Check if local path exists
+$source = Get-Content "~/.pmos/projects/{slug}/source-location.json" | ConvertFrom-Json
+if (Test-Path $source.localPath) {
+    Write-Host "Code found at: $($source.localPath)"
+} else {
+    Write-Host "Path not found. Asking user for updated path..."
+    # Prompt user, update source-location.json
+}
+```
+
+### Output
+Update `source-location.json` with `lastResolvedAt` timestamp.
+If path changed, update `localPath` and re-run all subsequent steps.
+
+---
+
+## Step 2: Repository Intelligence
+
+### Agent Instructions
+Read the code from the resolved path to generate intelligence.
+
+### File Discovery
+```powershell
+# Using local path from source-location.json
+$root = $source.localPath
+
+# Find all relevant source files (exclude node_modules, dist, .git)
+Get-ChildItem -Path $root -Recurse -File | Where-Object {
+    $_.FullName -notlike "*node_modules*" -and
+    $_.FullName -notlike "*dist*" -and
+    $_.FullName -notlike "*.git*" -and
+    $_.FullName -notlike "*__pycache__*" -and
+    $_.Extension -match "\.(ts|tsx|js|jsx|json|md|yaml|yml|py|go|rs|rb|java|css|scss)$"
+} | Select-Object -First 500 FullName
+```
+
+### Key Files to Read
 | File | Purpose |
 |------|---------|
 | `README.md` | Project overview, setup instructions |
@@ -36,65 +87,32 @@ find ~/.pmos/projects/{slug}/repo/ -type f -name "*.ts" -o -name "*.tsx" -o -nam
 | `.env.example` | Environment variables needed |
 | `docker-compose.yml` | Container setup |
 | `Dockerfile` | Container build |
+| `remotion.config.*` | Remotion config (if video project) |
 | `next.config.*` | Framework config |
 | `prisma/schema.prisma` | Database schema |
 | `tailwind.config.*` | Styling |
 | Route files | `app/**/page.tsx`, `pages/**/*.tsx`, `src/routes/**` |
 | Component files | `components/**/*.tsx`, `src/components/**/*.tsx` |
 | API files | `app/api/**/route.ts`, `pages/api/**/*.ts` |
+| Pipeline files | `src/pipeline/**/*.ts`, `scripts/**/*.py` |
+| Config files | `webpack.config.*`, `babel.config.*`, `vite.config.*` |
 | Test files | `**/*.test.*`, `**/*.spec.*`, `__tests__/**` |
-| Prompt files | `prompts/**`, `prompts.*` |
-| Agent files | `agents/**`, `agent.*` |
 
-### Output
-Create `~/.pmos/projects/{slug}/repo-index.json`:
-```json
-{
-  "repo": "{repo-url}",
-  "clonedAt": "{timestamp}",
-  "techStack": {
-    "framework": "next.js|remix|express|etc",
-    "language": "typescript|javascript",
-    "database": "postgresql|mongodb|etc",
-    "styling": "tailwind|css-modules|etc"
-  },
-  "files": {
-    "routes": [...],
-    "components": [...],
-    "api": [...],
-    "tests": [...],
-    "prompts": [...],
-    "agents": [...],
-    "config": [...]
-  },
-  "stats": {
-    "totalFiles": 0,
-    "totalLines": 0,
-    "componentsCount": 0,
-    "routeCount": 0,
-    "apiCount": 0,
-    "testCount": 0
-  }
+### Source Code Reading
+```powershell
+# Read a specific file from local path
+$filePath = Join-Path $source.localPath "package.json"
+Get-Content $filePath
+
+# Read source files
+$srcPath = Join-Path $source.localPath "src"
+Get-ChildItem -Path $srcPath -Recurse -File -Filter "*.ts" | ForEach-Object {
+    Write-Host "--- $($_.Name) ---"
+    Get-Content $_.FullName | Select-Object -First 100
 }
 ```
 
----
-
-## Step 2: Repository Intelligence
-
-### Agent Instructions
-Read the repo-index.json and source files to generate intelligence.
-
-### Analysis Tasks
-
-**Architecture Analysis:**
-1. Read all route files → map navigation structure
-2. Read all component files → map component hierarchy
-3. Read all API files → map API surface
-4. Read database schema → map domain model
-5. Read config files → understand infrastructure
-
-**Generate:**
+### Generate
 1. Architecture diagram (Mermaid)
 2. Domain model (entities and relationships)
 3. Technology stack summary
@@ -102,8 +120,7 @@ Read the repo-index.json and source files to generate intelligence.
 5. Missing documentation list
 6. Code quality assessment
 
-### Output Files
-
+### Output
 Create `~/.pmos/projects/{slug}/intelligence/`:
 ```
 intelligence/
@@ -122,28 +139,40 @@ intelligence/
 ## Step 3: Run the Application
 
 ### Agent Instructions
-1. Check for `docker-compose.yml` → if exists, run `docker compose up -d`
-2. Check for `package.json` → if exists, run `npm install && npm run dev`
-3. Check for `Makefile` → if exists, read and execute
-4. Wait for the server to be ready (poll health endpoint or port)
-5. Record the local URL
+Only attempt if source-location mode is `local` or `github` (has a local clone).
 
-### Detection Logic
-```
-if file_exists("docker-compose.yml") or file_exists("docker-compose.yaml"):
-    run("docker compose up -d")
-    wait_for("localhost:3000" or configured port)
-elif file_exists("package.json"):
-    run("npm install")
-    run("npm run dev")
-    wait_for("localhost:3000")
-elif file_exists("Makefile"):
-    read_makefile()
-    run("make dev" or "make run")
+```powershell
+$root = $source.localPath
+
+# Detection Logic
+if (Test-Path (Join-Path $root "docker-compose.yml")) {
+    Push-Location $root
+    docker compose up -d
+    # Wait for health check
+    Pop-Location
+} elseif (Test-Path (Join-Path $root "package.json")) {
+    Push-Location $root
+    npm install
+    npm run dev
+    # Wait for localhost to respond
+    Pop-Location
+} elseif (Test-Path (Join-Path $root "Makefile")) {
+    Push-Location $root
+    # Read and parse Makefile
+    # Run appropriate target
+    Pop-Location
+} elseif (Test-Path (Join-Path $root "requirements.txt")) {
+    Push-Location $root
+    python -m venv venv
+    .\venv\Scripts\Activate.ps1
+    pip install -r requirements.txt
+    # Run main entry point
+    Pop-Location
+}
 ```
 
 ### Output
-Update `~/.pmos/projects/{slug}/repo-index.json`:
+Update `~/.pmos/projects/{slug}/source-location.json`:
 ```json
 {
   "runtime": {
@@ -151,7 +180,7 @@ Update `~/.pmos/projects/{slug}/repo-index.json`:
     "url": "http://localhost:3000",
     "port": 3000,
     "startedAt": "{timestamp}",
-    "method": "docker|npm|make"
+    "method": "docker|npm|make|python"
   }
 }
 ```
@@ -161,11 +190,11 @@ Update `~/.pmos/projects/{slug}/repo-index.json`:
 ## Step 4: Customer Journey Discovery
 
 ### Agent Instructions
-Launch Playwright and crawl the application like a customer.
+Crawl the application like a customer (if running), or analyze the code structure to infer the journey.
 
-### Playwright Script
+### If App is Running
 ```typescript
-// This is conceptual — the AI agent writes and runs this
+// Launch browser and crawl
 import { chromium } from 'playwright';
 
 const visited = new Set<string>();
@@ -199,30 +228,35 @@ async function crawl(url: string, depth = 0) {
 
   screens.push(screen);
 
-  // Find and crawl linked pages
+  // Crawl linked pages
   const links = await page.$$eval('a[href]', anchors =>
     anchors.map(a => a.href).filter(h => h.startsWith('http://localhost'))
   );
-
   for (const link of links) {
     await crawl(link, depth + 1);
   }
-
   await browser.close();
 }
 ```
 
-### Screen Analysis
-For each screen, extract:
-- Screenshot (full page)
-- URL
-- Page title
-- Description (from meta or inferred)
-- Primary CTA (main action button)
-- Secondary CTAs (other actions)
-- Forms (input fields)
-- Navigation (sidebar, header links)
-- UX notes (observations about usability)
+### If App is NOT Running (Static Analysis)
+Read route files, components, and API endpoints to infer the journey:
+
+```powershell
+$root = $source.localPath
+
+# Find route/page files
+Get-ChildItem -Path $root -Recurse -File | Where-Object {
+    $_.FullName -match "(page|route|screen|view)\.(tsx?|jsx?|vue|svelte)$" -and
+    $_.FullName -notlike "*node_modules*"
+} | Select-Object FullName
+
+# Find component files
+Get-ChildItem -Path $root -Recurse -File | Where-Object {
+    $_.FullName -match "\.(tsx|jsx|vue|svelte)$" -and
+    $_.FullName -notlike "*node_modules*"
+} | Select-Object FullName
+```
 
 ### Output
 Create `~/.pmos/projects/{slug}/journey/`:
@@ -231,9 +265,8 @@ journey/
 ├── journey.md              ← The complete customer journey
 ├── personas.md             ← Generated personas
 ├── screens.json            ← Structured screen data
-├── screenshots/
+├── screenshots/            ← If app was running
 │   ├── landing-page.png
-│   ├── login.png
 │   ├── dashboard.png
 │   └── ...
 └── ux-notes.md             ← UX observations
@@ -247,36 +280,10 @@ journey/
 Convert the journey into a Jeff Patton style story map.
 
 ### Mapping Logic
-For each screen:
+For each screen/activity:
 1. Identify the **Activity** (what the user is doing)
 2. Break into **Tasks** (specific actions)
 3. Break into **Stories** (deliverable units)
-
-### Example
-```
-Screen: Upload Audio
-    │
-    ├── Activity: Upload Content
-    │   ├── Task: Choose File
-    │   │   ├── Story: File picker accepts audio formats
-    │   │   ├── Story: Drag and drop support
-    │   │   └── Story: Show file preview before upload
-    │   │
-    │   ├── Task: Validate Format
-    │   │   ├── Story: Show accepted formats
-    │   │   ├── Story: Validate file size
-    │   │   └── Story: Show validation errors
-    │   │
-    │   ├── Task: Show Progress
-    │   │   ├── Story: Upload progress bar
-    │   │   ├── Story: Upload speed indicator
-    │   │   └── Story: Cancel upload option
-    │   │
-    │   └── Task: Process Audio
-    │       ├── Story: Processing status indicator
-    │       ├── Story: Processing time estimate
-    │       └── Story: Error handling for failed processing
-```
 
 ### Output
 Create `~/.pmos/projects/{slug}/stories/`:
@@ -285,7 +292,6 @@ stories/
 ├── story-map.md            ← Visual story map
 ├── backlog/
 │   ├── STORY-001-*.md
-│   ├── STORY-002-*.md
 │   └── ...
 ├── in-progress/
 ├── review/
@@ -300,48 +306,13 @@ stories/
 Analyze the codebase for improvements and create stories.
 
 ### Analysis Categories
-
-**Missing Functionality:**
-- Features common in similar products but missing here
-- Incomplete user flows
-- Missing error states
-- Missing loading states
-
-**Technical Debt:**
-- Duplicated code
-- Outdated dependencies
-- Missing types
-- TODO/FIXME comments
-
-**Architecture Issues:**
-- Tight coupling
-- Missing abstractions
-- Inconsistent patterns
-- Missing error boundaries
-
-**Potential Bugs:**
-- Unhandled edge cases
-- Race conditions
-- Memory leaks
-- Missing validation
-
-**UX Improvements:**
-- Missing accessibility
-- Poor mobile experience
-- Confusing navigation
-- Missing feedback
-
-**Performance:**
-- Missing optimization
-- Large bundle size
-- Slow queries
-- Missing caching
-
-**Security:**
-- Missing input sanitization
-- Exposed secrets
-- Missing rate limiting
-- Missing CSRF protection
+- **Missing Functionality**: Incomplete flows, missing error states
+- **Technical Debt**: Duplicated code, outdated deps, TODOs
+- **Architecture Issues**: Tight coupling, missing abstractions
+- **Potential Bugs**: Unhandled edge cases, race conditions
+- **UX Improvements**: Accessibility, mobile, navigation
+- **Performance**: Optimization, bundle size, caching
+- **Security**: Input sanitization, secrets, CSRF
 
 ### Output
 Create stories in `~/.pmos/projects/{slug}/stories/backlog/`
@@ -354,7 +325,6 @@ Create stories in `~/.pmos/projects/{slug}/stories/backlog/`
 Create 7 agent teams and assign stories.
 
 ### Agent Definitions
-
 Create `~/.pmos/projects/{slug}/agents/`:
 
 | File | Agent | Focus |
@@ -366,23 +336,6 @@ Create `~/.pmos/projects/{slug}/agents/`:
 | `qa-engineer.md` | QA Engineer | Testing, regression, performance, a11y |
 | `documentation-agent.md` | Documentation Agent | README, architecture, release notes, API docs |
 | `product-intelligence.md` | Product Intelligence | Continuous monitoring, anomaly detection |
-
-### Story Assignment Rules
-- UI/Frontend stories → Software Engineer
-- Design/UX stories → UX Designer
-- Architecture stories → Architect
-- Testing stories → QA Engineer
-- Documentation stories → Documentation Agent
-- Priority/Roadmap stories → Product Manager
-- All monitors → Product Intelligence
-
-### Output
-Each agent file contains:
-- Assigned stories (by status)
-- Current work
-- Completed work
-- Context and memory
-- Decision log
 
 ---
 
@@ -401,15 +354,17 @@ Create `~/.pmos/projects/{slug}/dashboard.md`:
 
 | Metric | Value |
 |--------|-------|
+| Source Location | {localPath or "GitHub API"} |
+| Source Mode | {local|github|github-only} |
 | Customer Journey Steps | {count} |
 | Screens Discovered | {count} |
 | Total Stories | {count} |
 | Open Improvements | {count} |
 | AI Agents Active | {count} |
-| Application Status | Running at {url} |
+| Application Status | Running at {url} or Not Running |
+| Last Analyzed | {timestamp} |
 
 ## Story Breakdown
-
 | Status | Count |
 |--------|-------|
 | Backlog | {count} |
@@ -418,7 +373,6 @@ Create `~/.pmos/projects/{slug}/dashboard.md`:
 | Done | {count} |
 
 ## Agent Workload
-
 | Agent | Active | Completed | Queued |
 |-------|--------|-----------|--------|
 | Product Manager | {n} | {n} | {n} |
@@ -428,8 +382,6 @@ Create `~/.pmos/projects/{slug}/dashboard.md`:
 | QA Engineer | {n} | {n} | {n} |
 | Documentation | {n} | {n} | {n} |
 | Intelligence | {n} | {n} | {n} |
-
-## Last Updated: {timestamp}
 ```
 
 ---
@@ -437,56 +389,39 @@ Create `~/.pmos/projects/{slug}/dashboard.md`:
 ## Step 9: Continuous Learning
 
 ### Agent Instructions
-Set up hooks that trigger on repository changes.
+Set up monitoring that triggers on repository changes.
 
 ### Git Hook: Post-Commit
 ```bash
 #!/bin/bash
 # .git/hooks/post-commit
-# After each commit, PMOS re-analyzes the project
-
 echo "PMOS: Updating project intelligence..."
-# The AI agent reads this hook and re-runs analysis
+# Agent reads this and re-runs relevant pipeline steps
 ```
 
 ### Product Intelligence Monitoring
-The Product Intelligence Agent continuously watches for:
-
-1. **New routes** → "A new route was added. Should the journey be updated?"
-2. **Changed components** → "Component X was modified. Does the UX need review?"
-3. **New API endpoints** → "New API endpoint has no UI. Is it planned?"
-4. **Missing stories** → "This feature has no story in the backlog."
-5. **Shipped features** → "Feature shipped but no analytics events added."
+The Product Intelligence Agent watches for:
+1. **New routes** → "Should the journey be updated?"
+2. **Changed components** → "Does the UX need review?"
+3. **New API endpoints** → "Is it planned?"
+4. **Missing stories** → "This feature has no story."
+5. **Shipped features** → "No analytics events added."
 6. **Old journey** → "Journey hasn't been updated in 30 days."
-7. **Dependency changes** → "Dependencies updated. Any breaking changes?"
-8. **Test coverage** → "Test coverage dropped below threshold."
+7. **Dependency changes** → "Any breaking changes?"
+8. **Test coverage** → "Coverage dropped below threshold."
 
 ### Output
-Create `~/.pmos/projects/{slug}/intelligence/monitor.md`:
-```markdown
-# Product Intelligence Log
-
-## Active Monitors
-- Route changes
-- Component changes
-- API changes
-- Dependency updates
-- Test coverage
-- Journey freshness
-
-## Recent Alerts
-(Updated by Product Intelligence Agent)
-```
+Create `~/.pmos/projects/{slug}/intelligence/monitor.md`
 
 ---
 
 ## Execution Checklist
 
-When a user says "PMOS: run the full import pipeline on [url]":
+When a user says "PMOS: run the full import pipeline on [project]":
 
-- [ ] Step 1: Clone repository
-- [ ] Step 2: Analyze codebase
-- [ ] Step 3: Run application
+- [ ] Step 1: Resolve source location (read source-location.json)
+- [ ] Step 2: Analyze codebase (from local path or GitHub API)
+- [ ] Step 3: Run application (if local clone exists)
 - [ ] Step 4: Discover customer journey
 - [ ] Step 5: Create story map
 - [ ] Step 6: Build backlog

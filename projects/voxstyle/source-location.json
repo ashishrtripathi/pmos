@@ -1,0 +1,15 @@
+{
+  "mode": "local",
+  "localPath": "C:\\Users\\ashis\\VoxStyle Vdieo Creator\\vox-style-video",
+  "repoUrl": "https://github.com/ashishrtripathi/vox-style-video",
+  "resolvedAt": "2026-07-22",
+  "lastAnalyzed": "2026-07-22",
+  "runtime": {
+    "status": "ready",
+    "url": null,
+    "port": null,
+    "startedAt": null,
+    "method": null,
+    "note": "Previously rendered out/video.mp4 exists. Run 'npm run start' to launch."
+  }
+}

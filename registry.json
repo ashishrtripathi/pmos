@@ -8,13 +8,13 @@
     {
       "slug": "voxstyle",
       "name": "VOXStyle Video Creator",
-      "source": "local",
-      "repoUrl": null,
-      "localPath": "C:\\Users\\ashis\\VoxStyle Vdieo Creator",
+      "source": "github",
+      "repoUrl": "https://github.com/ashishrtripathi/vox-style-video",
+      "localPath": "C:\\Users\\ashis\\VoxStyle Vdieo Creator\\vox-style-video",
       "path": "~/.pmos/projects/voxstyle",
       "status": "attached",
       "attachedAt": "2026-07-22",
-      "projectType": "spec-only",
+      "projectType": "full-codebase",
       "teams": [
         "product-manager",
         "ux-designer",
