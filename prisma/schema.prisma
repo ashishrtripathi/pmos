@@ -1,0 +1,410 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================
+// User & Organization
+// ========================
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  avatarUrl     String?        @map("avatar_url")
+  emailVerified DateTime?      @map("email_verified")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  memberships   Membership[]
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?  @map("logo_url")
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships    Membership[]
+  customers      Customer[]
+  personas       Persona[]
+  journeys       Journey[]
+  storyMaps      StoryMap[]
+  stories        Story[]
+  aiAgents       AIAgent[]
+  integrations   Integration[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  organizationId String   @map("organization_id")
+  role           String   @default("member")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+// ========================
+// Customer & Personas
+// ========================
+
+model Customer {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String?
+  email          String?
+  segments       Json     @default("[]")
+  attributes     Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("customers")
+}
+
+model Persona {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  description    String?  @db.Text
+  goals          Json     @default("[]")
+  frustrations   Json     @default("[]")
+  demographics   Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  journeys      Journey[]
+
+  @@map("personas")
+}
+
+// ========================
+// Journeys
+// ========================
+
+model Journey {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  personaId      String?  @map("persona_id")
+  name           String
+  description    String?  @db.Text
+  version        Int      @default(1)
+  status         String   @default("draft")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  persona      Persona?     @relation(fields: [personaId], references: [id])
+  steps        JourneyStep[]
+  storyMaps    StoryMap[]
+
+  @@map("journeys")
+}
+
+model JourneyStep {
+  id                 String   @id @default(uuid())
+  journeyId          String   @map("journey_id")
+  order              Int
+  name               String
+  description        String?  @db.Text
+  screenshotUrl      String?  @map("screenshot_url")
+  goal               String?  @db.Text
+  primaryCta         String?  @map("primary_cta")
+  painPoints         Json     @default("[]")
+  relatedScreens     Json     @default("[]") @map("related_screens")
+  futureImprovements Json     @default("[]") @map("future_improvements")
+  metadata           Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  journey Journey[]
+  stories Story[]
+
+  @@map("journey_steps")
+}
+
+// ========================
+// Story Mapping
+// ========================
+
+model StoryMap {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  journeyId      String?  @map("journey_id")
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  journey      Journey?     @relation(fields: [journeyId], references: [id])
+  activities   Activity[]
+
+  @@map("story_maps")
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  storyMapId  String   @map("story_map_id")
+  name        String
+  description String?  @db.Text
+  order       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  storyMap StoryMap @relation(fields: [storyMapId], references: [id], onDelete: Cascade)
+  tasks    Task[]
+
+  @@map("activities")
+}
+
+model Task {
+  id         String   @id @default(uuid())
+  activityId String   @map("activity_id")
+  name       String
+  description String? @db.Text
+  order      Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  stories  Story[]
+
+  @@map("tasks")
+}
+
+// ========================
+// Stories
+// ========================
+
+model Story {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  taskId            String?  @map("task_id")
+  journeyStepId     String?  @map("journey_step_id")
+  title             String
+  description       String?  @db.Text
+  acceptanceCriteria Json    @default("[]") @map("acceptance_criteria")
+  businessRules     Json     @default("[]") @map("business_rules")
+  edgeCases         Json     @default("[]") @map("edge_cases")
+  priority          String   @default("medium")
+  status            String   @default("backlog")
+  storyPoints       Int?     @map("story_points")
+  tags              Json     @default("[]")
+  metadata          Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task          Task?         @relation(fields: [taskId], references: [id])
+  journeyStep   JourneyStep?  @relation(fields: [journeyStepId], references: [id])
+  design        Design?
+  implementation Implementation?
+  analyticsEvents AnalyticsEvent[]
+
+  dependencies   StoryDependency[] @relation("StoryDependents")
+  dependents     StoryDependency[] @relation("StoryDependencies")
+
+  @@map("stories")
+}
+
+model StoryDependency {
+  storyId       String @map("story_id")
+  dependsOnId   String @map("depends_on_id")
+  type          String @default("blocks")
+
+  story     Story @relation("StoryDependents", fields: [storyId], references: [id], onDelete: Cascade)
+  dependsOn Story @relation("StoryDependencies", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, dependsOnId])
+  @@map("story_dependencies")
+}
+
+// ========================
+// Design
+// ========================
+
+model Design {
+  id        String   @id @default(uuid())
+  storyId   String   @unique @map("story_id")
+  type      String
+  status    String   @default("draft")
+  assets    Json     @default("[]")
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  story    Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  comments DesignComment[]
+
+  @@map("designs")
+}
+
+model DesignComment {
+  id        String   @id @default(uuid())
+  designId  String   @map("design_id")
+  userId    String?  @map("user_id")
+  content   String   @db.Text
+  position  Json?
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  @@map("design_comments")
+}
+
+// ========================
+// Implementation
+// ========================
+
+model Implementation {
+  id             String   @id @default(uuid())
+  storyId        String   @unique @map("story_id")
+  agentId        String?  @map("agent_id")
+  plan           Json     @default("{}")
+  branchName     String?  @map("branch_name")
+  pullRequestUrl String?  @map("pull_request_url")
+  status         String   @default("planned")
+  metrics        Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  story Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  agent AIAgent? @relation(fields: [agentId], references: [id])
+
+  @@map("implementations")
+}
+
+// ========================
+// AI Agents
+// ========================
+
+model AIAgent {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  role           String
+  description    String?  @db.Text
+  context        Json     @default("{}")
+  memory         Json     @default("{}")
+  skills         Json     @default("[]")
+  config         Json     @default("{}")
+  status         String   @default("idle")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  implementations Implementation[]
+
+  @@map("ai_agents")
+}
+
+// ========================
+// Analytics
+// ========================
+
+model AnalyticsEvent {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  storyId        String?  @map("story_id")
+  eventType      String   @map("event_type")
+  properties     Json     @default("{}")
+  timestamp      DateTime @default(now())
+  userId         String?  @map("user_id")
+  sessionId      String?  @map("session_id")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  story        Story?       @relation(fields: [storyId], references: [id])
+
+  @@index([storyId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@map("analytics_events")
+}
+
+// ========================
+// Integrations
+// ========================
+
+model Integration {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  type           String
+  name           String
+  config         Json     @default("{}")
+  status         String   @default("active")
+  lastSync       DateTime? @map("last_sync")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("integrations")
+}
