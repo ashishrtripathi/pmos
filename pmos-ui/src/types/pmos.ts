@@ -38,9 +38,21 @@ export interface Story {
   description: string;
   points: number;
   status: StoryStatus;
-  acceptanceCriteria: string[];
   persona?: string;
+  personaRole?: string;
   journeyStep?: string;
+  useCase: {
+    asA: string;
+    iWant: string;
+    soThat: string;
+  };
+  businessGoal?: string;
+  acceptanceCriteria: {
+    scenario: string;
+    given: string[];
+    when: string;
+    then: string;
+  }[];
   filePath: string;
 }
 

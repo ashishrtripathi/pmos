@@ -8,6 +8,8 @@ import {
   Layers,
   Maximize2,
   Loader2,
+  User,
+  Target,
 } from "lucide-react";
 import {
   DndContext,
@@ -35,7 +37,11 @@ interface Story {
   description: string;
   points: number;
   status: string;
-  acceptanceCriteria: string[];
+  useCase?: { asA: string; iWant: string; soThat: string };
+  businessGoal?: string;
+  persona?: string;
+  personaRole?: string;
+  journeyStep?: string;
 }
 
 interface PersonaJourneyStep {
@@ -70,6 +76,18 @@ interface PipelineData {
 
 // ── Sortable Story Card ────────────────────────────
 
+// Persona colors
+const PERSONA_COLORS: Record<string, string> = {
+  Sarah: "bg-purple-100 text-purple-700 border-purple-300",
+  Mike: "bg-blue-100 text-blue-700 border-blue-300",
+  Emma: "bg-green-100 text-green-700 border-green-300",
+};
+
+function getPersonaColor(name?: string): string {
+  if (!name) return "bg-gray-100 text-gray-700 border-gray-300";
+  return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
+}
+
 function StoryMapCard({ story }: { story: Story }) {
   const {
     attributes,
@@ -97,9 +115,7 @@ function StoryMapCard({ story }: { story: Story }) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-2 rounded-lg border shadow-sm hover:shadow-md transition-shadow group ${
-        statusColors[story.status] || "bg-card border-border"
-      }`}
+      className={`p-2 rounded-lg border shadow-sm hover:shadow-md transition-shadow group ${statusColors[story.status] || "bg-card border-border"}`}
     >
       <div className="flex items-start gap-1.5">
         <button
@@ -110,13 +126,30 @@ function StoryMapCard({ story }: { story: Story }) {
           <GripVertical className="w-3 h-3" />
         </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1 mb-0.5">
+          <div className="flex items-center gap-1 mb-0.5 flex-wrap">
             <span className="text-[9px] font-mono text-muted-foreground">{story.id}</span>
             <span className="text-[9px] px-1 py-0 rounded bg-primary/10 text-primary font-medium">
-              {story.points}
+              {story.points} pts
             </span>
+            {story.persona && (
+              <span className={`text-[8px] px-1 py-0 rounded-full border font-medium ${getPersonaColor(story.persona)}`}>
+                <User className="w-1.5 h-1.5 inline mr-0.5" />
+                {story.persona}
+              </span>
+            )}
           </div>
           <h4 className="text-[11px] font-medium leading-tight">{story.title}</h4>
+          {story.useCase?.asA && (
+            <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">
+              As a {story.useCase.asA}...
+            </p>
+          )}
+          {story.businessGoal && (
+            <div className="mt-0.5 flex items-center gap-0.5">
+              <Target className="w-2 h-2 text-amber-500 shrink-0" />
+              <span className="text-[8px] text-muted-foreground line-clamp-1">{story.businessGoal}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

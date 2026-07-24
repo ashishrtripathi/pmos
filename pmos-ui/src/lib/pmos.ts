@@ -103,15 +103,77 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
   const id = data.id || path.basename(filePath, ".md").split("-").slice(0, 2).join("-");
   const title = data.title || data.story || path.basename(filePath, ".md");
   const points = data.points || data.estimate || 0;
-  const acceptanceCriteriaMatch = content.match(
-    /## Acceptance Criteria\s*\n([\s\S]*?)(?=\n## |\n$)/
+
+  // Parse Use Case (Mike Cohn format)
+  const asAMatch = content.match(/\*\*As a\*\*\s*(.+)/);
+  const iWantMatch = content.match(/\*\*I want to\*\*\s*(.+)/);
+  const soThatMatch = content.match(/\*\*so that\*\*\s*(.+)/);
+  const useCase = {
+    asA: asAMatch?.[1]?.trim() || "",
+    iWant: iWantMatch?.[1]?.trim() || "",
+    soThat: soThatMatch?.[1]?.trim() || "",
+  };
+
+  // Parse business goal
+  const businessGoalMatch = content.match(/##\s*Business Goal\s*\n([\s\S]*?)(?=\n## |\n$)/);
+  const businessGoal = businessGoalMatch?.[1]?.trim() || data["business-goal"] || "";
+
+  // Parse Acceptance Criteria (Gherkin format)
+  const acMatch = content.match(
+    /##\s*Acceptance Criteria\s*\n([\s\S]*?)(?=\n## |\n$)/
   );
-  const acceptanceCriteria = acceptanceCriteriaMatch
-    ? acceptanceCriteriaMatch[1]
+  const acceptanceCriteria: Story["acceptanceCriteria"] = [];
+  if (acMatch) {
+    const acBlock = acMatch[1];
+    // Split by scenario markers
+    const scenarioBlocks = acBlock.split(/(?=- \*\*Scenario:\*\*)/);
+    for (const block of scenarioBlocks) {
+      const scenarioMatch = block.match(/\*\*Scenario:\*\*\s*(.+)/);
+      if (!scenarioMatch) continue;
+      const scenario = scenarioMatch[1].trim();
+
+      // Collect all Given lines (including "and Given")
+      const givens: string[] = [];
+      const givenRegex = /(?:and\s+)?\*\*Given:\*\*\s*(.+)/gi;
+      let gm: RegExpExecArray | null;
+      while ((gm = givenRegex.exec(block)) !== null) {
+        givens.push(gm[1].trim());
+      }
+
+      const whenMatch = block.match(/\*\*When:\*\*\s*(.+)/);
+      const thenMatch = block.match(/\*\*Then:\*\*\s*(.+)/);
+
+      if (whenMatch && thenMatch) {
+        acceptanceCriteria.push({
+          scenario,
+          given: givens,
+          when: whenMatch[1].trim(),
+          then: thenMatch[1].trim(),
+        });
+      }
+    }
+  }
+
+  // Fallback: parse old-style bullet acceptance criteria
+  if (acceptanceCriteria.length === 0) {
+    const oldAcMatch = content.match(
+      /##\s*Acceptance Criteria\s*\n([\s\S]*?)(?=\n## |\n$)/
+    );
+    if (oldAcMatch) {
+      const bullets = oldAcMatch[1]
         .split("\n")
         .filter((l: string) => l.startsWith("- ") || l.startsWith("* "))
-        .map((l: string) => l.replace(/^[-*]\s*/, "").trim())
-    : [];
+        .map((l: string) => l.replace(/^[-*]\s*/, "").trim());
+      if (bullets.length > 0) {
+        acceptanceCriteria.push({
+          scenario: "Default",
+          given: [],
+          when: "",
+          then: bullets.join("; "),
+        });
+      }
+    }
+  }
 
   return {
     id,
@@ -119,8 +181,11 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
     description: data.description || "",
     points,
     status,
+    useCase,
+    businessGoal,
     acceptanceCriteria,
     persona: data.persona,
+    personaRole: data["persona-role"],
     journeyStep: data["journey-step"],
     filePath,
   };
@@ -156,7 +221,17 @@ export function getStoriesByStatus(slug: string): Record<StoryStatus, Story[]> {
 
 export function createStory(
   slug: string,
-  story: { title: string; description: string; points: number; acceptanceCriteria: string[] }
+  story: {
+    title: string;
+    description: string;
+    points: number;
+    persona?: string;
+    personaRole?: string;
+    journeyStep?: string;
+    useCase?: { asA: string; iWant: string; soThat: string };
+    businessGoal?: string;
+    acceptanceCriteria?: { scenario: string; given: string[]; when: string; then: string }[];
+  }
 ) {
   const existing = getAllStories(slug);
   const maxNum = existing.reduce((max, s) => {
@@ -166,20 +241,48 @@ export function createStory(
   const nextId = `STORY-${String(maxNum + 1).padStart(3, "0")}`;
   const fileName = `${nextId}-${story.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}.md`;
 
+  const frontmatter: string[] = [
+    `id: ${nextId}`,
+    `title: "${story.title}"`,
+    `points: ${story.points}`,
+    `status: backlog`,
+  ];
+  if (story.persona) frontmatter.push(`persona: "${story.persona}"`);
+  if (story.personaRole) frontmatter.push(`persona-role: "${story.personaRole}"`);
+  if (story.journeyStep) frontmatter.push(`journey-step: "${story.journeyStep}"`);
+
+  const uc = story.useCase || { asA: story.persona || "a user", iWant: story.description, soThat: story.businessGoal || "" };
+
+  const acLines = (story.acceptanceCriteria || []).map((ac) => {
+    const givens = ac.given.map((g) => `- **and Given:** ${g}`).join("\n");
+    return [
+      `- **Scenario:** ${ac.scenario}`,
+      `- **Given:** ${ac.given[0] || "the user is in the correct state"}`,
+      givens ? givens.replace(/^- \*\*and Given:\*\* [^\n]+\n/, "") : "",
+      `- **When:** ${ac.when}`,
+      `- **Then:** ${ac.then}`,
+    ].filter(Boolean).join("\n");
+  }).join("\n\n");
+
+  const businessGoalSection = story.businessGoal ? `\n## Business Goal\n\n${story.businessGoal}\n` : "";
+
   const content = `---
-id: ${nextId}
-title: "${story.title}"
-points: ${story.points}
-status: backlog
+${frontmatter.join("\n")}
 ---
 
 # ${story.title}
 
 ${story.description}
 
+## Use Case
+
+- **As a** ${uc.asA}
+- **I want to** ${uc.iWant}
+- **so that** ${uc.soThat}
+${businessGoalSection}
 ## Acceptance Criteria
 
-${story.acceptanceCriteria.map((c) => `- ${c}`).join("\n")}
+${acLines || "- **Scenario:** To be defined\n- **Given:** TBD\n- **When:** TBD\n- **Then:** TBD"}
 `;
 
   const filePath = pmosPath("projects", slug, "stories", "backlog", fileName);

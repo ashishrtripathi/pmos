@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Columns3, GripVertical, Plus } from "lucide-react";
+import { Columns3, GripVertical, User, Target } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// ── Types ──────────────────────────────────────────
+// Types
 
 interface AgentStory {
   id: string;
@@ -28,6 +28,10 @@ interface AgentStory {
   points: number;
   status: string;
   description?: string;
+  persona?: string;
+  personaRole?: string;
+  useCase?: { asA: string; iWant: string; soThat: string };
+  businessGoal?: string;
 }
 
 interface Agent {
@@ -40,7 +44,7 @@ interface Agent {
 const AGENT_COLORS: Record<string, string> = {
   "product-manager": "border-t-purple-500",
   "ux-designer": "border-t-pink-500",
-  "architect": "border-t-orange-500",
+  architect: "border-t-orange-500",
   "software-engineer": "border-t-blue-500",
   "qa-engineer": "border-t-green-500",
   "documentation-agent": "border-t-yellow-500",
@@ -50,14 +54,25 @@ const AGENT_COLORS: Record<string, string> = {
 const AGENT_INITIALS: Record<string, string> = {
   "product-manager": "PM",
   "ux-designer": "UX",
-  "architect": "AR",
+  architect: "AR",
   "software-engineer": "SE",
   "qa-engineer": "QA",
   "documentation-agent": "DO",
   "product-intelligence": "PI",
 };
 
-// ── Story Card (Sortable) ──────────────────────────
+const PERSONA_COLORS: Record<string, string> = {
+  Sarah: "bg-purple-100 text-purple-700 border-purple-300",
+  Mike: "bg-blue-100 text-blue-700 border-blue-300",
+  Emma: "bg-green-100 text-green-700 border-green-300",
+};
+
+function getPersonaColor(name?: string): string {
+  if (!name) return "bg-gray-100 text-gray-700 border-gray-300";
+  return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
+}
+
+// Story Card (Sortable)
 
 function KanbanStoryCard({ story }: { story: AgentStory }) {
   const {
@@ -90,20 +105,41 @@ function KanbanStoryCard({ story }: { story: AgentStory }) {
           <GripVertical className="w-3.5 h-3.5" />
         </button>
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-mono text-muted-foreground block mb-0.5">
-            {story.id}
-          </span>
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+            <span className="text-xs font-mono text-muted-foreground">{story.id}</span>
+            <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">
+              {story.points} pts
+            </span>
+            {story.persona && (
+              <span
+                className={`text-[9px] px-1 py-0.5 rounded-full border font-medium ${getPersonaColor(story.persona)}`}
+              >
+                <User className="w-2 h-2 inline mr-0.5" />
+                {story.persona}
+              </span>
+            )}
+          </div>
           <h4 className="text-xs font-medium leading-tight">{story.title}</h4>
-          <span className="text-xs text-muted-foreground mt-1 inline-block">
-            {story.points} pts
-          </span>
+          {story.useCase?.asA && (
+            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
+              As a {story.useCase.asA}...
+            </p>
+          )}
+          {story.businessGoal && (
+            <div className="mt-1 flex items-center gap-1">
+              <Target className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+              <span className="text-[10px] text-muted-foreground line-clamp-1">
+                {story.businessGoal}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ── Agent Column ───────────────────────────────────
+// Agent Column
 
 function AgentColumn({
   agent,
@@ -114,10 +150,13 @@ function AgentColumn({
 }) {
   const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
   const colorClass = AGENT_COLORS[agent.id] || "border-t-gray-400";
-  const initials = AGENT_INITIALS[agent.id] || agent.name.substring(0, 2).toUpperCase();
+  const initials =
+    AGENT_INITIALS[agent.id] || agent.name.substring(0, 2).toUpperCase();
 
   return (
-    <div className={`flex flex-col border-t-2 ${colorClass} rounded-xl bg-card min-w-[180px]`}>
+    <div
+      className={`flex flex-col border-t-2 ${colorClass} rounded-xl bg-card min-w-[200px] w-[200px] shrink-0`}
+    >
       {/* Agent Header */}
       <div className="p-3 border-b border-border">
         <div className="flex items-center gap-2 mb-1">
@@ -126,7 +165,9 @@ function AgentColumn({
           </div>
           <div className="min-w-0">
             <h3 className="text-xs font-semibold truncate">{agent.name}</h3>
-            <span className="text-[10px] text-muted-foreground">{agent.role}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {agent.role}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-2">
@@ -173,7 +214,18 @@ function AgentColumn({
   );
 }
 
-// ── Main Kanban ────────────────────────────────────
+// Agent ID mapping
+const AGENTS_MAP: Record<string, string> = {
+  "product-manager": "product-manager",
+  "ux-designer": "ux-designer",
+  architect: "architect",
+  "software-engineer": "software-engineer",
+  "qa-engineer": "qa-engineer",
+  "documentation-agent": "documentation-agent",
+  "product-intelligence": "product-intelligence",
+};
+
+// Main Kanban
 
 export function KanbanBoard({
   params,
@@ -188,11 +240,12 @@ export function KanbanBoard({
 }) {
   const { slug } = params;
   const [activeStory, setActiveStory] = useState<AgentStory | null>(null);
-  const [showAssign, setShowAssign] = useState(false);
 
-  // Merge: start with initial assignments, but add any unassigned stories to a "unassigned" virtual column
   const unassigned = allStories.filter(
-    (s) => !Object.values(initialAssignments).flat().some((a) => a.id === s.id)
+    (s) =>
+      !Object.values(initialAssignments)
+        .flat()
+        .some((a) => a.id === s.id)
   );
 
   const [assignments, setAssignments] = useState<Record<string, AgentStory[]>>(
@@ -228,7 +281,8 @@ export function KanbanBoard({
     const overId = over.id as string;
 
     const activeAgent = findAgent(activeId);
-    const overAgent = findAgent(overId) || (AGENTS_MAP[overId] ? overId : null);
+    const overAgent =
+      findAgent(overId) || (AGENTS_MAP[overId] ? overId : null);
 
     if (!activeAgent || !overAgent) return;
     if (activeAgent === overAgent) return;
@@ -297,9 +351,11 @@ export function KanbanBoard({
           <Columns3 className="w-5 h-5" />
           <h1 className="text-2xl font-bold">Agent Kanban</h1>
           <span className="text-sm text-muted-foreground">
-            {agents.length} agents · {totalAssigned} assigned
+            {agents.length} agents &middot; {totalAssigned} assigned
             {unassignedCount > 0 && (
-              <span className="text-yellow-600 ml-1">· {unassignedCount} unassigned</span>
+              <span className="text-yellow-600 ml-1">
+                &middot; {unassignedCount} unassigned
+              </span>
             )}
           </span>
         </div>
@@ -324,11 +380,25 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeStory ? (
-            <div className="p-2.5 rounded-lg border border-primary bg-card shadow-lg opacity-90 min-w-[160px]">
-              <span className="text-xs font-mono text-muted-foreground block">
-                {activeStory.id}
-              </span>
+            <div className="p-2.5 rounded-lg border border-primary bg-card shadow-lg opacity-90 min-w-[180px] max-w-[220px]">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-xs font-mono text-muted-foreground">
+                  {activeStory.id}
+                </span>
+                {activeStory.persona && (
+                  <span
+                    className={`text-[9px] px-1 py-0.5 rounded-full border font-medium ${getPersonaColor(activeStory.persona)}`}
+                  >
+                    {activeStory.persona}
+                  </span>
+                )}
+              </div>
               <h4 className="text-xs font-medium">{activeStory.title}</h4>
+              {activeStory.useCase?.asA && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  As a {activeStory.useCase.asA}...
+                </p>
+              )}
             </div>
           ) : null}
         </DragOverlay>
@@ -336,14 +406,3 @@ export function KanbanBoard({
     </div>
   );
 }
-
-// Helper to map agent IDs
-const AGENTS_MAP: Record<string, string> = {
-  "product-manager": "product-manager",
-  "ux-designer": "ux-designer",
-  "architect": "architect",
-  "software-engineer": "software-engineer",
-  "qa-engineer": "qa-engineer",
-  "documentation-agent": "documentation-agent",
-  "product-intelligence": "product-intelligence",
-};
