@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Markdown rendered content */
+.markdown-content h1 { @apply text-2xl font-bold mt-6 mb-3; }
+.markdown-content h2 { @apply text-xl font-bold mt-5 mb-2; }
+.markdown-content h3 { @apply text-lg font-semibold mt-4 mb-2; }
+.markdown-content p { @apply mb-3 leading-relaxed; }
+.markdown-content ul { @apply list-disc pl-6 mb-3; }
+.markdown-content ol { @apply list-decimal pl-6 mb-3; }
+.markdown-content li { @apply mb-1; }
+.markdown-content code { @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono; }
+.markdown-content pre { @apply bg-muted p-4 rounded-lg overflow-x-auto mb-3; }
+.markdown-content pre code { @apply bg-transparent p-0; }
+.markdown-content table { @apply w-full border-collapse mb-3; }
+.markdown-content th { @apply text-left font-semibold border-b-2 border-border p-2; }
+.markdown-content td { @apply border-b border-border p-2; }
+.markdown-content blockquote { @apply border-l-4 border-primary pl-4 italic text-muted-foreground mb-3; }
+.markdown-content a { @apply text-primary underline; }
+.markdown-content hr { @apply my-6 border-border; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-muted-foreground/30 rounded; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/50; }

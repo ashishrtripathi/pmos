@@ -1,3 +1,12 @@
 projects/*/journey/screenshots/*.png
 projects/*/journey/screenshots/_capture.js
 node_modules/
+.next/
+pmos-ui/node_modules/
+pmos-ui/.next/
+pmos-ui/.env.local
+pmos-ui/next-env.d.ts
+pmos-ui/public/voxstyle-assets/
+pmos-ui/public/voxstyle-audio/
+pmos-ui/public/voxstyle-video/
+pmos-ui/scripts/capture-*.js

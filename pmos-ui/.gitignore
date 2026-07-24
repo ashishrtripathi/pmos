@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+public/voxstyle-assets/
+public/voxstyle-audio/
+public/voxstyle-video/
+scripts/capture-*.js
