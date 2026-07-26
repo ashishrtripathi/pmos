@@ -6,6 +6,7 @@ status: backlog
 persona: Sarah
 persona-role: Content Creator
 journey-step: "Configure Workspace"
+estimated-value: 0
 ---
 
 # Scaffold VOXStyle Core Project Structure

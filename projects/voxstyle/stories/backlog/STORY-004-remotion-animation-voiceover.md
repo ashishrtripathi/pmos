@@ -6,6 +6,7 @@ status: backlog
 persona: Sarah
 persona-role: Content Creator
 journey-step: "Generate Video"
+estimated-value: 120000
 ---
 
 # Scene Animation with Voiceover Sync and Audio Mix

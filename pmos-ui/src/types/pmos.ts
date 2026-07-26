@@ -47,6 +47,7 @@ export interface Story {
     soThat: string;
   };
   businessGoal?: string;
+  estimatedValue?: number;
   acceptanceCriteria: {
     scenario: string;
     given: string[];

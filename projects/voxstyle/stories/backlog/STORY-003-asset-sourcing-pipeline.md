@@ -6,6 +6,7 @@ status: backlog
 persona: Sarah
 persona-role: Content Creator
 journey-step: "Select Images"
+estimated-value: 45000
 ---
 
 # Asset Sourcing Pipeline with Fallback Chain

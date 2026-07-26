@@ -187,6 +187,7 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
     persona: data.persona,
     personaRole: data["persona-role"],
     journeyStep: data["journey-step"],
+    estimatedValue: data["estimated-value"] || data.estimatedValue || undefined,
     filePath,
   };
 }
@@ -230,6 +231,7 @@ export function createStory(
     journeyStep?: string;
     useCase?: { asA: string; iWant: string; soThat: string };
     businessGoal?: string;
+    estimatedValue?: number;
     acceptanceCriteria?: { scenario: string; given: string[]; when: string; then: string }[];
   }
 ) {
@@ -250,6 +252,7 @@ export function createStory(
   if (story.persona) frontmatter.push(`persona: "${story.persona}"`);
   if (story.personaRole) frontmatter.push(`persona-role: "${story.personaRole}"`);
   if (story.journeyStep) frontmatter.push(`journey-step: "${story.journeyStep}"`);
+  if (story.estimatedValue) frontmatter.push(`estimated-value: ${story.estimatedValue}`);
 
   const uc = story.useCase || { asA: story.persona || "a user", iWant: story.description, soThat: story.businessGoal || "" };
 

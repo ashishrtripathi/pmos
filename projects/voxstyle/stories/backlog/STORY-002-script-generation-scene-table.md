@@ -6,6 +6,7 @@ status: backlog
 persona: Sarah
 persona-role: Content Creator
 journey-step: "Generate Script"
+estimated-value: 75000
 ---
 
 # Script Generation with Editable Scene Table
