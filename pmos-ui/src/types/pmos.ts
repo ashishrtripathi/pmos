@@ -55,6 +55,10 @@ export interface Story {
     then: string;
   }[];
   filePath: string;
+  source?: "manual" | "intelligence";
+  sourceFile?: string;
+  sourceSection?: string;
+  category?: string;
 }
 
 export type StoryStatus = "backlog" | "in-progress" | "review" | "done";
