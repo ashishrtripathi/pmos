@@ -30,6 +30,26 @@
         "review": 0,
         "done": 0
       }
+    },
+    {
+      "slug": "pmos",
+      "name": "PMOS — AI-Native Product Operating System",
+      "source": "local",
+      "repoUrl": "https://github.com/ashishrtripathi/pmos.git",
+      "localPath": "C:\\Users\\ashis\\.pmos",
+      "path": "~/.pmos/projects/pmos",
+      "status": "attached",
+      "attachedAt": "2026-07-27",
+      "projectType": "full-codebase",
+      "teams": [
+        "product-manager",
+        "ux-designer",
+        "architect",
+        "software-engineer",
+        "qa-engineer",
+        "documentation-agent",
+        "product-intelligence"
+      ]
     }
   ],
   "settings": {
