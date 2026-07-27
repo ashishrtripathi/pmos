@@ -26,6 +26,9 @@ pmos-ui/scripts/capture-*.js
 projects/*/journey/screenshots/*.png
 projects/*/journey/screenshots/_capture.js
 
+# Pipeline state (runtime data)
+projects/*/pipeline-state.json
+
 # Misc
 .DS_Store
 *.pem
