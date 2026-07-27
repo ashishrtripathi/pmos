@@ -7,13 +7,9 @@ import {
   User,
   Target,
   Zap,
-  DollarSign,
   TrendingUp,
-  Bot,
   Brain,
   ExternalLink,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import {
   DndContext,
@@ -32,9 +28,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  StoryDetailModal,
-} from "@/components/story-detail-modal";
+import { StoryDetailModal } from "@/components/story-detail-modal";
 import {
   estimateTokenCost,
   calculateROI,
@@ -101,20 +95,13 @@ const PERSONA_COLORS: Record<string, string> = {
   Emma: "bg-green-100 text-green-700 border-green-300",
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "Code Analysis": "bg-red-50 text-red-600 border-red-200",
+const CATEGORY_BADGE_COLORS: Record<string, string> = {
+  "Code Analysis": "bg-blue-50 text-blue-600 border-blue-200",
   "UX/Product": "bg-pink-50 text-pink-600 border-pink-200",
-  "Technical": "bg-orange-50 text-orange-600 border-orange-200",
+  Technical: "bg-orange-50 text-orange-600 border-orange-200",
   "Missing Feature": "bg-yellow-50 text-yellow-600 border-yellow-200",
   "Critical Issue": "bg-red-100 text-red-700 border-red-300",
   "High Priority Issue": "bg-orange-100 text-orange-700 border-orange-300",
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: "bg-red-500 text-white",
-  high: "bg-orange-400 text-white",
-  medium: "bg-yellow-400 text-white",
-  low: "bg-gray-400 text-white",
 };
 
 function getPersonaColor(name?: string): string {
@@ -155,7 +142,7 @@ function KanbanStoryCard({
       ref={setNodeRef}
       style={style}
       className={`p-2.5 rounded-lg border bg-background shadow-sm hover:shadow-md hover:border-primary/30 transition-all group cursor-pointer ${
-        isIntelligence ? "border-l-2 border-l-amber-400" : "border-border"
+        isIntelligence ? "border-l-[3px] border-l-amber-400" : "border-border"
       }`}
       onClick={onClick}
     >
@@ -169,32 +156,31 @@ function KanbanStoryCard({
           <GripVertical className="w-3.5 h-3.5" />
         </button>
         <div className="flex-1 min-w-0">
-          {/* Source Badge + ID + Points + Persona */}
-          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+          {/* Source + ID + Points + Persona + Category badges */}
+          <div className="flex items-center gap-1 mb-0.5 flex-wrap">
             {isIntelligence && (
-              <span className="text-[9px] px-1 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 font-medium flex items-center gap-0.5">
-                <Brain className="w-2.5 h-2.5" />
+              <span className="text-[8px] px-1 py-0 rounded bg-amber-50 text-amber-600 border border-amber-200 font-bold flex items-center gap-0.5">
+                <Brain className="w-2 h-2" />
                 AI
               </span>
             )}
-            <span className="text-xs font-mono text-muted-foreground">
+            <span className="text-[10px] font-mono text-muted-foreground">
               {story.id}
             </span>
-            <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">
+            <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary font-medium">
               {story.points} pts
             </span>
             {story.persona && (
               <span
-                className={`text-[9px] px-1 py-0.5 rounded-full border font-medium ${getPersonaColor(story.persona)}`}
+                className={`text-[8px] px-1 py-0 rounded-full border font-medium ${getPersonaColor(story.persona)}`}
               >
-                <User className="w-2 h-2 inline mr-0.5" />
                 {story.persona}
               </span>
             )}
             {story.category && (
               <span
-                className={`text-[8px] px-1 py-0.5 rounded-full border font-medium ${
-                  CATEGORY_COLORS[story.category] || "bg-gray-50 text-gray-600 border-gray-200"
+                className={`text-[8px] px-1 py-0 rounded-full border font-medium ${
+                  CATEGORY_BADGE_COLORS[story.category] || "bg-gray-50 text-gray-600 border-gray-200"
                 }`}
               >
                 {story.category}
@@ -203,205 +189,83 @@ function KanbanStoryCard({
           </div>
 
           {/* Title */}
-          <h4 className="text-xs font-medium leading-tight">{story.title}</h4>
+          <h4 className="text-[11px] font-semibold leading-tight">{story.title}</h4>
+
+          {/* Description / Outcome */}
+          {story.description && (
+            <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+              {story.description}
+            </p>
+          )}
 
           {/* Use Case preview */}
-          {story.useCase?.asA && (
-            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
-              As a {story.useCase.asA}...
-            </p>
+          {story.useCase?.soThat && (
+            <div className="mt-1 text-[9px] text-emerald-700 bg-emerald-50/50 rounded px-1.5 py-0.5 border border-emerald-100">
+              <span className="font-medium">Outcome:</span> {story.useCase.soThat}
+            </div>
           )}
 
           {/* Business Goal */}
           {story.businessGoal && (
-            <div className="mt-1 flex items-center gap-1">
-              <Target className="w-2.5 h-2.5 text-amber-500 shrink-0" />
-              <span className="text-[10px] text-muted-foreground line-clamp-1">
-                {story.businessGoal}
-              </span>
+            <div className="mt-1 flex items-start gap-0.5">
+              <Target className="w-2 h-2 text-amber-500 shrink-0 mt-0.5" />
+              <span className="text-[8px] text-muted-foreground line-clamp-2">{story.businessGoal}</span>
             </div>
           )}
 
-          {/* Cost + ROI */}
+          {/* Cost + ROI + Value */}
           <div className="mt-1.5 pt-1.5 border-t border-border/50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <Zap className="w-2.5 h-2.5 text-violet-500" />
-                <span className="text-[9px] font-mono text-violet-600">
-                  {formatCost(cost.totalCost)}
-                </span>
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-0.5">
+                  <Zap className="w-2 h-2 text-violet-500" />
+                  <span className="text-[9px] font-mono text-violet-600">
+                    {formatCost(cost.totalCost)}
+                  </span>
+                </div>
+                {roi.estimatedValue > 0 && (
+                  <>
+                    <span className="text-[8px] text-muted-foreground">→</span>
+                    <div className="flex items-center gap-0.5">
+                      <TrendingUp className="w-2 h-2 text-emerald-500" />
+                      <span className="text-[9px] font-mono text-emerald-600">
+                        {formatDollars(roi.estimatedValue)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
               {roi.estimatedValue > 0 && (
-                <div
-                  className={`text-[9px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}
+                <span
+                  className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}
                 >
                   {roi.roiMultiple}
-                </div>
+                </span>
               )}
             </div>
           </div>
 
-          {/* Intelligence Reference Link */}
+          {/* Intelligence Reference */}
           {isIntelligence && story.sourceFile && (
-            <div className="mt-1.5 pt-1.5 border-t border-amber-200/50">
+            <div className="mt-1 pt-1 border-t border-amber-100">
               <a
-                href={`/projects/${story.sourceFile.replace("intelligence/", "")}`}
+                href={`/projects/voxstyle/intelligence`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-[9px] text-amber-600 hover:text-amber-800 hover:underline"
+                className="flex items-center gap-0.5 text-[8px] text-amber-600 hover:text-amber-800 hover:underline"
               >
-                <Brain className="w-2.5 h-2.5" />
-                {story.sourceFile}
+                <Brain className="w-2 h-2" />
+                <span>{story.sourceFile.replace("intelligence/", "")}</span>
                 {story.sourceSection && (
-                  <span className="text-muted-foreground">/ {story.sourceSection}</span>
+                  <span className="text-muted-foreground"> / {story.sourceSection}</span>
                 )}
-                <ExternalLink className="w-2 h-2" />
+                <ExternalLink className="w-1.5 h-1.5" />
               </a>
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Intelligence Panel ──────────────────────────────
-
-function IntelligencePanel({
-  stories,
-  onStoryClick,
-  slug,
-}: {
-  stories: KanbanStory[];
-  onStoryClick: (story: KanbanStory) => void;
-  slug: string;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
-
-  const categories = [...new Set(stories.map((s) => s.category).filter(Boolean))];
-  const filtered = filter === "all" ? stories : stories.filter((s) => s.category === filter);
-  const totalPoints = filtered.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = filtered.reduce((sum, s) => sum + estimateTokenCost(s.points).totalCost, 0);
-
-  // Group by category
-  const grouped = filtered.reduce(
-    (acc, s) => {
-      const cat = s.category || "Other";
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(s);
-      return acc;
-    },
-    {} as Record<string, KanbanStory[]>
-  );
-
-  return (
-    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/30">
-      {/* Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-amber-50/50 transition-colors rounded-t-xl"
-      >
-        <div className="flex items-center gap-3">
-          <Brain className="w-5 h-5 text-amber-500" />
-          <div className="text-left">
-            <h3 className="text-sm font-semibold text-amber-800">
-              Intelligence Stories
-            </h3>
-            <p className="text-[11px] text-amber-600">
-              {stories.length} stories from code analysis · {totalPoints} pts ·{" "}
-              {formatCost(totalCost)} est. cost
-            </p>
-          </div>
-        </div>
-        {expanded ? (
-          <ChevronDown className="w-4 h-4 text-amber-500" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-amber-500" />
-        )}
-      </button>
-
-      {expanded && (
-        <div className="px-4 pb-4">
-          {/* Source files */}
-          <div className="flex flex-wrap gap-2 mb-3">
-            {["improvements.md", "features.md", "code-quality.md"].map((file) => (
-              <a
-                key={file}
-                href={`/projects/${slug}/intelligence`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1"
-              >
-                <ExternalLink className="w-2 h-2" />
-                {file}
-              </a>
-            ))}
-          </div>
-
-          {/* Category filter */}
-          <div className="flex gap-1.5 mb-3 flex-wrap">
-            <button
-              onClick={() => setFilter("all")}
-              className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                filter === "all"
-                  ? "bg-amber-500 text-white border-amber-500"
-                  : "bg-white text-amber-700 border-amber-200 hover:bg-amber-100"
-              }`}
-            >
-              All ({stories.length})
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setFilter(cat || "all")}
-                className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                  filter === cat
-                    ? "bg-amber-500 text-white border-amber-500"
-                    : "bg-white text-amber-700 border-amber-200 hover:bg-amber-100"
-                }`}
-              >
-                {cat} ({stories.filter((s) => s.category === cat).length})
-              </button>
-            ))}
-          </div>
-
-          {/* Story grid by category */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(grouped).map(([cat, catStories]) => (
-              <div key={cat}>
-                <h4 className="text-[10px] font-semibold text-amber-700 uppercase mb-1.5 flex items-center gap-1">
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      CATEGORY_COLORS[cat]?.includes("red")
-                        ? "bg-red-400"
-                        : CATEGORY_COLORS[cat]?.includes("orange")
-                          ? "bg-orange-400"
-                          : CATEGORY_COLORS[cat]?.includes("yellow")
-                            ? "bg-yellow-400"
-                            : "bg-gray-400"
-                    }`}
-                  />
-                  {cat}
-                  <span className="text-muted-foreground font-normal">
-                    ({catStories.length})
-                  </span>
-                </h4>
-                <div className="space-y-1.5">
-                  {catStories.map((story) => (
-                    <KanbanStoryCard
-                      key={story.id}
-                      story={story}
-                      onClick={() => onStoryClick(story)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -430,7 +294,7 @@ function AgentColumn({
 
   return (
     <div
-      className={`flex flex-col border-t-2 ${colorClass} rounded-xl bg-card min-w-[220px] w-[220px] shrink-0`}
+      className={`flex flex-col border-t-2 ${colorClass} rounded-xl bg-card min-w-[240px] w-[240px] shrink-0`}
     >
       {/* Agent Header */}
       <div className="p-3 border-b border-border">
@@ -445,7 +309,7 @@ function AgentColumn({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        <div className="flex items-center gap-1 mt-2 flex-wrap">
           <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {stories.length} stories
           </span>
@@ -461,7 +325,7 @@ function AgentColumn({
             </span>
           )}
           {intelCount > 0 && (
-            <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+            <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-medium">
               <Brain className="w-2.5 h-2.5" />
               {intelCount}
             </span>
@@ -470,12 +334,12 @@ function AgentColumn({
       </div>
 
       {/* Focus Areas */}
-      <div className="px-3 py-2 border-b border-border">
-        <div className="flex flex-wrap gap-1">
+      <div className="px-3 py-1.5 border-b border-border">
+        <div className="flex flex-wrap gap-0.5">
           {agent.focus.map((f) => (
             <span
               key={f}
-              className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
+              className="text-[9px] px-1.5 py-0 rounded bg-muted text-muted-foreground"
             >
               {f}
             </span>
@@ -525,7 +389,7 @@ export function KanbanBoard({
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
 
-  // Fetch intelligence stories
+  // Fetch intelligence stories and merge into agent assignments
   useEffect(() => {
     fetch(`/api/projects/${slug}/intelligence-stories`)
       .then((r) => r.json())
@@ -537,20 +401,32 @@ export function KanbanBoard({
       .catch(() => {});
   }, [slug]);
 
-  const unassigned = allStories.filter(
-    (s) =>
-      !Object.values(initialAssignments)
-        .flat()
-        .some((a) => a.id === s.id)
-  );
+  // Merge intelligence stories into the correct agent columns
+  const mergedAssignments = useCallback(() => {
+    const base = Object.keys(initialAssignments).length > 0
+      ? { ...initialAssignments }
+      : Object.fromEntries(agents.map((a) => [a.id, [] as KanbanStory[]]));
 
-  const [assignments, setAssignments] = useState<
-    Record<string, KanbanStory[]>
-  >(
-    Object.keys(initialAssignments).length > 0
-      ? initialAssignments
-      : Object.fromEntries(agents.map((a) => [a.id, []]))
-  );
+    // Add intelligence stories to their assigned agent columns
+    for (const story of intelStories) {
+      const agentId = story.assignedAgent || "software-engineer";
+      if (base[agentId]) {
+        // Don't duplicate if already there
+        if (!base[agentId].some((s) => s.id === story.id)) {
+          base[agentId] = [...base[agentId], story];
+        }
+      }
+    }
+
+    return base;
+  }, [initialAssignments, agents, intelStories]);
+
+  const [assignments, setAssignments] = useState<Record<string, KanbanStory[]>>({});
+
+  // Recalculate assignments when intel stories load
+  useEffect(() => {
+    setAssignments(mergedAssignments());
+  }, [intelStories, initialAssignments, agents, mergedAssignments]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -655,16 +531,19 @@ export function KanbanBoard({
     setDetailStory(null);
   };
 
-  const totalAssigned = Object.values(assignments).flat().length;
-  const totalPoints = allStories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = allStories.reduce(
+  // Aggregate stats
+  const allMerged = Object.values(assignments).flat();
+  const totalAssigned = allMerged.length;
+  const totalPoints = allMerged.reduce((sum, s) => sum + s.points, 0);
+  const totalCost = allMerged.reduce(
     (sum, s) => sum + estimateTokenCost(s.points).totalCost,
     0
   );
-  const totalValue = allStories.reduce(
+  const totalValue = allMerged.reduce(
     (sum, s) => sum + (s.estimatedValue || 0),
     0
   );
+  const totalIntel = allMerged.filter((s) => s.source === "intelligence").length;
 
   return (
     <div className="p-8 max-w-full mx-auto">
@@ -674,34 +553,25 @@ export function KanbanBoard({
           <Columns3 className="w-5 h-5" />
           <h1 className="text-2xl font-bold">Agent Kanban</h1>
           <span className="text-sm text-muted-foreground">
-            {agents.length} agents &middot; {totalAssigned} assigned &middot;{" "}
+            {agents.length} agents &middot; {totalAssigned} stories &middot;{" "}
             {totalPoints} pts
           </span>
           <span className="text-sm font-mono text-violet-600 bg-violet-50 px-2 py-0.5 rounded">
-            {formatCost(totalCost)} est. cost
+            {formatCost(totalCost)} cost
           </span>
           {totalValue > 0 && (
             <span className="text-sm font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-              {formatDollars(totalValue)} est. value
+              {formatDollars(totalValue)} value
             </span>
           )}
-          {intelStories.length > 0 && (
-            <span className="text-sm text-amber-600 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1">
+          {totalIntel > 0 && (
+            <span className="text-sm text-amber-600 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1 font-medium">
               <Brain className="w-3.5 h-3.5" />
-              {intelStories.length} from intelligence
+              {totalIntel} from intelligence
             </span>
           )}
         </div>
       </div>
-
-      {/* Intelligence Stories Panel */}
-      {intelStories.length > 0 && (
-        <IntelligencePanel
-          stories={intelStories}
-          onStoryClick={handleStoryClick}
-          slug={slug}
-        />
-      )}
 
       {/* Kanban Grid — HORIZONTAL SCROLL */}
       <DndContext
@@ -737,27 +607,24 @@ export function KanbanBoard({
                 <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">
                   {activeStory.points} pts
                 </span>
-                {activeStory.persona && (
-                  <span
-                    className={`text-[9px] px-1 py-0.5 rounded-full border font-medium ${getPersonaColor(activeStory.persona)}`}
-                  >
-                    {activeStory.persona}
-                  </span>
-                )}
               </div>
               <h4 className="text-xs font-medium">{activeStory.title}</h4>
-              {activeStory.useCase?.asA && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  As a {activeStory.useCase.asA}...
-                </p>
+              {activeStory.description && (
+                <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">{activeStory.description}</p>
               )}
               <div className="mt-1 flex items-center gap-1">
                 <Zap className="w-2.5 h-2.5 text-violet-500" />
                 <span className="text-[9px] font-mono text-violet-600">
-                  {formatCost(
-                    estimateTokenCost(activeStory.points).totalCost
-                  )}
+                  {formatCost(estimateTokenCost(activeStory.points).totalCost)}
                 </span>
+                {activeStory.estimatedValue && activeStory.estimatedValue > 0 && (
+                  <>
+                    <span className="text-[8px] text-muted-foreground">→</span>
+                    <span className="text-[9px] font-mono text-emerald-600">
+                      {formatDollars(activeStory.estimatedValue)}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           ) : null}
@@ -772,7 +639,7 @@ export function KanbanBoard({
           onSave={handleStorySave}
           personas={[
             ...new Set(
-              allStories.map((s) => s.persona).filter(Boolean)
+              allMerged.map((s) => s.persona).filter(Boolean)
             ),
           ] as string[]}
           agents={agents.map((a) => a.name)}
