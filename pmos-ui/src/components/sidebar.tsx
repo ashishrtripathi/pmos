@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Settings,
   Layers,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/story-map", icon: Layers, label: "Story Map" },
   { href: "/kanban", icon: Columns3, label: "Kanban" },
   { href: "/intelligence", icon: Brain, label: "Intelligence" },
+  { href: "/agents", icon: Bot, label: "Agents" },
 ];
 
 export function Sidebar() {

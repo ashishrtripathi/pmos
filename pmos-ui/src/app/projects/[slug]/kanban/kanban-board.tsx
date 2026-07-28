@@ -634,7 +634,7 @@ export function KanbanBoard({
       {/* Story Detail / Edit Modal */}
       {detailStory && (
         <StoryDetailModal
-          story={detailStory}
+          story={{ ...detailStory, description: detailStory.description || "" }}
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
           personas={[

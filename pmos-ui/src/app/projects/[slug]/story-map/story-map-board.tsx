@@ -28,6 +28,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PipelineScreen } from "@/components/journey/pipeline-screen";
+import type { UIInfo } from "@/components/journey/pipeline-screen";
 import { StoryDetailModal } from "@/components/story-detail-modal";
 import {
   estimateTokenCost,
@@ -83,7 +84,7 @@ interface PersonaJourney {
 
 interface StoryMap {
   backbone: PersonaJourneyStep[];
-  activities: any[][][];
+  activities: any[][];
 }
 
 interface PipelineData {
@@ -93,12 +94,7 @@ interface PipelineData {
   video: { exists: boolean; size: number; url: string | null };
 }
 
-interface UIInfo {
-  serverRunning: boolean;
-  uiUrl: string | null;
-  serverPort: number;
-  steps: { number: number; title: string; description: string; fields: string[] }[];
-}
+// UIInfo is imported from pipeline-screen
 
 // ── Persona colors ──────────────────────────────────
 

@@ -10,7 +10,7 @@ interface PipelineData {
   video: { exists: boolean; size: number; url: string | null };
 }
 
-interface UIInfo {
+export interface UIInfo {
   serverRunning: boolean;
   uiUrl: string | null;
   serverPort: number;

@@ -35,6 +35,7 @@ interface GitHubRepo {
   cloneUrl: string;
   language: string;
   stars: number;
+  forks: number;
   updatedAt: string;
   topics: string[];
   defaultBranch: string;
@@ -55,6 +56,7 @@ interface BrowseResult {
   currentPath: string;
   parentPath: string | null;
   directories: FSDirEntry[];
+  error?: string;
 }
 
 // ── Step Indicator ──────────────────────────────────
