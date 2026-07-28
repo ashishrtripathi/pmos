@@ -1,96 +1,21 @@
 # Customer Journey — PMOS (Dev the Developer/Extender)
 
-**Persona**: Dev — Full-Stack Developer / Technical Lead
-**Role**: Extends PMOS with new capabilities, writes plugins, contributes to the open-source project
+**Persona**: Full-Stack Developer / Technical Lead, 32, Expert
 **Quote**: "I want to add features to PMOS without fighting the architecture. The file-based design should make this easy."
 
 ---
 
-## Journey Steps
+### Journey Steps (Left → Right)
 
-### Step 1: Set Up Development Environment
-**Activity**: Clone PMOS, install dependencies, start dev servers
-**Tasks**:
-- Clone `https://github.com/ashishrtripathi/pmos.git` to `~/.pmos`
-- Run `cd pmos-ui && npm install && npm run dev`
-- Verify UI loads at localhost:3100
-- Understand the `~/.pmos/` file structure
+| Step | Activity | Tasks | Pain Points | Screen |
+|------|----------|-------|-------------|--------|
+| **1. Setup Dev Environment** | Clone, install, run dev servers | Clone repo, npm install, npm run dev, understand structure | Where is UI code vs metadata? How to add pages? What files to touch? | ![PMOS-UI Dashboard](screens/dashboard.png) |
+| **2. Understand Data Model** | Learn how PMOS reads/writes files | Read lib/pmos.ts, types/pmos.ts, markdown conventions, API routes | What schema? What fields? Which type broke the build? | ![Intelligence → Architecture](screens/intelligence.png) |
+| **3. Run Pipeline** | Execute steps, verify output | Run intelligence, journey, story mapping steps, check output files | Where to find errors? How to reset? | ![Pipeline](screens/pipeline.png) |
+| **4. Add New Feature** | Implement a PMOS capability | Create API route, add types, create page, add navigation | Server vs client components? Data passing in Next.js 14? fs.readFileSync scoping? | ![Agents → Dispatch panel](screens/agents.png) |
+| **5. Write Tests & Verify** | Ensure changes work | Build check, test pages, verify DnD, test API endpoints | Need to restart dev server? How to test server-side file reads? | ![Stories board](screens/stories.png) |
+| **6. Document & Contribute** | Update docs, create PR | Update README, add command doc, update framework doc, commit and push | Where to document? Is there a contributing guide? | ![Setup → Source config](screens/setup.png) |
 
-**Pain Points**:
-- "Where does the UI code live vs. the metadata?"
-- "How do I add a new page to the dashboard?"
-- "I need to know which files to touch for a feature change"
-
-**Screen**: ![PMOS-UI Dashboard](screens/dashboard.png)
-
-### Step 2: Understand the Data Model
-**Activity**: Learn how PMOS reads/writes files
-**Tasks**:
-- Read `src/lib/pmos.ts` — the core file reader
-- Understand `src/types/pmos.ts` — TypeScript types
-- Examine markdown frontmatter conventions
-- Check how API routes read from `~/.pmos/`
-
-**Pain Points**:
-- "Is there a schema for these markdown files?"
-- "What fields does the parser expect?"
-- "I broke the build — which type changed?"
-
-**Screen**: ![Intelligence → Architecture & Tech Stack](screens/intelligence.png)
-
-### Step 3: Run the Pipeline
-**Activity**: Execute pipeline steps and verify the output
-**Tasks**:
-- Run Step 2 (Repository Intelligence) to generate intelligence files
-- Run Step 4 (Customer Journey) to validate persona journeys
-- Run Step 5 (Story Mapping) to build the backlog
-- Verify each step produces correct output files
-
-**Pain Points**:
-- "Pipeline failed — where do I look for the error?"
-- "I need to reset the pipeline state to re-run"
-
-**Screen**: ![Pipeline → 9-step execution](screens/pipeline.png)
-
-### Step 4: Add a New Feature
-**Activity**: Implement a new PMOS capability (e.g., prioritization scoring)
-**Tasks**:
-- Create new API route at `src/app/api/projects/[slug]/[feature]/route.ts`
-- Add types to `src/types/pmos.ts`
-- Create page at `src/app/projects/[slug]/[feature]/page.tsx`
-- Add navigation in `src/components/sidebar.tsx`
-
-**Pain Points**:
-- "Server vs. client components — which do I use?"
-- "How do I pass data from server → client in Next.js 14?"
-- "My fs.readFileSync works in the API route but not in the page"
-
-**Screen**: ![Agents → Dispatch panel with PMOS commands](screens/agents.png)
-
-### Step 5: Write Tests & Verify
-**Activity**: Ensure changes work across all pages
-**Tasks**:
-- Run `npm run build` to verify TypeScript compiles
-- Test all pages load (check for 500 errors)
-- Verify drag-and-drop still works
-- Test API endpoints return expected data
-
-**Pain Points**:
-- "I need to restart the dev server after some changes"
-- "How do I test server-side file reads locally?"
-
-**Screen**: ![Stories → Structured story board for verification](screens/stories.png)
-
-### Step 6: Document & Contribute
-**Activity**: Update docs and create a PR
-**Tasks**:
-- Update README.md with new feature
-- Add command doc if it's a new PMOS command
-- Update PRIORITIZATION-FRAMEWORK.md if relevant
-- Commit and push to GitHub
-
-**Pain Points**:
-- "Where should I document this?"
-- "Is there a contributing guide?"
-
-**Screen**: ![Setup → Source configuration & GitHub](screens/setup.png)
+### Stories Under This Journey
+| Story | Step | Points | Status |
+|-------|------|--------|--------|

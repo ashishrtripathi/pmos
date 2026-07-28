@@ -1,121 +1,23 @@
 # Customer Journey — PMOS (Priya the Product Manager)
 
-**Persona**: Priya — Senior Product Manager
-**Role**: Primary user of the PMOS Dashboard UI
+**Persona**: Senior Product Manager, 35, Expert
 **Quote**: "I need to see the whole picture — journey, stories, priorities — without switching between 5 tools."
 
 ---
 
-## Journey Steps
+### Journey Steps (Left → Right)
 
-### Step 1: Onboard a New Project
-**Activity**: Connect a project (GitHub or local) to PMOS
-**Tasks**:
-- Run "PMOS: attach project at [path]"
-- Review source-location.json created
-- Verify PMOS can read the codebase
+| Step | Activity | Tasks | Pain Points | Screen |
+|------|----------|-------|-------------|--------|
+| **1. Onboard Project** | Connect a project to PMOS | Run command, review source-location.json, verify reading | Don't clone repos, understand structure | ![Dashboard → Project Setup](screens/dashboard.png) |
+| **2. Intelligence Gathering** | Analyze codebase via AI agents | Trigger intelligence scan, review architecture/features/quality | Verify AI understood correctly, see findings | ![Intelligence](screens/intelligence.png) |
+| **3. Journey Mapping** | Define personas and map journey | Create personas, map steps, identify pain points, preview UI | Can't map without seeing UI, per-persona journeys needed | ![Journey → Persona tabs](screens/journey.png) |
+| **4. Story Mapping** | Build stories from backbone | Create stories, assign persona/business goal, write Gherkin AC, estimate costs, calculate ROI | Stories trace to persona/step, see token costs AND dollars, what's ROI? | ![Story Map → Journey columns](screens/story-map.png) |
+| **5. Agent Kanban** | Assign stories to agent teams | Review intelligence stories auto-assigned, drag between agents, view/edit | Know which agent does what, intelligence becomes stories automatically | ![Kanban → 7 agent columns](screens/kanban.png) |
+| **6. Pipeline Execution** | Run pipeline steps | Click Run on steps, monitor progress, reset, view completion | See what step the project is in, continue from failure | ![Pipeline → 9-step execution](screens/pipeline.png) |
+| **7. Agent Dispatch** | Send commands to AI agents | Select command template, fill parameters, dispatch, view history | Send commands from UI (not error messages), command library ready | ![Agents → Dispatch panel](screens/agents.png) |
+| **8. Monitor & Iterate** | Track and re-evaluate | Watch stories move, re-prioritize, review completed, generate from feedback | See progress without status updates, auto-update priorities | ![Dashboard → Project health](screens/dashboard.png) |
 
-**Pain Points**:
-- "I don't want to clone repos — my code stays where it is"
-- "I need to know PMOS understands my project's structure"
-
-**Screen**: ![Dashboard → Project Setup](screens/dashboard.png)
-
-### Step 2: Intelligence Gathering
-**Activity**: Let AI agents analyze the codebase
-**Tasks**:
-- Trigger repository intelligence scan
-- Review architecture, tech stack, features, quality
-- Identify gaps and improvement opportunities
-
-**Pain Points**:
-- "How do I know the AI understood my code correctly?"
-- "I need to see what it found before acting on it"
-
-**Screen**: ![Intelligence](screens/intelligence.png)
-
-### Step 3: Customer Journey Mapping
-**Activity**: Define personas and map their journey through the product
-**Tasks**:
-- Create persona profiles
-- Map each persona's steps through the product
-- Identify pain points per step
-- View actual app UI in each step (via iframe or HTML parsing)
-
-**Pain Points**:
-- "I can't map a journey without seeing the actual UI"
-- "Each persona needs their own journey — not a one-size-fits-all"
-
-**Screen**: ![Journey → Persona tabs](screens/journey.png)
-
-### Step 4: User Story Mapping
-**Activity**: Build stories from the journey backbone
-**Tasks**:
-- Create stories under journey steps
-- Assign persona and business goal
-- Write Use Case (As a / I want to / so that) and Gherkin AC
-- Estimate points and AI agent token costs
-- Calculate ROI (estimated value vs AI cost)
-
-**Pain Points**:
-- "Stories need to trace back to a specific persona and journey step"
-- "I need to see the cost in tokens AND dollars, not just story points"
-- "What's the ROI on this feature?"
-
-**Screen**: ![Story Map → Journey columns with stories](screens/story-map.png)
-
-### Step 5: Agent Kanban
-**Activity**: Assign stories to AI agent teams
-**Tasks**:
-- Review stories placed in agent columns
-- See intelligence-sourced stories auto-assigned
-- Drag stories between agents
-- Click to view/edit any story
-
-**Pain Points**:
-- "I need to know which agent does what"
-- "Intelligence findings should automatically become stories in the right queue"
-
-**Screen**: ![Kanban → 7 agent columns](screens/kanban.png)
-
-### Step 6: Pipeline Execution
-**Activity**: Run the full PMOS pipeline or execute individual steps
-**Tasks**:
-- Click "Run" on individual steps or "Run All Remaining"
-- Monitor progress with status icons and execution log
-- Reset pipeline when needed
-- View completion summary
-
-**Pain Points**:
-- "I need to see what step the project is in"
-- "I should be able to continue from where it failed"
-
-**Screen**: ![Pipeline → 9-step execution](screens/pipeline.png)
-
-### Step 7: Agent Dispatch
-**Activity**: Send commands to AI coding agents directly
-**Tasks**:
-- Select PMOS command template
-- Fill in parameters
-- Dispatch to agent (copies to clipboard)
-- View dispatch history
-
-**Pain Points**:
-- "I got an error message telling me to ask an agent — I want to do that from here"
-- "I need a library of PMOS commands ready to go"
-
-**Screen**: ![Agents → Agent Dispatch panel](screens/agents.png)
-
-### Step 8: Monitor & Iterate
-**Activity**: Track progress and re-evaluate
-**Tasks**:
-- Watch stories move through the pipeline
-- Re-prioritize as new intelligence comes in
-- Review completed stories
-- Generate new stories from live product feedback
-
-**Pain Points**:
-- "I need to see progress without asking for status updates"
-- "Priorities should update automatically when the codebase changes"
-
-**Screen**: ![Dashboard → Project health](screens/dashboard.png)
+### Stories Under This Journey
+| Story | Step | Points | Status |
+|-------|------|--------|--------|

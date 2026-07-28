@@ -267,6 +267,7 @@ function StepColumn({
   uiInfo,
   onCreateStory,
   onStoryClick,
+  slug,
 }: {
   stepIndex: number;
   step: PersonaJourneyStep;
@@ -277,6 +278,7 @@ function StepColumn({
   uiInfo: UIInfo | null;
   onCreateStory: (stepName: string) => void;
   onStoryClick: (story: Story) => void;
+  slug?: string;
 }) {
   const statusOrder: Record<string, number> = {
     "in-progress": 0,
@@ -309,6 +311,29 @@ function StepColumn({
               <p className="text-[10px] text-muted-foreground truncate">{step.activity}</p>
             </div>
           </div>
+          {/* Backbone screenshot thumbnail */}
+          {step.screen && (() => {
+            const screenMatch = step.screen.match(/!\[.*?\]\((.+?)\)/);
+            if (!screenMatch) return null;
+            const imgName = screenMatch[1].split('/').pop() || screenMatch[1];
+            const imgUrl = `/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`;
+            return (
+              <div className="mt-1.5 relative group cursor-pointer">
+                <div className="rounded overflow-hidden border border-border/50 h-10 bg-gray-50">
+                  <img
+                    src={imgUrl}
+                    alt={step.name}
+                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded text-[9px] text-white font-medium">
+                  <Eye className="w-3 h-3 mr-1" /> View
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="px-3 pb-2 flex items-center justify-between">
@@ -846,6 +871,7 @@ export function StoryMapBoard({
                 uiInfo={uiInfo}
                 onCreateStory={(stepName) => { setCreateForStep(stepName); setShowCreate(true); }}
                 onStoryClick={handleStoryClick}
+                slug={params.slug}
               />
             ))}
           </div>
