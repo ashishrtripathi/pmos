@@ -78,7 +78,7 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
                 : "text-orange-600 bg-orange-50"
             }`}>
               {uiInfo.serverRunning ? <Monitor className="w-3 h-3" /> : <MonitorOff className="w-3 h-3" />}
-              {uiInfo.serverRunning ? `App running on :${uiInfo.serverPort}` : `App not running (${uiInfo.steps.length} UI steps detected)`}
+              {uiInfo.serverRunning ? `App running on :${uiInfo.serverPort}` : `App not running (${uiInfo.steps?.length || 0} UI steps detected)`}
             </span>
           )}
           {pipelineData && (
