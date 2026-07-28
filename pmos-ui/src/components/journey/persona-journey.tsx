@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight, Quote, Maximize2, X, Camera, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ChevronDown, ChevronRight, Quote, Maximize2, X, Camera, Loader2, ImageIcon } from "lucide-react";
 import { PipelineScreen } from "./pipeline-screen";
 
 interface PersonaJourneyStep {
@@ -44,44 +44,65 @@ const PERSONA_COLORS: Record<string, string> = {
 };
 
 const PERSONA_AVATARS: Record<string, string> = {
-  sarah: "👩‍🎨",
-  mike: "👨‍💼",
-  emma: "👩‍🏫",
+  sarah: "ðŸ‘©â€ðŸŽ¨",
+  mike: "ðŸ‘¨â€ðŸ’¼",
+  emma: "ðŸ‘©â€ðŸ«",
 };
 
 const STEP_ICONS: Record<string, string> = {
-  "Discovery": "🌐",
-  "Sign Up": "📝",
-  "Choose Template": "🎨",
-  "Choose Educational Template": "🎨",
-  "Create Project": "📁",
-  "Enter Subject": "✍️",
-  "Generate Script": "📋",
-  "Review Script for Accuracy": "🔍",
-  "Add Branding": "🏷️",
-  "Add Accessibility": "♿",
-  "Preview Video": "▶️",
-  "Review & Iterate": "🔄",
-  "Edit Scenes": "✂️",
-  "Team Review": "👥",
-  "Export & Share": "📤",
-  "Export & Distribute": "📤",
-  "Export for LMS": "📤",
+  "Discovery": "ðŸŒ",
+  "Sign Up": "ðŸ“",
+  "Choose Template": "ðŸŽ¨",
+  "Choose Educational Template": "ðŸŽ¨",
+  "Create Project": "ðŸ“",
+  "Enter Subject": "âœï¸",
+  "Generate Script": "ðŸ“‹",
+  "Review Script for Accuracy": "ðŸ”",
+  "Add Branding": "ðŸ·ï¸",
+  "Add Accessibility": "â™¿",
+  "Preview Video": "â–¶ï¸",
+  "Review & Iterate": "ðŸ”„",
+  "Edit Scenes": "âœ‚ï¸",
+  "Team Review": "ðŸ‘¥",
+  "Export & Share": "ðŸ“¤",
+  "Export & Distribute": "ðŸ“¤",
+  "Export for LMS": "ðŸ“¤",
 };
 
 export function PersonaJourneyBoard({
   journey,
   pipelineData,
   uiInfo,
+  slug,
 }: {
   journey: PersonaJourney;
   pipelineData: PipelineData | null;
   uiInfo?: UIInfo | null;
+  slug?: string;
 }) {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const [zoomStep, setZoomStep] = useState<number | null>(null);
+  const [screenshotLoaded, setScreenshotLoaded] = useState<Record<number, boolean>>({});
+  const [screenshotError, setScreenshotError] = useState<Record<number, boolean>>({});
   const color = PERSONA_COLORS[journey.personaId] || "from-gray-500 to-gray-600";
-  const avatar = PERSONA_AVATARS[journey.personaId] || "👤";
+  const avatar = PERSONA_AVATARS[journey.personaId] || "ðŸ‘¤";
+
+  // Parse screen field for markdown image: ![alt](path)
+  const getScreenshotUrl = (screen: string): string | null => {
+    if (!slug) return null;
+    const match = screen.match(/!\[.*?\]\((.+?)\)/);
+    if (!match) return null;
+    const imgPath = match[1];
+    const imgName = imgPath.split("/").pop() || imgPath;
+    return `/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`;
+  };
+
+  // Get screenshot caption from screen field
+  const getScreenshotCaption = (screen: string): string => {
+    const match = screen.match(/\[(.*?)\]\s*\(/);
+    if (match) return match[1];
+    return "View screenshot";
+  };
 
   return (
     <div className="space-y-4">
@@ -104,7 +125,7 @@ export function PersonaJourneyBoard({
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-3 min-w-max">
           {journey.steps.map((step, idx) => {
-            const icon = STEP_ICONS[step.name] || "📌";
+            const icon = STEP_ICONS[step.name] || "ðŸ“Œ";
             const isExpanded = expandedStep === idx;
 
             return (
@@ -127,12 +148,43 @@ export function PersonaJourneyBoard({
                     <p className="text-xs text-muted-foreground ml-9">{step.activity}</p>
                   </div>
 
-                  {/* Preview area — shows screenshot thumbnail or pipeline data */}
+                  {/* Preview area â€” shows screenshot, pipeline data, or placeholder */}
                   <div className="px-3 py-2">
                     <button
-                      className="w-full text-left hover:ring-1 hover:ring-primary/30 rounded-lg transition-all overflow-hidden border border-border"
+                      className="w-full text-left hover:ring-1 hover:ring-primary/30 rounded-lg transition-all overflow-hidden border border-border relative group"
                       onClick={() => setExpandedStep(isExpanded ? null : idx)}
                     >
+                      {/* Screenshot from screen field */}
+                      {(() => {
+                        const screenshotUrl = getScreenshotUrl(step.screen);
+                        if (screenshotUrl && !screenshotError[idx]) {
+                          return (
+                            <div className="bg-gray-50 rounded overflow-hidden h-32 relative">
+                              {!screenshotLoaded[idx] && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                </div>
+                              )}
+                              <img
+                                src={screenshotUrl}
+                                alt={getScreenshotCaption(step.screen)}
+                                className={`w-full h-full object-cover transition-opacity ${screenshotLoaded[idx] ? "opacity-100" : "opacity-0"}`}
+                                onLoad={() => setScreenshotLoaded((prev) => ({ ...prev, [idx]: true }))}
+                                onError={() => setScreenshotError((prev) => ({ ...prev, [idx]: true }))}
+                              />
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                <span className="text-[10px] text-white font-medium flex items-center gap-1">
+                                  <Camera className="w-3 h-3" />
+                                  {getScreenshotCaption(step.screen)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {/* Fallback: iframe or pipeline data when no screenshot */}
                       {uiInfo?.serverRunning && uiInfo.uiUrl ? (
                         <div className="bg-gray-50 rounded overflow-hidden h-32 relative">
                           <iframe
@@ -172,7 +224,7 @@ export function PersonaJourneyBoard({
                       ) : step.name === "Preview Video" || step.name === "Review & Iterate" ? (
                         <div className="bg-black aspect-video flex items-center justify-center">
                           {pipelineData?.video?.exists ? (
-                            <div className="text-white text-xs">▶ Video Preview Available</div>
+                            <div className="text-white text-xs">â–¶ Video Preview Available</div>
                           ) : (
                             <div className="text-gray-500 text-xs">No video rendered yet</div>
                           )}
@@ -202,7 +254,7 @@ export function PersonaJourneyBoard({
                       <div className="text-[10px] font-medium text-red-500 uppercase mb-1">Pain Points</div>
                       {step.painPoints.map((pp, pi) => (
                         <div key={pi} className="text-xs text-red-400 flex items-start gap-1 mb-0.5">
-                          <span>⚠️</span>
+                          <span>âš ï¸</span>
                           <span>{pp}</span>
                         </div>
                       ))}

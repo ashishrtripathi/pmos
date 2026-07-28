@@ -1,0 +1,78 @@
+{
+  "Dashboard → Project Setup": {
+    "src": "screens/dashboard.png",
+    "caption": "PMOS Dashboard showing project health, story counts, and agent status"
+  },
+  "Intelligence → Architecture/Tech Stack/Features/Quality tabs": {
+    "src": "screens/intelligence.png",
+    "caption": "PMOS Intelligence view with 8 analysis files for the PMOS project"
+  },
+  "Intelligence → improvements/code-quality/etc": {
+    "src": "screens/intelligence.png",
+    "caption": "PMOS Intelligence view — improvements, code quality, and domain model"
+  },
+  "Journey → Persona tabs with horizontal boards": {
+    "src": "screens/journey.png",
+    "caption": "Customer Journey view showing Priya's persona journey steps"
+  },
+  "Story Map → Journey backbone columns with stories below": {
+    "src": "screens/story-map.png",
+    "caption": "Story Map with horizontal journey step columns and stories stacked by priority"
+  },
+  "Prioritization → Scoring table (future page)": {
+    "src": "screens/story-map.png",
+    "caption": "Prioritization scoring derived from Story Map data"
+  },
+  "Kanban → 7 agent columns with drag-and-drop": {
+    "src": "screens/kanban.png",
+    "caption": "Agent Kanban with 7 columns and intelligence stories auto-assigned to roles"
+  },
+  "Dashboard → Project health, stories, pipeline status": {
+    "src": "screens/dashboard.png",
+    "caption": "PMOS Dashboard showing health score, story distribution, and agent activity"
+  },
+  "Pipeline → 9-step execution flow": {
+    "src": "screens/pipeline.png",
+    "caption": "Interactive Pipeline with step-by-step run, Continue from step N, and Run All"
+  },
+  "Agents → Agent Dispatch panel": {
+    "src": "screens/agents.png",
+    "caption": "Agent Dispatch panel — send commands to AI coding agents directly from PMOS"
+  },
+  "Stories → Structured story board": {
+    "src": "screens/stories.png",
+    "caption": "Stories Board showing Mike Cohn format with Gherkin AC, persona badges, and token costs"
+  },
+  "Setup → Source location configuration": {
+    "src": "screens/setup.png",
+    "caption": "Source configuration page for connecting codebases"
+  },
+  "PMOS-UI → Dashboard, README.md, directory structure": {
+    "src": "screens/dashboard.png",
+    "caption": "PMOS-UI Dashboard — the dashboard interface for the PMOS project itself"
+  },
+  "Code → pmos.ts, types/pmos.ts, API routes": {
+    "src": "screens/intelligence.png",
+    "caption": "PMOS intelligence files documenting the architecture and code structure"
+  },
+  "File system → ~/.pmos/ directory tree": {
+    "src": "screens/setup.png",
+    "caption": "PMOS file system accessible through the source configuration interface"
+  },
+  "Commands → commands/*.md": {
+    "src": "screens/agents.png",
+    "caption": "PMOS commands available through the Agent Dispatch panel"
+  },
+  "Terminal → Build output, Browser → All pages": {
+    "src": "screens/pipeline.png",
+    "caption": "Pipeline view showing build progress and verification status"
+  },
+  "Conversational → PM reads the answers": {
+    "src": "screens/agents.png",
+    "caption": "Agent Dispatch — PM communicates needs and agents respond with file-based output"
+  },
+  "GitHub → PR, docs files": {
+    "src": "screens/setup.png",
+    "caption": "GitHub integration for PR creation and documentation"
+  }
+}

@@ -21,7 +21,7 @@
 - "How do I add a new page to the dashboard?"
 - "I need to know which files to touch for a feature change"
 
-**Screen**: PMOS-UI → Dashboard, README.md, directory structure
+**Screen**: ![PMOS-UI Dashboard](screens/dashboard.png)
 
 ### Step 2: Understand the Data Model
 **Activity**: Learn how PMOS reads/writes files
@@ -36,9 +36,23 @@
 - "What fields does the parser expect?"
 - "I broke the build — which type changed?"
 
-**Screen**: Code → pmos.ts, types/pmos.ts, API routes
+**Screen**: ![Intelligence → Architecture & Tech Stack](screens/intelligence.png)
 
-### Step 3: Add a New Feature
+### Step 3: Run the Pipeline
+**Activity**: Execute pipeline steps and verify the output
+**Tasks**:
+- Run Step 2 (Repository Intelligence) to generate intelligence files
+- Run Step 4 (Customer Journey) to validate persona journeys
+- Run Step 5 (Story Mapping) to build the backlog
+- Verify each step produces correct output files
+
+**Pain Points**:
+- "Pipeline failed — where do I look for the error?"
+- "I need to reset the pipeline state to re-run"
+
+**Screen**: ![Pipeline → 9-step execution](screens/pipeline.png)
+
+### Step 4: Add a New Feature
 **Activity**: Implement a new PMOS capability (e.g., prioritization scoring)
 **Tasks**:
 - Create new API route at `src/app/api/projects/[slug]/[feature]/route.ts`
@@ -51,9 +65,9 @@
 - "How do I pass data from server → client in Next.js 14?"
 - "My fs.readFileSync works in the API route but not in the page"
 
-**Screen**: Code → New feature files
+**Screen**: ![Agents → Dispatch panel with PMOS commands](screens/agents.png)
 
-### Step 4: Write Tests & Verify
+### Step 5: Write Tests & Verify
 **Activity**: Ensure changes work across all pages
 **Tasks**:
 - Run `npm run build` to verify TypeScript compiles
@@ -65,9 +79,9 @@
 - "I need to restart the dev server after some changes"
 - "How do I test server-side file reads locally?"
 
-**Screen**: Terminal → Build output, Browser → All pages
+**Screen**: ![Stories → Structured story board for verification](screens/stories.png)
 
-### Step 5: Document & Contribute
+### Step 6: Document & Contribute
 **Activity**: Update docs and create a PR
 **Tasks**:
 - Update README.md with new feature
@@ -79,4 +93,4 @@
 - "Where should I document this?"
 - "Is there a contributing guide?"
 
-**Screen**: GitHub → PR, docs files
+**Screen**: ![Setup → Source configuration & GitHub](screens/setup.png)

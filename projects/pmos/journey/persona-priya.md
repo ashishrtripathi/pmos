@@ -19,7 +19,7 @@
 - "I don't want to clone repos — my code stays where it is"
 - "I need to know PMOS understands my project's structure"
 
-**Screen**: Dashboard → Project Setup
+**Screen**: ![Dashboard → Project Setup](screens/dashboard.png)
 
 ### Step 2: Intelligence Gathering
 **Activity**: Let AI agents analyze the codebase
@@ -32,7 +32,7 @@
 - "How do I know the AI understood my code correctly?"
 - "I need to see what it found before acting on it"
 
-**Screen**: Intelligence → Architecture/Tech Stack/Features/Quality tabs
+**Screen**: ![Intelligence](screens/intelligence.png)
 
 ### Step 3: Customer Journey Mapping
 **Activity**: Define personas and map their journey through the product
@@ -46,7 +46,7 @@
 - "I can't map a journey without seeing the actual UI"
 - "Each persona needs their own journey — not a one-size-fits-all"
 
-**Screen**: Journey → Persona tabs with horizontal boards
+**Screen**: ![Journey → Persona tabs](screens/journey.png)
 
 ### Step 4: User Story Mapping
 **Activity**: Build stories from the journey backbone
@@ -62,25 +62,9 @@
 - "I need to see the cost in tokens AND dollars, not just story points"
 - "What's the ROI on this feature?"
 
-**Screen**: Story Map → Journey backbone columns with stories below
+**Screen**: ![Story Map → Journey columns with stories](screens/story-map.png)
 
-### Step 5: Prioritization
-**Activity**: Score and rank stories by business value
-**Tasks**:
-- Set project-level OKRs
-- Score stories across 5 value dimensions (in dollars)
-- AI proposes scores, PM reviews
-- View Value-to-Cost Ratio (VCR)
-- Drag to reorder within priority tiers
-
-**Pain Points**:
-- "Everything is in points — I need it in dollars"
-- "Which stories have the highest ROI?"
-- "Priorities shift when new intelligence comes in"
-
-**Screen**: Prioritization → Scoring table (future page)
-
-### Step 6: Agent Kanban
+### Step 5: Agent Kanban
 **Activity**: Assign stories to AI agent teams
 **Tasks**:
 - Review stories placed in agent columns
@@ -92,9 +76,37 @@
 - "I need to know which agent does what"
 - "Intelligence findings should automatically become stories in the right queue"
 
-**Screen**: Kanban → 7 agent columns with drag-and-drop
+**Screen**: ![Kanban → 7 agent columns](screens/kanban.png)
 
-### Step 7: Monitor & Iterate
+### Step 6: Pipeline Execution
+**Activity**: Run the full PMOS pipeline or execute individual steps
+**Tasks**:
+- Click "Run" on individual steps or "Run All Remaining"
+- Monitor progress with status icons and execution log
+- Reset pipeline when needed
+- View completion summary
+
+**Pain Points**:
+- "I need to see what step the project is in"
+- "I should be able to continue from where it failed"
+
+**Screen**: ![Pipeline → 9-step execution](screens/pipeline.png)
+
+### Step 7: Agent Dispatch
+**Activity**: Send commands to AI coding agents directly
+**Tasks**:
+- Select PMOS command template
+- Fill in parameters
+- Dispatch to agent (copies to clipboard)
+- View dispatch history
+
+**Pain Points**:
+- "I got an error message telling me to ask an agent — I want to do that from here"
+- "I need a library of PMOS commands ready to go"
+
+**Screen**: ![Agents → Agent Dispatch panel](screens/agents.png)
+
+### Step 8: Monitor & Iterate
 **Activity**: Track progress and re-evaluate
 **Tasks**:
 - Watch stories move through the pipeline
@@ -106,4 +118,4 @@
 - "I need to see progress without asking for status updates"
 - "Priorities should update automatically when the codebase changes"
 
-**Screen**: Dashboard → Project health, stories, pipeline status
+**Screen**: ![Dashboard → Project health](screens/dashboard.png)

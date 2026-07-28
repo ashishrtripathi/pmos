@@ -21,7 +21,7 @@
 - "What format are the files in?"
 - "How do I know which project to work on?"
 
-**Screen**: File system → `~/.pmos/` directory tree
+**Screen**: ![Dashboard → Project overview](screens/dashboard.png)
 
 ### Step 2: Execute Pipeline Commands
 **Activity**: Run PMOS commands as natural language instructions
@@ -36,7 +36,7 @@
 - "What's the expected output format?"
 - "I need to create a story in the right format with persona, use case, Gherkin AC, and business goal"
 
-**Screen**: Commands → `commands/*.md`
+**Screen**: ![Agents → Command templates in Agent Dispatch](screens/agents.png)
 
 ### Step 3: Read Intelligence Data
 **Activity**: Ingest intelligence files to understand the codebase
@@ -51,7 +51,7 @@
 - "I need structured data, not just prose"
 - "How do I know which improvements are new vs. already tracked?"
 
-**Screen**: Intelligence → `projects/{slug}/intelligence/*.md`
+**Screen**: ![Intelligence → Analysis files](screens/intelligence.png)
 
 ### Step 4: Create & Update Artifacts
 **Activity**: Write files that PMOS-UI and other agents consume
@@ -66,19 +66,32 @@
 - "What frontmatter fields are required?"
 - "I need to match the Mike Cohn + Gherkin format exactly"
 
-**Screen**: File system → Story/journey/intelligence files
+**Screen**: ![Story Map → Stories organized by journey step](screens/story-map.png)
 
-### Step 5: Respond to PM Queries
+### Step 5: Review Kanban State
+**Activity**: Check current agent assignments and work distribution
+**Tasks**:
+- Read `stories/` directory to understand what's in backlog/in-progress/review/done
+- Identify unassigned stories
+- Check which agent has capacity
+
+**Pain Points**:
+- "How do I know which stories are assigned to which agent?"
+- "I need to see the status distribution across all agents"
+
+**Screen**: ![Kanban → Agent columns with stories](screens/kanban.png)
+
+### Step 6: Respond to PM Queries
 **Activity**: Answer PM questions using PMOS data
 **Tasks**:
-- "What's the status of all projects?" → Read registry, summarize
-- "Show me the prioritized backlog" → Read stories, calculate VCR, sort
-- "What are the top risks?" → Read intelligence/quality, identify critical issues
-- "How much will the next sprint cost?" → Sum story points, calculate token costs
+- "What's the status of all projects?" — Read registry, summarize
+- "Show me the prioritized backlog" — Read stories, calculate VCR, sort
+- "What are the top risks?" — Read intelligence/quality, identify critical issues
+- "How much will the next sprint cost?" — Sum story points, calculate token costs
 
 **Pain Points**:
 - "I need to aggregate data across multiple files"
 - "Dollar calculations need to be consistent"
 - "I should flag when data is stale"
 
-**Screen**: Conversational → PM reads the answers
+**Screen**: ![Agents → Dispatch history and command responses](screens/agents.png)
