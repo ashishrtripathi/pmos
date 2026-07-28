@@ -9,12 +9,10 @@ import {
   BookOpen,
   Bot,
   Plus,
-  X,
   FolderGit2,
-  Globe,
-  HardDrive,
   Loader2,
 } from "lucide-react";
+import { AddProjectWizard } from "@/components/add-project-wizard";
 
 interface Project {
   slug: string;
@@ -29,186 +27,6 @@ interface Dashboard {
   healthScore: number;
   agentWorkload: { agentId: string; storyCount: number; totalPoints: number }[];
   storyBreakdown: { backlog: number; inProgress: number; review: number; done: number };
-}
-
-// ── Add Project Modal ───────────────────────────────
-
-function AddProjectModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: (slug: string) => void;
-}) {
-  const [name, setName] = useState("");
-  const [localPath, setLocalPath] = useState("");
-  const [repoUrl, setRepoUrl] = useState("");
-  const [source, setSource] = useState<"local" | "github" | "github-only">("local");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          localPath: localPath.trim() || undefined,
-          repoUrl: repoUrl.trim() || undefined,
-          source,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to create project");
-        return;
-      }
-      onCreated(data.slug);
-    } catch (err: any) {
-      setError(err.message || "Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold">Add Project</h2>
-          <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-muted">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {/* Project Name */}
-          <div>
-            <label className="text-sm font-medium mb-1 block">Project Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My Awesome Project"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              autoFocus
-            />
-          </div>
-
-          {/* Source Type */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Source Location</label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setSource("local")}
-                className={`p-3 rounded-lg border text-center text-xs transition-colors ${
-                  source === "local"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:bg-muted"
-                }`}
-              >
-                <HardDrive className="w-5 h-5 mx-auto mb-1" />
-                Local
-              </button>
-              <button
-                type="button"
-                onClick={() => setSource("github")}
-                className={`p-3 rounded-lg border text-center text-xs transition-colors ${
-                  source === "github"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:bg-muted"
-                }`}
-              >
-                <FolderGit2 className="w-5 h-5 mx-auto mb-1" />
-                GitHub + Local
-              </button>
-              <button
-                type="button"
-                onClick={() => setSource("github-only")}
-                className={`p-3 rounded-lg border text-center text-xs transition-colors ${
-                  source === "github-only"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:bg-muted"
-                }`}
-              >
-                <Globe className="w-5 h-5 mx-auto mb-1" />
-                GitHub Only
-              </button>
-            </div>
-          </div>
-
-          {/* Local Path */}
-          {source !== "github-only" && (
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Local Path {source === "local" && <span className="text-red-500">*</span>}
-              </label>
-              <input
-                type="text"
-                value={localPath}
-                onChange={(e) => setLocalPath(e.target.value)}
-                placeholder="C:\Users\you\projects\my-app"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Path to the project source code on your machine
-              </p>
-            </div>
-          )}
-
-          {/* GitHub URL */}
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              GitHub Repository URL {source === "github-only" && <span className="text-red-500">*</span>}
-            </label>
-            <input
-              type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/user/repo"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
-              {error}
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!name.trim() || loading || (source !== "github-only" && source !== "github" && !localPath.trim()) || (source === "github-only" && !repoUrl.trim())}
-            className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
-          >
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-            Create Project
-          </button>
-        </div>
-      </form>
-    </div>
-  );
 }
 
 // ── Dashboard Page ──────────────────────────────────
@@ -384,9 +202,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Add Project Modal */}
+      {/* Add Project Wizard */}
       {showAdd && (
-        <AddProjectModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+        <AddProjectWizard onClose={() => setShowAdd(false)} onCreated={handleCreated} />
       )}
     </div>
   );
