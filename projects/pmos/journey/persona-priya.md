@@ -1,4 +1,4 @@
-# Customer Journey — PMOS (Priya the Product Manager)
+# Customer Journey — Priya (Senior Product Manager)
 
 **Persona**: Senior Product Manager, 35, Expert
 **Quote**: "I need to see the whole picture — journey, stories, priorities — without switching between 5 tools."

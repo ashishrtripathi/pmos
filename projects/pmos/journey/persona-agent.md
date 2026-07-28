@@ -1,4 +1,4 @@
-# Customer Journey — PMOS (Agent the AI Coder)
+# Customer Journey — Agent (AI Coder)
 
 **Persona**: AI Coding Agent (Claude, GPT, Gemini), 24/7, Omniscient
 **Quote**: "I don't need a GUI. Give me markdown files and I'll run the full product pipeline."

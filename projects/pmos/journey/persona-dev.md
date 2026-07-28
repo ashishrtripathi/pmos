@@ -1,4 +1,4 @@
-# Customer Journey — PMOS (Dev the Developer/Extender)
+# Customer Journey — Dev (Full-Stack Developer)
 
 **Persona**: Full-Stack Developer / Technical Lead, 32, Expert
 **Quote**: "I want to add features to PMOS without fighting the architecture. The file-based design should make this easy."

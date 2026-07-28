@@ -314,23 +314,22 @@ function StepColumn({
           {/* Backbone screenshot thumbnail */}
           {step.screen && (() => {
             const screenMatch = step.screen.match(/!\[.*?\]\((.+?)\)/);
-            if (!screenMatch) return null;
+            if (!screenMatch) return <div className="mt-1 text-[9px] text-amber-600">Screen data: {step.screen.substring(0,40)}</div>;
             const imgName = screenMatch[1].split('/').pop() || screenMatch[1];
             const imgUrl = `/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`;
             return (
-              <div className="mt-1.5 relative group cursor-pointer">
-                <div className="rounded overflow-hidden border border-border/50 h-10 bg-gray-50">
-                  <img
-                    src={imgUrl}
-                    alt={step.name}
-                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                    loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded text-[9px] text-white font-medium">
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </div>
+              <div className="mt-1.5 relative group cursor-pointer border border-border rounded overflow-hidden">
+                <img
+                  src={imgUrl}
+                  alt={step.name}
+                  className="w-full h-10 object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    const el = e.target as HTMLImageElement;
+                    el.style.display = 'none';
+                    el.parentElement!.innerHTML = '<div class="p-1 text-[9px] text-red-500">Image failed to load</div>';
+                  }}
+                />
               </div>
             );
           })()}
