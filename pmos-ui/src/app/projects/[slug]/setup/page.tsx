@@ -10,6 +10,7 @@ const PRICING_FIELDS = [
   { key: "tokensPerK", label: "Tokens per K", step: "100", default: 1000 },
   { key: "developerHourlyRate", label: "Developer Hourly Rate ($)", step: "1", default: 150 },
   { key: "productManagerHourlyRate", label: "Product Manager Hourly Rate ($)", step: "1", default: 150 },
+  { key: "qaEngineerHourlyRate", label: "QA Engineer Hourly Rate ($)", step: "1", default: 90 },
   { key: "hoursPerPoint", label: "Hours per Point", step: "0.01", default: 0.35 },
   { key: "marginMultiplier", label: "Margin Multiplier", step: "0.1", default: 7 },
 ];
@@ -266,6 +267,7 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
               const mm = pricing.marginMultiplier ?? 7;
               const dr = pricing.developerHourlyRate ?? 150;
               const pmr = pricing.productManagerHourlyRate ?? 150;
+              const qar = pricing.qaEngineerHourlyRate ?? 90;
               const hpp = pricing.hoursPerPoint ?? 0.35;
               const nd = pricing.numDevelopers ?? 1;
               const npm = pricing.numProductManagers ?? 0;
@@ -276,7 +278,7 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
               const per5PointAi = (per5PointTokens / tk) * cpt * mm;
               const per5PointDev = baseHours * dr * nd;
               const per5PointPM = baseHours * pmr * npm;
-              const per5PointQA = baseHours * dr * 0.6 * nqa;
+              const per5PointQA = baseHours * qar * nqa;
               const per5PointTotal = per5PointAi + per5PointDev + per5PointPM + per5PointQA;
 
               return (
@@ -299,7 +301,7 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
                   )}
                   {nqa > 0 && (
                     <div className="flex justify-between">
-                      <span>QA cost ({nqa} × {dr}/hr):</span>
+                      <span>QA cost ({nqa} × {qar}/hr):</span>
                       <span className="font-mono">${per5PointQA.toFixed(2)}</span>
                     </div>
                   )}

@@ -27,6 +27,7 @@ export async function PUT(
     "tokensPerK",
     "developerHourlyRate",
     "productManagerHourlyRate",
+    "qaEngineerHourlyRate",
     "hoursPerPoint",
     "marginMultiplier",
     "numDevelopers",

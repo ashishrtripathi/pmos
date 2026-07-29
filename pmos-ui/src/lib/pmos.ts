@@ -95,6 +95,7 @@ export interface PricingConfig {
   tokensPerK: number;
   developerHourlyRate: number;
   productManagerHourlyRate: number;
+  qaEngineerHourlyRate: number;
   hoursPerPoint: number;
   marginMultiplier: number;
   numDevelopers: number;
@@ -109,6 +110,7 @@ export const DEFAULT_PRICING: PricingConfig = {
   tokensPerK: 1000,
   developerHourlyRate: 150,
   productManagerHourlyRate: 150,
+  qaEngineerHourlyRate: 90,
   hoursPerPoint: 0.35,
   marginMultiplier: 7,
   numDevelopers: 1,

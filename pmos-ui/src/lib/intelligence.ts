@@ -673,7 +673,7 @@ export function calculateTotalCost(
     const baseHumanCost = story.points * pricing.hoursPerPoint;
     const developerCost = baseHumanCost * pricing.developerHourlyRate * pricing.numDevelopers;
     const pmCost = baseHumanCost * pricing.productManagerHourlyRate * pricing.numProductManagers;
-    const qaCost = baseHumanCost * pricing.developerHourlyRate * 0.6 * pricing.numQA;
+    const qaCost = baseHumanCost * pricing.qaEngineerHourlyRate * pricing.numQA;
 
     totalAiCost += aiCost;
     totalDevCost += developerCost;
