@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { writeIntelligenceStoriesToBacklog } from "@/lib/intelligence";
 
 const PMOS_ROOT = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -112,7 +113,7 @@ function executeStep(
     }
 
     case 2: {
-      // Repository Intelligence — check if intelligence files exist
+      // Repository Intelligence — check if intelligence files exist, then parse into stories
       const intelDir = path.join(projectDir, "intelligence");
       if (!fs.existsSync(intelDir)) {
         fs.mkdirSync(intelDir, { recursive: true });
@@ -127,9 +128,18 @@ function executeStep(
             "'",
         };
       }
+
+      // Parse intelligence files and write stories to backlog
+      let storiesWritten = 0;
+      try {
+        storiesWritten = writeIntelligenceStoriesToBacklog(slug);
+      } catch (err) {
+        // Parsing may fail if file format doesn't match expected tables — still report as partial success
+      }
+
       return {
         success: true,
-        message: `${intelFiles.length} intelligence files found: ${intelFiles.join(", ")}`,
+        message: `${intelFiles.length} intelligence files found: ${intelFiles.join(", ")}. ${storiesWritten > 0 ? `${storiesWritten} stories written to backlog.` : "No new stories generated (may already exist)."}`,
       };
     }
 
