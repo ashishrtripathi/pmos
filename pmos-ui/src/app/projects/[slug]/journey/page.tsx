@@ -23,6 +23,9 @@ const PERSONA_AVATARS: Record<string, string> = {
   sarah: "👩‍🎨",
   mike: "👨‍💼",
   emma: "👩‍🏫",
+  priya: "👩‍💼",
+  dev: "👨‍💻",
+  agent: "🤖",
 };
 
 export default function JourneyPage({ params }: { params: { slug: string } }) {
@@ -116,14 +119,8 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
           </div>
 
           <div className="space-y-8">
-            {journeys.map((j: any) => (
-              <div
-                key={j.personaId}
-                className={`transition-all ${
-                  activePersona === j.personaId ? "opacity-100" : "opacity-50 hover:opacity-75"
-                }`}
-                onClick={() => setActivePersona(j.personaId)}
-              >
+            {journeys.filter((j: any) => j.personaId === activePersona).map((j: any) => (
+              <div key={j.personaId}>
                 <PersonaJourneyBoard journey={j} pipelineData={pipelineData} uiInfo={uiInfo} slug={slug} />
               </div>
             ))}
