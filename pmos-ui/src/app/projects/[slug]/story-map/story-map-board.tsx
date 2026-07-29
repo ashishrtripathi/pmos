@@ -312,23 +312,17 @@ function StepColumn({
             </div>
           </div>
           {/* Backbone screenshot thumbnail */}
-          {step.screen && (() => {
-            const screenMatch = step.screen.match(/!\[.*?\]\((.+?)\)/);
-            if (!screenMatch) return <div className="mt-1 text-[9px] text-amber-600">Screen data: {step.screen.substring(0,40)}</div>;
-            const imgName = screenMatch[1].split('/').pop() || screenMatch[1];
-            const imgUrl = `/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`;
+          {step.screen && slug && (() => {
+            const m = step.screen.match(/!\[.*?\]\((.+?)\)/);
+            if (!m) return null;
+            const imgName = m[1].split('/').pop() || m[1];
             return (
-              <div className="mt-1.5 relative group cursor-pointer border border-border rounded overflow-hidden">
+              <div className="mt-1.5 border border-border/50 rounded overflow-hidden h-10 bg-gray-50">
                 <img
-                  src={imgUrl}
-                  alt={step.name}
-                  className="w-full h-10 object-cover"
+                  src={`/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`}
+                  alt=""
+                  className="w-full h-full object-cover"
                   loading="lazy"
-                  onError={(e) => {
-                    const el = e.target as HTMLImageElement;
-                    el.style.display = 'none';
-                    el.parentElement!.innerHTML = '<div class="p-1 text-[9px] text-red-500">Image failed to load</div>';
-                  }}
                 />
               </div>
             );
