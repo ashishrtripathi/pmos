@@ -1,0 +1,9 @@
+{
+  "costPerToken": 0.003,
+  "tokensPerPoint": 20000,
+  "tokenMultiplier": 3.5,
+  "tokensPerK": 1000,
+  "developerHourlyRate": 150,
+  "hoursPerPoint": 0.35,
+  "marginMultiplier": 7
+}

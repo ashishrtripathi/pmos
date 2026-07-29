@@ -107,6 +107,16 @@ export interface DashboardData {
   lastAnalyzed: string | null;
 }
 
+export interface PricingConfig {
+  costPerToken: number;
+  tokensPerPoint: number;
+  tokenMultiplier: number;
+  tokensPerK: number;
+  developerHourlyRate: number;
+  hoursPerPoint: number;
+  marginMultiplier: number;
+}
+
 export interface PipelineStep {
   number: number;
   name: string;

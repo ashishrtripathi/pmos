@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getPricingConfig } from "./pmos";
 
 // ── Types ─────────────────────────────────────────────
 
@@ -631,4 +632,58 @@ ${acBullets}
   }
 
   return written;
+}
+
+// ── Cost Calculation (reads pricing config) ──────────
+
+export interface CostBreakdown {
+  totalCost: number;
+  aiCost: number;
+  developerCost: number;
+  details: {
+    storyId: string;
+    title: string;
+    points: number;
+    tokens: number;
+    aiCost: number;
+    developerCost: number;
+    total: number;
+  }[];
+}
+
+export function calculateTotalCost(
+  slug: string,
+  stories: { id: string; title: string; points: number }[]
+): CostBreakdown {
+  const pricing = getPricingConfig(slug);
+
+  let totalAiCost = 0;
+  let totalDevCost = 0;
+  const details: CostBreakdown["details"] = [];
+
+  for (const story of stories) {
+    const tokens = story.points * pricing.tokensPerPoint * pricing.tokenMultiplier;
+    const aiCost = (tokens / pricing.tokensPerK) * pricing.costPerToken * pricing.marginMultiplier;
+    const developerCost = story.points * pricing.hoursPerPoint * pricing.developerHourlyRate;
+
+    totalAiCost += aiCost;
+    totalDevCost += developerCost;
+
+    details.push({
+      storyId: story.id,
+      title: story.title,
+      points: story.points,
+      tokens: Math.round(tokens),
+      aiCost: Math.round(aiCost * 100) / 100,
+      developerCost: Math.round(developerCost * 100) / 100,
+      total: Math.round((aiCost + developerCost) * 100) / 100,
+    });
+  }
+
+  return {
+    totalCost: Math.round((totalAiCost + totalDevCost) * 100) / 100,
+    aiCost: Math.round(totalAiCost * 100) / 100,
+    developerCost: Math.round(totalDevCost * 100) / 100,
+    details,
+  };
 }

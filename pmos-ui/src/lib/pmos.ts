@@ -86,6 +86,39 @@ export function updateSourceLocation(slug: string, data: SourceLocation) {
   writeJson(pmosPath("projects", slug, "source-location.json"), data);
 }
 
+// ── Pricing Config ────────────────────────────────────
+
+export interface PricingConfig {
+  costPerToken: number;
+  tokensPerPoint: number;
+  tokenMultiplier: number;
+  tokensPerK: number;
+  developerHourlyRate: number;
+  hoursPerPoint: number;
+  marginMultiplier: number;
+}
+
+export const DEFAULT_PRICING: PricingConfig = {
+  costPerToken: 0.003,
+  tokensPerPoint: 20000,
+  tokenMultiplier: 3.5,
+  tokensPerK: 1000,
+  developerHourlyRate: 150,
+  hoursPerPoint: 0.35,
+  marginMultiplier: 7,
+};
+
+export function getPricingConfig(slug: string): PricingConfig {
+  const saved = readJson<PricingConfig>(
+    pmosPath("projects", slug, "pricing.json")
+  );
+  return saved || DEFAULT_PRICING;
+}
+
+export function updatePricingConfig(slug: string, data: PricingConfig) {
+  writeJson(pmosPath("projects", slug, "pricing.json"), data);
+}
+
 // ── Stories ────────────────────────────────────────
 
 const STORY_DIRS: Record<StoryStatus, string> = {

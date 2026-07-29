@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   parseAllIntelligenceStories,
+  calculateTotalCost,
 } from "@/lib/intelligence";
 
 export async function GET(
@@ -9,6 +10,8 @@ export async function GET(
 ) {
   const { slug } = params;
   const { stories, files } = parseAllIntelligenceStories(slug);
+
+  const costBreakdown = calculateTotalCost(slug, stories);
 
   return NextResponse.json({
     stories,
@@ -36,14 +39,7 @@ export async function GET(
       {} as Record<string, number>
     ),
     totalValue: stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0),
-    totalCost: stories.reduce(
-      (sum, s) => {
-        const tokensPerPoint = 12000 + 8000;
-        const tokens = s.points * tokensPerPoint * 3.5;
-        const cost = (tokens / 1000) * 0.003 * 7 + s.points * 0.35 * 150;
-        return sum + cost;
-      },
-      0
-    ),
+    totalCost: costBreakdown.totalCost,
+    costBreakdown,
   });
 }
