@@ -26,15 +26,19 @@ export async function PUT(
     "tokenMultiplier",
     "tokensPerK",
     "developerHourlyRate",
+    "productManagerHourlyRate",
     "hoursPerPoint",
     "marginMultiplier",
+    "numDevelopers",
+    "numProductManagers",
+    "numQA",
   ];
 
   const current = getPricingConfig(params.slug);
   const updated = { ...current };
 
   for (const key of validKeys) {
-    if (typeof body[key] === "number" && body[key] > 0) {
+    if (typeof body[key] === "number" && body[key] >= 0) {
       updated[key] = body[key];
     }
   }

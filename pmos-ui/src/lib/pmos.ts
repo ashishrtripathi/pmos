@@ -94,8 +94,12 @@ export interface PricingConfig {
   tokenMultiplier: number;
   tokensPerK: number;
   developerHourlyRate: number;
+  productManagerHourlyRate: number;
   hoursPerPoint: number;
   marginMultiplier: number;
+  numDevelopers: number;
+  numProductManagers: number;
+  numQA: number;
 }
 
 export const DEFAULT_PRICING: PricingConfig = {
@@ -104,15 +108,19 @@ export const DEFAULT_PRICING: PricingConfig = {
   tokenMultiplier: 3.5,
   tokensPerK: 1000,
   developerHourlyRate: 150,
+  productManagerHourlyRate: 150,
   hoursPerPoint: 0.35,
   marginMultiplier: 7,
+  numDevelopers: 1,
+  numProductManagers: 0,
+  numQA: 0,
 };
 
 export function getPricingConfig(slug: string): PricingConfig {
-  const saved = readJson<PricingConfig>(
+  const saved = readJson<Partial<PricingConfig>>(
     pmosPath("projects", slug, "pricing.json")
   );
-  return saved || DEFAULT_PRICING;
+  return { ...DEFAULT_PRICING, ...saved } as PricingConfig;
 }
 
 export function updatePricingConfig(slug: string, data: PricingConfig) {

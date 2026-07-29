@@ -640,6 +640,8 @@ export interface CostBreakdown {
   totalCost: number;
   aiCost: number;
   developerCost: number;
+  pmCost: number;
+  qaCost: number;
   details: {
     storyId: string;
     title: string;
@@ -647,6 +649,8 @@ export interface CostBreakdown {
     tokens: number;
     aiCost: number;
     developerCost: number;
+    pmCost: number;
+    qaCost: number;
     total: number;
   }[];
 }
@@ -659,15 +663,22 @@ export function calculateTotalCost(
 
   let totalAiCost = 0;
   let totalDevCost = 0;
+  let totalPMCost = 0;
+  let totalQACost = 0;
   const details: CostBreakdown["details"] = [];
 
   for (const story of stories) {
     const tokens = story.points * pricing.tokensPerPoint * pricing.tokenMultiplier;
     const aiCost = (tokens / pricing.tokensPerK) * pricing.costPerToken * pricing.marginMultiplier;
-    const developerCost = story.points * pricing.hoursPerPoint * pricing.developerHourlyRate;
+    const baseHumanCost = story.points * pricing.hoursPerPoint;
+    const developerCost = baseHumanCost * pricing.developerHourlyRate * pricing.numDevelopers;
+    const pmCost = baseHumanCost * pricing.productManagerHourlyRate * pricing.numProductManagers;
+    const qaCost = baseHumanCost * pricing.developerHourlyRate * 0.6 * pricing.numQA;
 
     totalAiCost += aiCost;
     totalDevCost += developerCost;
+    totalPMCost += pmCost;
+    totalQACost += qaCost;
 
     details.push({
       storyId: story.id,
@@ -676,14 +687,20 @@ export function calculateTotalCost(
       tokens: Math.round(tokens),
       aiCost: Math.round(aiCost * 100) / 100,
       developerCost: Math.round(developerCost * 100) / 100,
-      total: Math.round((aiCost + developerCost) * 100) / 100,
+      pmCost: Math.round(pmCost * 100) / 100,
+      qaCost: Math.round(qaCost * 100) / 100,
+      total: Math.round((aiCost + developerCost + pmCost + qaCost) * 100) / 100,
     });
   }
 
+  const grandTotal = totalAiCost + totalDevCost + totalPMCost + totalQACost;
+
   return {
-    totalCost: Math.round((totalAiCost + totalDevCost) * 100) / 100,
+    totalCost: Math.round(grandTotal * 100) / 100,
     aiCost: Math.round(totalAiCost * 100) / 100,
     developerCost: Math.round(totalDevCost * 100) / 100,
+    pmCost: Math.round(totalPMCost * 100) / 100,
+    qaCost: Math.round(totalQACost * 100) / 100,
     details,
   };
 }

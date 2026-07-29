@@ -9,8 +9,15 @@ const PRICING_FIELDS = [
   { key: "tokenMultiplier", label: "Token Multiplier", step: "0.1", default: 3.5 },
   { key: "tokensPerK", label: "Tokens per K", step: "100", default: 1000 },
   { key: "developerHourlyRate", label: "Developer Hourly Rate ($)", step: "1", default: 150 },
+  { key: "productManagerHourlyRate", label: "Product Manager Hourly Rate ($)", step: "1", default: 150 },
   { key: "hoursPerPoint", label: "Hours per Point", step: "0.01", default: 0.35 },
   { key: "marginMultiplier", label: "Margin Multiplier", step: "0.1", default: 7 },
+];
+
+const TEAM_FIELDS = [
+  { key: "numDevelopers", label: "Number of Developers", step: "1", default: 1 },
+  { key: "numProductManagers", label: "Number of Product Managers", step: "1", default: 0 },
+  { key: "numQA", label: "Number of QA Engineers", step: "1", default: 0 },
 ];
 
 export default function SetupPage({ params }: { params: { slug: string } }) {
@@ -77,8 +84,12 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
 
   const handlePricingChange = (key: string, value: string) => {
     const num = parseFloat(value);
-    if (!isNaN(num) && num > 0) {
-      setPricing((prev) => ({ ...prev, [key]: num }));
+    if (!isNaN(num)) {
+      // Headcount fields can be 0, monetary fields must be > 0
+      const isHeadcount = ["numDevelopers", "numProductManagers", "numQA"].includes(key);
+      if (isHeadcount ? num >= 0 : num > 0) {
+        setPricing((prev) => ({ ...prev, [key]: num }));
+      }
     }
   };
 
@@ -220,6 +231,29 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
           ))}
         </div>
 
+        {/* Team Composition */}
+        <div className="mb-4 p-4 rounded-xl border border-border bg-muted/30">
+          <h3 className="text-sm font-semibold mb-3">Team Composition</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {TEAM_FIELDS.map((field) => (
+              <div key={field.key}>
+                <label className="text-sm font-medium mb-1 block">{field.label}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step={field.step}
+                  value={pricing[field.key] ?? field.default}
+                  onChange={(e) => handlePricingChange(field.key, e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Set to 0 if no one in that role is assigned to this project.
+          </p>
+        </div>
+
         {/* Live cost preview */}
         <div className="p-4 rounded-xl border border-border bg-muted/50 mb-4">
           <h3 className="text-sm font-semibold mb-2">Cost Preview</h3>
@@ -230,13 +264,20 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
               const tk = pricing.tokensPerK ?? 1000;
               const cpt = pricing.costPerToken ?? 0.003;
               const mm = pricing.marginMultiplier ?? 7;
-              const hr = pricing.developerHourlyRate ?? 150;
+              const dr = pricing.developerHourlyRate ?? 150;
+              const pmr = pricing.productManagerHourlyRate ?? 150;
               const hpp = pricing.hoursPerPoint ?? 0.35;
+              const nd = pricing.numDevelopers ?? 1;
+              const npm = pricing.numProductManagers ?? 0;
+              const nqa = pricing.numQA ?? 0;
 
+              const baseHours = 5 * hpp;
               const per5PointTokens = 5 * pp * tm;
               const per5PointAi = (per5PointTokens / tk) * cpt * mm;
-              const per5PointDev = 5 * hpp * hr;
-              const per5PointTotal = per5PointAi + per5PointDev;
+              const per5PointDev = baseHours * dr * nd;
+              const per5PointPM = baseHours * pmr * npm;
+              const per5PointQA = baseHours * dr * 0.6 * nqa;
+              const per5PointTotal = per5PointAi + per5PointDev + per5PointPM + per5PointQA;
 
               return (
                 <>
@@ -244,17 +285,35 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
                     <span>AI cost (5-point story):</span>
                     <span className="font-mono">${per5PointAi.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Developer cost (5-point story):</span>
-                    <span className="font-mono">${per5PointDev.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-foreground">
+                  {nd > 0 && (
+                    <div className="flex justify-between">
+                      <span>Developer cost ({nd} × {nd > 1 ? `${dr}/hr each` : `${dr}/hr`}):</span>
+                      <span className="font-mono">${per5PointDev.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {npm > 0 && (
+                    <div className="flex justify-between">
+                      <span>PM cost ({npm} × {pmr}/hr):</span>
+                      <span className="font-mono">${per5PointPM.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {nqa > 0 && (
+                    <div className="flex justify-between">
+                      <span>QA cost ({nqa} × {dr}/hr):</span>
+                      <span className="font-mono">${per5PointQA.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-semibold text-foreground pt-1 border-t border-border mt-1">
                     <span>Total (5-point story):</span>
                     <span className="font-mono">${per5PointTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-muted-foreground pt-1 border-t border-border mt-1">
+                  <div className="flex justify-between text-muted-foreground pt-1">
                     <span>Tokens per 5-point story:</span>
                     <span className="font-mono">{Math.round(per5PointTokens).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Team size:</span>
+                    <span className="font-mono">{nd + npm + nqa} people</span>
                   </div>
                 </>
               );
