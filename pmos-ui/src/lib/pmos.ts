@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { deriveAIOverheadPercent } from "./models";
 import matter from "gray-matter";
 import type {
   Registry,
@@ -89,40 +90,51 @@ export function updateSourceLocation(slug: string, data: SourceLocation) {
 // ── Pricing Config ────────────────────────────────────
 
 export interface PricingConfig {
-  costPerToken: number;
-  tokensPerPoint: number;
-  tokenMultiplier: number;
-  tokensPerK: number;
+  model: string;
   developerHourlyRate: number;
   productManagerHourlyRate: number;
   qaEngineerHourlyRate: number;
   hoursPerPoint: number;
-  marginMultiplier: number;
   numDevelopers: number;
   numProductManagers: number;
   numQA: number;
+  // Advanced — hidden behind toggle
+  aiOverheadPercent: number;
+  costPerToken: number;
+  tokensPerPoint: number;
+  tokenMultiplier: number;
+  tokensPerK: number;
+  marginMultiplier: number;
 }
 
 export const DEFAULT_PRICING: PricingConfig = {
-  costPerToken: 0.003,
-  tokensPerPoint: 20000,
-  tokenMultiplier: 3.5,
-  tokensPerK: 1000,
+  model: "claude-sonnet-4",
   developerHourlyRate: 150,
   productManagerHourlyRate: 150,
   qaEngineerHourlyRate: 90,
   hoursPerPoint: 0.35,
-  marginMultiplier: 7,
   numDevelopers: 1,
   numProductManagers: 0,
   numQA: 0,
+  // Derived defaults — aiOverheadPercent is auto-derived from model
+  aiOverheadPercent: 3,
+  costPerToken: 0.003,
+  tokensPerPoint: 20000,
+  tokenMultiplier: 3.5,
+  tokensPerK: 1000,
+  marginMultiplier: 7,
 };
 
 export function getPricingConfig(slug: string): PricingConfig {
   const saved = readJson<Partial<PricingConfig>>(
     pmosPath("projects", slug, "pricing.json")
   );
-  return { ...DEFAULT_PRICING, ...saved } as PricingConfig;
+  const merged = { ...DEFAULT_PRICING, ...saved } as PricingConfig;
+
+  // Auto-derive aiOverheadPercent from the selected model
+  merged.aiOverheadPercent = deriveAIOverheadPercent(merged.model);
+
+  return merged;
 }
 
 export function updatePricingConfig(slug: string, data: PricingConfig) {

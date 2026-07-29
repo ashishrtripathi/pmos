@@ -4,6 +4,7 @@ import {
   updatePricingConfig,
   DEFAULT_PRICING,
 } from "@/lib/pmos";
+import { deriveAIOverheadPercent } from "@/lib/models";
 
 export async function GET(
   _request: Request,
@@ -19,29 +20,38 @@ export async function PUT(
 ) {
   const body = await request.json();
 
-  // Validate fields — only accept known numeric fields
   const validKeys: (keyof typeof DEFAULT_PRICING)[] = [
-    "costPerToken",
-    "tokensPerPoint",
-    "tokenMultiplier",
-    "tokensPerK",
+    "model",
+    "aiOverheadPercent",
     "developerHourlyRate",
     "productManagerHourlyRate",
     "qaEngineerHourlyRate",
     "hoursPerPoint",
-    "marginMultiplier",
     "numDevelopers",
     "numProductManagers",
     "numQA",
+    "costPerToken",
+    "tokensPerPoint",
+    "tokenMultiplier",
+    "tokensPerK",
+    "marginMultiplier",
   ];
 
   const current = getPricingConfig(params.slug);
   const updated = { ...current };
 
   for (const key of validKeys) {
-    if (typeof body[key] === "number" && body[key] >= 0) {
-      updated[key] = body[key];
+    const val = body[key];
+    if (typeof val === "number" && val >= 0) {
+      (updated as any)[key] = val;
+    } else if (key === "model" && typeof val === "string" && val.length > 0) {
+      updated.model = val;
     }
+  }
+
+  // If model changed, re-derive the AI overhead percentage
+  if (body.model && body.model !== current.model) {
+    updated.aiOverheadPercent = deriveAIOverheadPercent(body.model);
   }
 
   updatePricingConfig(params.slug, updated);

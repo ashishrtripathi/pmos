@@ -668,12 +668,14 @@ export function calculateTotalCost(
   const details: CostBreakdown["details"] = [];
 
   for (const story of stories) {
-    const tokens = story.points * pricing.tokensPerPoint * pricing.tokenMultiplier;
-    const aiCost = (tokens / pricing.tokensPerK) * pricing.costPerToken * pricing.marginMultiplier;
     const baseHumanCost = story.points * pricing.hoursPerPoint;
     const developerCost = baseHumanCost * pricing.developerHourlyRate * pricing.numDevelopers;
     const pmCost = baseHumanCost * pricing.productManagerHourlyRate * pricing.numProductManagers;
     const qaCost = baseHumanCost * pricing.qaEngineerHourlyRate * pricing.numQA;
+    const totalHumanCost = developerCost + pmCost + qaCost;
+
+    // AI cost is a simple percentage of total human cost
+    const aiCost = totalHumanCost * (pricing.aiOverheadPercent / 100);
 
     totalAiCost += aiCost;
     totalDevCost += developerCost;
@@ -684,7 +686,7 @@ export function calculateTotalCost(
       storyId: story.id,
       title: story.title,
       points: story.points,
-      tokens: Math.round(tokens),
+      tokens: Math.round(aiCost * 1000), // estimated token count for reference
       aiCost: Math.round(aiCost * 100) / 100,
       developerCost: Math.round(developerCost * 100) / 100,
       pmCost: Math.round(pmCost * 100) / 100,

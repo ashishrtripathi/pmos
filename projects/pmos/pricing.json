@@ -1,14 +1,16 @@
 {
+  "model": "claude-sonnet-4",
+  "developerHourlyRate": 150,
+  "productManagerHourlyRate": 90,
+  "qaEngineerHourlyRate": 90,
+  "hoursPerPoint": 0.35,
+  "numDevelopers": 1,
+  "numProductManagers": 0,
+  "numQA": 0,
+  "aiOverheadPercent": 2.8,
   "costPerToken": 0.003,
   "tokensPerPoint": 20000,
   "tokenMultiplier": 3.5,
   "tokensPerK": 1000,
-  "developerHourlyRate": 150,
-  "productManagerHourlyRate": 150,
-  "qaEngineerHourlyRate": 90,
-  "hoursPerPoint": 0.35,
-  "marginMultiplier": 7,
-  "numDevelopers": 1,
-  "numProductManagers": 0,
-  "numQA": 0
+  "marginMultiplier": 7
 }
