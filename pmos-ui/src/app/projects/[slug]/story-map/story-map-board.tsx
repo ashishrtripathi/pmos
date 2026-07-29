@@ -39,7 +39,7 @@ import {
   getVerdictColor,
 } from "@/lib/cost-estimation";
 
-// ── Types ──────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface AcceptanceCriterion {
   scenario: string;
@@ -96,7 +96,7 @@ interface PipelineData {
 
 // UIInfo is imported from pipeline-screen
 
-// ── Persona colors ──────────────────────────────────
+// â”€â”€ Persona colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PERSONA_COLORS: Record<string, string> = {
   Sarah: "bg-purple-100 text-purple-700 border-purple-300",
@@ -109,7 +109,7 @@ function getPersonaColor(name?: string): string {
   return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
 }
 
-// ── Story Card (Sortable) ──────────────────────────
+// â”€â”€ Story Card (Sortable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StoryMapCard({
   story,
@@ -255,7 +255,7 @@ function StoryMapCard({
   );
 }
 
-// ── Step Column ──────────────────────────────────────
+// â”€â”€ Step Column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StepColumn({
   stepIndex,
@@ -412,7 +412,7 @@ function StepColumn({
   );
 }
 
-// ── Create Story Form ──────────────────────────────
+// â”€â”€ Create Story Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CreateStoryForm({
   onClose,
@@ -646,7 +646,7 @@ function CreateStoryForm({
   );
 }
 
-// ── Main Board ──────────────────────────────────────
+// â”€â”€ Main Board â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function StoryMapBoard({
   params,
@@ -667,6 +667,7 @@ export function StoryMapBoard({
   const [uiInfo, setUiInfo] = useState<UIInfo | null>(null);
   const [stories, setStories] = useState<Story[]>(allStories);
   const [detailStory, setDetailStory] = useState<Story | null>(null);
+  const [intelStories, setIntelStories] = useState<Story[]>([]);
 
   useEffect(() => {
     fetch(`/api/projects/${params.slug}/pipeline-data`)
@@ -678,6 +679,29 @@ export function StoryMapBoard({
       .then(setUiInfo)
       .catch(() => {});
   }, [params.slug]);
+
+  // Fetch intelligence stories and merge into stories state
+  useEffect(() => {
+    fetch(`/api/projects/${params.slug}/intelligence-stories`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.stories && data.stories.length > 0) {
+          setIntelStories(data.stories);
+        }
+      })
+      .catch(() => {});
+  }, [params.slug]);
+
+  // Merge intel stories into the main stories array (avoid duplicates)
+  useEffect(() => {
+    if (intelStories.length === 0) return;
+    setStories((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newOnes = intelStories.filter((s) => !existingIds.has(s.id));
+      if (newOnes.length === 0) return prev;
+      return [...prev, ...newOnes];
+    });
+  }, [intelStories]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -927,3 +951,4 @@ export function StoryMapBoard({
     </div>
   );
 }
+
