@@ -124,7 +124,7 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
                 }`}
                 onClick={() => setActivePersona(j.personaId)}
               >
-                <PersonaJourneyBoard journey={j} pipelineData={pipelineData} uiInfo={uiInfo} />
+                <PersonaJourneyBoard journey={j} pipelineData={pipelineData} uiInfo={uiInfo} slug={slug} />
               </div>
             ))}
           </div>

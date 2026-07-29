@@ -312,20 +312,26 @@ function StepColumn({
             </div>
           </div>
           {/* Backbone screenshot thumbnail */}
-          {step.screen && slug && (() => {
-            const m = step.screen.match(/!\[.*?\]\((.+?)\)/);
-            if (!m) return null;
-            const imgName = m[1].split('/').pop() || m[1];
-            return (
-              <div className="mt-1.5 border border-border/50 rounded overflow-hidden h-10 bg-gray-50">
-                <img
-                  src={`/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            );
+          {slug && (() => {
+            try {
+              if (!step.screen) return null;
+              const m = step.screen.match(/!\[.*?\]\((.+?)\)/);
+              if (!m || !m[1]) return null;
+              const imgName = m[1].split('/').pop() || m[1];
+              if (!imgName) return null;
+              return (
+                <div className="mt-1.5 border border-border/50 rounded overflow-hidden h-10 bg-gray-50">
+                  <img
+                    src={`/api/projects/${slug}/screens?name=${encodeURIComponent(imgName)}`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              );
+            } catch (e) {
+              return null;
+            }
           })()}
         </div>
 

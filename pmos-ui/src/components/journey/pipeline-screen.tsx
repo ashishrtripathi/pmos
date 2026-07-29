@@ -222,7 +222,7 @@ export function PipelineScreen({
   }
 
   // Fall back to parsed UI structure or pipeline data
-  if (uiInfo && uiInfo.steps.length > 0) {
+  if (uiInfo && uiInfo.steps && uiInfo.steps.length > 0) {
     return <UIStructureView ui={uiInfo} />;
   }
 
