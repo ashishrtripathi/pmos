@@ -20,12 +20,12 @@ interface UIInfo {
 }
 
 const PERSONA_AVATARS: Record<string, string> = {
-  sarah: "👩‍🎨",
-  mike: "👨‍💼",
-  emma: "👩‍🏫",
-  priya: "👩‍💼",
-  dev: "👨‍💻",
-  agent: "🤖",
+  sarah: "A",
+  mike: "B",
+  emma: "T",
+  priya: "PM",
+  dev: "Dev",
+  agent: "AI",
 };
 
 export default function JourneyPage({ params }: { params: { slug: string } }) {
@@ -109,7 +109,7 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
                     : "border-border hover:border-primary/30 bg-card"
                 }`}
               >
-                <span className="text-xl">{PERSONA_AVATARS[j.personaId] || "👤"}</span>
+                <span className="text-xl font-bold">{PERSONA_AVATARS[j.personaId] || "?"}</span>
                 <div className="text-left">
                   <div className="text-sm font-medium">{j.personaName}</div>
                   <div className="text-[10px] text-muted-foreground">{j.role}</div>
