@@ -22,11 +22,12 @@ const navItems = [
   { href: "", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/setup", icon: Settings, label: "Setup" },
   { href: "/pipeline", icon: Workflow, label: "Pipeline" },
+  { href: "/intelligence", icon: Brain, label: "Intelligence" },
+  { href: "/okrs", icon: Target, label: "OKRs" },
+  { href: "/pipeline", icon: Workflow, label: "Pipeline" },
   { href: "/journey", icon: Map, label: "Journey" },
   { href: "/story-map", icon: Layers, label: "Story Map" },
   { href: "/kanban", icon: Columns3, label: "Kanban" },
-  { href: "/okrs", icon: Target, label: "OKRs" },
-  { href: "/intelligence", icon: Brain, label: "Intelligence" },
   { href: "/agents", icon: Bot, label: "Agents" },
 ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus,
   GripVertical,
@@ -37,6 +37,7 @@ import {
   formatDollars,
   formatTokens,
   getVerdictColor,
+  type PricingParams,
 } from "@/lib/cost-estimation";
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -115,10 +116,12 @@ function StoryMapCard({
   story,
   compact,
   onClick,
+  pricing,
 }: {
   story: Story;
   compact?: boolean;
   onClick?: () => void;
+  pricing: PricingParams;
 }) {
   const {
     attributes,
@@ -142,8 +145,8 @@ function StoryMapCard({
     done: "bg-green-50 border-green-200",
   };
 
-  const cost = estimateTokenCost(story.points);
-  const roi = calculateROI(story.estimatedValue, story.points);
+  const cost = estimateTokenCost(story.points, pricing);
+  const roi = calculateROI(story.estimatedValue, story.points, pricing);
 
   if (compact) {
     return (
@@ -268,6 +271,7 @@ function StepColumn({
   onCreateStory,
   onStoryClick,
   slug,
+  pricing,
 }: {
   stepIndex: number;
   step: PersonaJourneyStep;
@@ -279,6 +283,7 @@ function StepColumn({
   onCreateStory: (stepName: string) => void;
   onStoryClick: (story: Story) => void;
   slug?: string;
+  pricing: PricingParams;
 }) {
   const statusOrder: Record<string, number> = {
     "in-progress": 0,
@@ -294,7 +299,7 @@ function StepColumn({
   });
 
   const totalPoints = sortedStories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = sortedStories.reduce((sum, s) => sum + estimateTokenCost(s.points).totalCost, 0);
+  const totalCost = sortedStories.reduce((sum, s) => sum + estimateTokenCost(s.points, pricing).totalCost, 0);
   const totalValue = sortedStories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
 
   return (
@@ -390,6 +395,7 @@ function StepColumn({
               key={story.id}
               story={story}
               onClick={() => onStoryClick(story)}
+              pricing={pricing || DEFAULT_PRICING}
             />
           ))}
         </SortableContext>
@@ -419,11 +425,13 @@ function CreateStoryForm({
   onCreate,
   stepName,
   personas,
+  pricing,
 }: {
   onClose: () => void;
   onCreate: (story: Story) => void;
   stepName: string;
   personas: string[];
+  pricing: PricingParams;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -440,8 +448,8 @@ function CreateStoryForm({
   const [acWhen, setAcWhen] = useState("");
   const [acThen, setAcThen] = useState("");
 
-  const cost = estimateTokenCost(points);
-  const roi = calculateROI(estimatedValue, points);
+  const cost = estimateTokenCost(points, pricing);
+  const roi = calculateROI(estimatedValue, points, pricing);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -668,6 +676,14 @@ export function StoryMapBoard({
   const [stories, setStories] = useState<Story[]>(allStories);
   const [detailStory, setDetailStory] = useState<Story | null>(null);
   const [intelStories, setIntelStories] = useState<Story[]>([]);
+  const [pricing, setPricing] = useState<PricingParams | null>(null);
+
+  const DEFAULT_PRICING: PricingParams = {
+    aiOverheadPercent: 14,
+    developerHourlyRate: 150,
+    hoursPerPoint: 0.35,
+    model: "opus-4",
+  };
 
   useEffect(() => {
     fetch(`/api/projects/${params.slug}/pipeline-data`)
@@ -703,13 +719,30 @@ export function StoryMapBoard({
     });
   }, [intelStories]);
 
+  // Fetch pricing config for cost calculations
+  useEffect(() => {
+    fetch(`/api/projects/${params.slug}/pricing`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.model) {
+          setPricing({
+            aiOverheadPercent: data.aiOverheadPercent ?? 14,
+            developerHourlyRate: data.developerHourlyRate ?? 150,
+            hoursPerPoint: data.hoursPerPoint ?? 0.35,
+            model: data.model ?? "opus-4",
+          });
+        }
+      })
+      .catch(() => {});
+  }, [params.slug]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
   const backbone = storyMap.backbone;
   const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = stories.reduce((sum, s) => sum + estimateTokenCost(s.points).totalCost, 0);
+  const totalCost = stories.reduce((sum, s) => sum + estimateTokenCost(s.points, pricing || DEFAULT_PRICING).totalCost, 0);
   const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
 
   const allPersonas = [
@@ -849,7 +882,7 @@ export function StoryMapBoard({
                     {backlogStories.length} unassigned
                   </span>
                   <span className="text-[10px] font-mono text-violet-600">
-                    {formatCost(backlogStories.reduce((sum, s) => sum + estimateTokenCost(s.points).totalCost, 0))}
+                    {formatCost(backlogStories.reduce((sum, s) => sum + estimateTokenCost(s.points, pricing || DEFAULT_PRICING).totalCost, 0))}
                   </span>
                 </div>
               </div>
@@ -864,6 +897,7 @@ export function StoryMapBoard({
                       story={story}
                       compact
                       onClick={() => handleStoryClick(story)}
+                      pricing={pricing || DEFAULT_PRICING}
                     />
                   ))}
                 </SortableContext>
@@ -895,6 +929,7 @@ export function StoryMapBoard({
                 onCreateStory={(stepName) => { setCreateForStep(stepName); setShowCreate(true); }}
                 onStoryClick={handleStoryClick}
                 slug={params.slug}
+                pricing={pricing || DEFAULT_PRICING}
               />
             ))}
           </div>
@@ -916,9 +951,9 @@ export function StoryMapBoard({
               </div>
               <h4 className="text-[11px] font-medium">{activeStory.title}</h4>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-[9px] font-mono text-violet-600">{formatCost(estimateTokenCost(activeStory.points).totalCost)}</span>
+                <span className="text-[9px] font-mono text-violet-600">{formatCost(estimateTokenCost(activeStory.points, pricing || DEFAULT_PRICING).totalCost)}</span>
                 {(() => {
-                  const roi = calculateROI(activeStory.estimatedValue, activeStory.points);
+                  const roi = calculateROI(activeStory.estimatedValue, activeStory.points, pricing || DEFAULT_PRICING);
                   return roi.estimatedValue > 0 ? (
                     <span className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}>
                       {roi.roiMultiple}
@@ -937,6 +972,7 @@ export function StoryMapBoard({
           onCreate={handleCreateStory}
           stepName={createForStep}
           personas={allPersonas.length > 0 ? allPersonas : ["Sarah", "Mike", "Emma"]}
+          pricing={pricing || DEFAULT_PRICING}
         />
       )}
 
