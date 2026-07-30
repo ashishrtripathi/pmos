@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Brain,
   ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import {
   DndContext,
@@ -39,13 +40,6 @@ import {
 
 // ── Types ──────────────────────────────────────────
 
-interface Agent {
-  id: string;
-  name: string;
-  role: string;
-  focus: string[];
-}
-
 interface KanbanStory {
   id: string;
   title: string;
@@ -69,15 +63,12 @@ interface KanbanStory {
 
 // ── Constants ──────────────────────────────────────
 
-const AGENT_COLORS: Record<string, string> = {
-  "product-manager": "border-t-purple-500",
-  "ux-designer": "border-t-pink-500",
-  architect: "border-t-orange-500",
-  "software-engineer": "border-t-blue-500",
-  "qa-engineer": "border-t-green-500",
-  "documentation-agent": "border-t-yellow-500",
-  "product-intelligence": "border-t-red-500",
-};
+const STATUS_COLUMNS = [
+  { id: "backlog", label: "Backlog", color: "border-t-slate-400", bg: "bg-slate-50/50" },
+  { id: "in-progress", label: "Doing", color: "border-t-blue-500", bg: "bg-blue-50/50" },
+  { id: "review", label: "Review", color: "border-t-amber-500", bg: "bg-amber-50/50" },
+  { id: "done", label: "Done", color: "border-t-emerald-500", bg: "bg-emerald-50/50" },
+];
 
 const AGENT_INITIALS: Record<string, string> = {
   "product-manager": "PM",
@@ -89,10 +80,14 @@ const AGENT_INITIALS: Record<string, string> = {
   "product-intelligence": "PI",
 };
 
-const PERSONA_COLORS: Record<string, string> = {
-  Sarah: "bg-purple-100 text-purple-700 border-purple-300",
-  Mike: "bg-blue-100 text-blue-700 border-blue-300",
-  Emma: "bg-green-100 text-green-700 border-green-300",
+const AGENT_COLORS: Record<string, string> = {
+  "product-manager": "bg-purple-100 text-purple-700 border-purple-300",
+  "ux-designer": "bg-pink-100 text-pink-700 border-pink-300",
+  architect: "bg-orange-100 text-orange-700 border-orange-300",
+  "software-engineer": "bg-blue-100 text-blue-700 border-blue-300",
+  "qa-engineer": "bg-green-100 text-green-700 border-green-300",
+  "documentation-agent": "bg-yellow-100 text-yellow-700 border-yellow-300",
+  "product-intelligence": "bg-red-100 text-red-700 border-red-300",
 };
 
 const CATEGORY_BADGE_COLORS: Record<string, string> = {
@@ -104,9 +99,52 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   "High Priority Issue": "bg-orange-100 text-orange-700 border-orange-300",
 };
 
-function getPersonaColor(name?: string): string {
-  if (!name) return "bg-gray-100 text-gray-700 border-gray-300";
-  return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
+function getAgentBadge(agentId?: string) {
+  if (!agentId || !AGENT_INITIALS[agentId]) return null;
+  const initial = AGENT_INITIALS[agentId];
+  const color = AGENT_COLORS[agentId] || "bg-gray-100 text-gray-700 border-gray-300";
+  return { initial, color };
+}
+
+// ── Status Column Header ──────────────────────────
+
+function StatusColumnHeader({
+  column,
+  count,
+  totalPoints,
+}: {
+  column: typeof STATUS_COLUMNS[0];
+  count: number;
+  totalPoints: number;
+}) {
+  const icons: Record<string, string> = {
+    backlog: "📋",
+    "in-progress": "🔄",
+    review: "👀",
+    done: "✅",
+  };
+
+  return (
+    <div className={`flex flex-col border-t-2 ${column.color} rounded-xl bg-card min-w-[260px] w-[260px] shrink-0`}>
+      {/* Column Header */}
+      <div className="p-3 border-b border-border">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">{icons[column.id] || "📌"}</span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold">{column.label}</h3>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            {count} stories
+          </span>
+          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            {totalPoints} pts
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Kanban Story Card (Sortable + Clickable) ────────
@@ -136,6 +174,7 @@ function KanbanStoryCard({
   const cost = estimateTokenCost(story.points);
   const roi = calculateROI(story.estimatedValue, story.points);
   const isIntelligence = story.source === "intelligence";
+  const agentBadge = getAgentBadge(story.assignedAgent);
 
   return (
     <div
@@ -156,12 +195,17 @@ function KanbanStoryCard({
           <GripVertical className="w-3.5 h-3.5" />
         </button>
         <div className="flex-1 min-w-0">
-          {/* Source + ID + Points + Persona + Category badges */}
+          {/* Badges row */}
           <div className="flex items-center gap-1 mb-0.5 flex-wrap">
             {isIntelligence && (
               <span className="text-[8px] px-1 py-0 rounded bg-amber-50 text-amber-600 border border-amber-200 font-bold flex items-center gap-0.5">
                 <Brain className="w-2 h-2" />
                 AI
+              </span>
+            )}
+            {agentBadge && (
+              <span className={`text-[8px] px-1 py-0 rounded-full border font-bold ${agentBadge.color}`}>
+                {agentBadge.initial}
               </span>
             )}
             <span className="text-[10px] font-mono text-muted-foreground">
@@ -171,9 +215,7 @@ function KanbanStoryCard({
               {story.points} pts
             </span>
             {story.persona && (
-              <span
-                className={`text-[8px] px-1 py-0 rounded-full border font-medium ${getPersonaColor(story.persona)}`}
-              >
+              <span className="text-[8px] px-1 py-0 rounded bg-gray-100 text-gray-600 border border-gray-200">
                 {story.persona}
               </span>
             )}
@@ -191,7 +233,7 @@ function KanbanStoryCard({
           {/* Title */}
           <h4 className="text-[11px] font-semibold leading-tight">{story.title}</h4>
 
-          {/* Description / Outcome */}
+          {/* Description */}
           {story.description && (
             <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
               {story.description}
@@ -270,126 +312,23 @@ function KanbanStoryCard({
   );
 }
 
-// ── Agent Column ────────────────────────────────────
-
-function AgentColumn({
-  agent,
-  stories,
-  onStoryClick,
-}: {
-  agent: Agent;
-  stories: KanbanStory[];
-  onStoryClick: (story: KanbanStory) => void;
-}) {
-  const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = stories.reduce(
-    (sum, s) => sum + estimateTokenCost(s.points).totalCost,
-    0
-  );
-  const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
-  const intelCount = stories.filter((s) => s.source === "intelligence").length;
-  const colorClass = AGENT_COLORS[agent.id] || "border-t-gray-400";
-  const initials =
-    AGENT_INITIALS[agent.id] || agent.name.substring(0, 2).toUpperCase();
-
-  return (
-    <div
-      className={`flex flex-col border-t-2 ${colorClass} rounded-xl bg-card min-w-[240px] w-[240px] shrink-0`}
-    >
-      {/* Agent Header */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-xs font-semibold truncate">{agent.name}</h3>
-            <span className="text-[10px] text-muted-foreground">
-              {agent.role}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 mt-2 flex-wrap">
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {stories.length} stories
-          </span>
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {totalPoints} pts
-          </span>
-          <span className="text-[10px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded font-mono">
-            {formatCost(totalCost)}
-          </span>
-          {totalValue > 0 && (
-            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-mono">
-              +{formatDollars(totalValue)}
-            </span>
-          )}
-          {intelCount > 0 && (
-            <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-medium">
-              <Brain className="w-2.5 h-2.5" />
-              {intelCount}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Focus Areas */}
-      <div className="px-3 py-1.5 border-b border-border">
-        <div className="flex flex-wrap gap-0.5">
-          {agent.focus.map((f) => (
-            <span
-              key={f}
-              className="text-[9px] px-1.5 py-0 rounded bg-muted text-muted-foreground"
-            >
-              {f}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Story List */}
-      <div className="flex-1 p-2 space-y-1.5 min-h-[120px]">
-        <SortableContext
-          items={stories.map((s) => s.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {stories.map((story) => (
-            <KanbanStoryCard
-              key={story.id}
-              story={story}
-              onClick={() => onStoryClick(story)}
-            />
-          ))}
-        </SortableContext>
-        {stories.length === 0 && (
-          <div className="h-16 rounded-lg border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
-            No stories assigned
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Main Board ──────────────────────────────────────
 
 export function KanbanBoard({
   params,
-  agents,
-  initialAssignments,
   allStories,
 }: {
   params: { slug: string };
-  agents: Agent[];
-  initialAssignments: Record<string, KanbanStory[]>;
   allStories: KanbanStory[];
 }) {
   const { slug } = params;
+  const [stories, setStories] = useState<KanbanStory[]>(allStories);
   const [activeStory, setActiveStory] = useState<KanbanStory | null>(null);
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
+  const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
 
-  // Fetch intelligence stories and merge into agent assignments
+  // Fetch intelligence stories
   useEffect(() => {
     fetch(`/api/projects/${slug}/intelligence-stories`)
       .then((r) => r.json())
@@ -401,45 +340,42 @@ export function KanbanBoard({
       .catch(() => {});
   }, [slug]);
 
-  // Merge intelligence stories into the correct agent columns
-  const mergedAssignments = useCallback(() => {
-    const base = Object.keys(initialAssignments).length > 0
-      ? { ...initialAssignments }
-      : Object.fromEntries(agents.map((a) => [a.id, [] as KanbanStory[]]));
-
-    // Add intelligence stories to their assigned agent columns
-    for (const story of intelStories) {
-      const agentId = story.assignedAgent || "software-engineer";
-      if (base[agentId]) {
-        // Don't duplicate if already there
-        if (!base[agentId].some((s) => s.id === story.id)) {
-          base[agentId] = [...base[agentId], story];
-        }
-      }
-    }
-
-    return base;
-  }, [initialAssignments, agents, intelStories]);
-
-  const [assignments, setAssignments] = useState<Record<string, KanbanStory[]>>({});
-
-  // Recalculate assignments when intel stories load
+  // Merge intelligence stories into main list
   useEffect(() => {
-    setAssignments(mergedAssignments());
-  }, [intelStories, initialAssignments, agents, mergedAssignments]);
+    if (intelStories.length === 0) return;
+    setStories((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newOnes = intelStories.filter((s) => !existingIds.has(s.id));
+      return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
+    });
+  }, [intelStories]);
+
+  // Group stories by status
+  const columns = STATUS_COLUMNS.map((col) => {
+    const colStories = stories.filter((s) => s.status === col.id);
+    const totalPoints = colStories.reduce((sum, s) => sum + s.points, 0);
+    return { ...col, stories: colStories, totalPoints };
+  });
+
+  const totalStories = stories.length;
+  const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
+  const totalCost = stories.reduce(
+    (sum, s) => sum + estimateTokenCost(s.points).totalCost,
+    0
+  );
+  const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
+  const totalIntel = stories.filter((s) => s.source === "intelligence").length;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const findAgent = useCallback(
+  const findStoryStatus = useCallback(
     (storyId: string): string | null => {
-      for (const [agentId, stories] of Object.entries(assignments)) {
-        if (stories.find((s) => s.id === storyId)) return agentId;
-      }
-      return null;
+      const story = stories.find((s) => s.id === storyId);
+      return story?.status || null;
     },
-    [assignments]
+    [stories]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -454,34 +390,58 @@ export function KanbanBoard({
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    const activeAgent = findAgent(activeId);
-    const overAgent = findAgent(overId);
+    const activeStatus = findStoryStatus(activeId);
+    if (!activeStatus) return;
 
-    if (!activeAgent || !overAgent) return;
-    if (activeAgent === overAgent) return;
+    // Find which column the over element is in
+    let overStatus: string | null = null;
+    for (const col of columns) {
+      if (col.stories.some((s) => s.id === overId)) {
+        overStatus = col.id;
+        break;
+      }
+    }
+    if (!overStatus || overStatus === activeStatus) return;
 
-    setAssignments((prev) => {
-      const updated = { ...prev };
-      const activeItems = [...(updated[activeAgent] || [])];
-      const overItems = [...(updated[overAgent] || [])];
+    // Move story between columns
+    setStories((prev) => {
+      const updated = prev.map((s) => {
+        if (s.id === activeId) {
+          return { ...s, status: overStatus };
+        }
+        return s;
+      });
 
-      const activeIndex = activeItems.findIndex((s) => s.id === activeId);
-      if (activeIndex < 0) return prev;
-      const activeItem = activeItems[activeIndex];
-      activeItems.splice(activeIndex, 1);
-
-      const overIndex = overItems.findIndex((s) => s.id === overId);
-      if (overIndex >= 0) {
-        overItems.splice(overIndex, 0, activeItem);
-      } else {
-        overItems.push(activeItem);
+      // Reorder within the target column
+      const activeItem = updated.find((s) => s.id === activeId);
+      const overIndex = updated.findIndex((s) => s.id === overId);
+      if (activeItem && overIndex >= 0) {
+        const activeIndex = updated.findIndex((s) => s.id === activeId);
+        updated.splice(activeIndex, 1);
+        updated.splice(overIndex, 0, activeItem);
       }
 
-      updated[activeAgent] = activeItems;
-      updated[overAgent] = overItems;
       return updated;
     });
   };
+
+  const persistStatusChange = useCallback(
+    async (storyId: string, newStatus: string) => {
+      setSavingStatus((prev) => ({ ...prev, [storyId]: true }));
+      try {
+        await fetch(`/api/projects/${slug}/stories/${storyId}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
+      } catch {
+        // Silently fail — the UI already reflects the change
+      } finally {
+        setSavingStatus((prev) => ({ ...prev, [storyId]: false }));
+      }
+    },
+    [slug]
+  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -493,57 +453,57 @@ export function KanbanBoard({
 
     if (activeId === overId) return;
 
-    const activeAgent = findAgent(activeId);
-    const overAgent = findAgent(overId);
+    const story = stories.find((s) => s.id === activeId);
+    if (!story) return;
 
-    if (!activeAgent) return;
-
-    if (activeAgent === overAgent && overAgent) {
-      setAssignments((prev) => {
-        const updated = { ...prev };
-        const items = [...(updated[activeAgent] || [])];
-        const activeIndex = items.findIndex((s) => s.id === activeId);
-        const overIndex = items.findIndex((s) => s.id === overId);
-        if (activeIndex >= 0 && overIndex >= 0) {
-          const [moved] = items.splice(activeIndex, 1);
-          items.splice(overIndex, 0, moved);
+    // Find which column the over element is in
+    for (const col of columns) {
+      if (col.stories.some((s) => s.id === overId) || col.id === overId) {
+        if (col.id !== story.status) {
+          persistStatusChange(activeId, col.id);
         }
-        updated[activeAgent] = items;
+        break;
+      }
+    }
+
+    // Reorder within the same column
+    const activeStatus = findStoryStatus(activeId);
+    const overStatus = findStoryStatus(overId);
+    if (activeStatus && overStatus && activeStatus === overStatus) {
+      setStories((prev) => {
+        const updated = [...prev];
+        const activeIndex = updated.findIndex((s) => s.id === activeId);
+        const overIndex = updated.findIndex((s) => s.id === overId);
+        if (activeIndex >= 0 && overIndex >= 0) {
+          const [moved] = updated.splice(activeIndex, 1);
+          updated.splice(overIndex, 0, moved);
+        }
         return updated;
       });
     }
   };
+
+  // Also persist when dropping onto an empty column
+  const handleDropOnColumn = useCallback(
+    (columnId: string, storyId: string) => {
+      const story = stories.find((s) => s.id === storyId);
+      if (story && story.status !== columnId) {
+        persistStatusChange(storyId, columnId);
+      }
+    },
+    [stories, persistStatusChange]
+  );
 
   const handleStoryClick = (story: KanbanStory) => {
     setDetailStory(story);
   };
 
   const handleStorySave = (updated: KanbanStory) => {
-    setAssignments((prev) => {
-      const next = { ...prev };
-      for (const [agentId, stories] of Object.entries(next)) {
-        next[agentId] = stories.map((s) =>
-          s.id === updated.id ? updated : s
-        );
-      }
-      return next;
-    });
+    setStories((prev) =>
+      prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s))
+    );
     setDetailStory(null);
   };
-
-  // Aggregate stats
-  const allMerged = Object.values(assignments).flat();
-  const totalAssigned = allMerged.length;
-  const totalPoints = allMerged.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = allMerged.reduce(
-    (sum, s) => sum + estimateTokenCost(s.points).totalCost,
-    0
-  );
-  const totalValue = allMerged.reduce(
-    (sum, s) => sum + (s.estimatedValue || 0),
-    0
-  );
-  const totalIntel = allMerged.filter((s) => s.source === "intelligence").length;
 
   return (
     <div className="p-8 max-w-full mx-auto">
@@ -551,9 +511,9 @@ export function KanbanBoard({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Columns3 className="w-5 h-5" />
-          <h1 className="text-2xl font-bold">Agent Kanban</h1>
+          <h1 className="text-2xl font-bold">Kanban</h1>
           <span className="text-sm text-muted-foreground">
-            {agents.length} agents &middot; {totalAssigned} stories &middot;{" "}
+            {totalStories} stories &middot;{" "}
             {totalPoints} pts
           </span>
           <span className="text-sm font-mono text-violet-600 bg-violet-50 px-2 py-0.5 rounded">
@@ -573,7 +533,7 @@ export function KanbanBoard({
         </div>
       </div>
 
-      {/* Kanban Grid — HORIZONTAL SCROLL */}
+      {/* Kanban Grid — Status Columns */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -583,13 +543,56 @@ export function KanbanBoard({
       >
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-3 min-w-max">
-            {agents.map((agent) => (
-              <AgentColumn
-                key={agent.id}
-                agent={agent}
-                stories={assignments[agent.id] || []}
-                onStoryClick={handleStoryClick}
-              />
+            {columns.map((col) => (
+              <div
+                key={col.id}
+                className={`flex flex-col border-t-2 ${col.color} rounded-xl bg-card min-w-[260px] w-[260px] shrink-0`}
+                onDragOver={(e) => {
+                  // Allow drop on the column itself
+                  if (!e.dataTransfer.types.includes("application/dnd")) return;
+                }}
+              >
+                {/* Column Header */}
+                <div className="p-3 border-b border-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">
+                      {col.id === "backlog" ? "📋" : col.id === "in-progress" ? "🔄" : col.id === "review" ? "👀" : "✅"}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold">{col.label}</h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {col.stories.length} stories
+                    </span>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {col.totalPoints} pts
+                    </span>
+                  </div>
+                </div>
+
+                {/* Story List */}
+                <div className="flex-1 p-2 space-y-1.5 min-h-[120px]">
+                  <SortableContext
+                    items={col.stories.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {col.stories.map((story) => (
+                      <KanbanStoryCard
+                        key={story.id}
+                        story={story}
+                        onClick={() => handleStoryClick(story)}
+                      />
+                    ))}
+                  </SortableContext>
+                  {col.stories.length === 0 && (
+                    <div className="h-16 rounded-lg border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
+                      Drop stories here
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -631,18 +634,12 @@ export function KanbanBoard({
         </DragOverlay>
       </DndContext>
 
-      {/* Story Detail / Edit Modal */}
+      {/* Story Detail Modal */}
       {detailStory && (
         <StoryDetailModal
-          story={{ ...detailStory, description: detailStory.description || "" }}
+          story={detailStory}
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
-          personas={[
-            ...new Set(
-              allMerged.map((s) => s.persona).filter(Boolean)
-            ),
-          ] as string[]}
-          agents={agents.map((a) => a.name)}
         />
       )}
     </div>

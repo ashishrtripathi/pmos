@@ -108,12 +108,19 @@ export interface DashboardData {
 }
 
 export interface PricingConfig {
+  model: string;
+  developerHourlyRate: number;
+  productManagerHourlyRate: number;
+  qaEngineerHourlyRate: number;
+  hoursPerPoint: number;
+  numDevelopers: number;
+  numProductManagers: number;
+  numQA: number;
+  aiOverheadPercent: number;
   costPerToken: number;
   tokensPerPoint: number;
   tokenMultiplier: number;
   tokensPerK: number;
-  developerHourlyRate: number;
-  hoursPerPoint: number;
   marginMultiplier: number;
 }
 
