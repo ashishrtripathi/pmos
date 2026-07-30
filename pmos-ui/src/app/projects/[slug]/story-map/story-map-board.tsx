@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
@@ -40,7 +40,7 @@ import {
   type PricingParams,
 } from "@/lib/cost-estimation";
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Types -----------------------------------------------------------
 
 interface AcceptanceCriterion {
   scenario: string;
@@ -97,7 +97,7 @@ interface PipelineData {
 
 // UIInfo is imported from pipeline-screen
 
-// â”€â”€ Persona colors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Persona colors --------------------------------------------------
 
 const PERSONA_COLORS: Record<string, string> = {
   Sarah: "bg-purple-100 text-purple-700 border-purple-300",
@@ -110,7 +110,7 @@ function getPersonaColor(name?: string): string {
   return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
 }
 
-// â”€â”€ Story Card (Sortable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Story Card (Sortable) -------------------------------------------
 
 function StoryMapCard({
   story,
@@ -258,7 +258,7 @@ function StoryMapCard({
   );
 }
 
-// â”€â”€ Step Column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Step Column ------------------------------------------------------
 
 function StepColumn({
   stepIndex,
@@ -418,7 +418,7 @@ function StepColumn({
   );
 }
 
-// â”€â”€ Create Story Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Create Story Form -----------------------------------------------
 
 function CreateStoryForm({
   onClose,
@@ -654,7 +654,7 @@ function CreateStoryForm({
   );
 }
 
-// â”€â”€ Main Board â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Main Board ------------------------------------------------------
 
 export function StoryMapBoard({
   params,
@@ -987,4 +987,3 @@ export function StoryMapBoard({
     </div>
   );
 }
-
