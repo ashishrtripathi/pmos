@@ -32,6 +32,28 @@ export interface SourceLocation {
   };
 }
 
+export interface Objective {
+  id: string;
+  title: string;
+  description: string;
+  quarter: string;
+  owner: string;
+  keyResults: KeyResult[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KeyResult {
+  id: string;
+  title: string;
+  description: string;
+  metric: string;
+  target: number;
+  current: number;
+  unit: string;
+  owner: string;
+}
+
 export interface Story {
   id: string;
   title: string;
@@ -59,6 +81,8 @@ export interface Story {
   sourceFile?: string;
   sourceSection?: string;
   category?: string;
+  objectiveId?: string; // links to Objective.id
+  assignedAgent?: string;
 }
 
 export type StoryStatus = "backlog" | "in-progress" | "review" | "done";

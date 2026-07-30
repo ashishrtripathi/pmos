@@ -14,6 +14,7 @@ import {
   Settings,
   Layers,
   Bot,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/journey", icon: Map, label: "Journey" },
   { href: "/story-map", icon: Layers, label: "Story Map" },
   { href: "/kanban", icon: Columns3, label: "Kanban" },
+  { href: "/okrs", icon: Target, label: "OKRs" },
   { href: "/intelligence", icon: Brain, label: "Intelligence" },
   { href: "/agents", icon: Bot, label: "Agents" },
 ];

@@ -1,25 +1,6 @@
-// ── Token Cost & ROI Estimation ──────────────────────
-// Shared between Story Map and Kanban Board
-
-// Approximate token costs per 1K tokens for different model tiers
-export const COST_PER_1K_TOKENS: Record<string, number> = {
-  haiku: 0.00025,
-  sonnet: 0.003,
-  opus: 0.015,
-  "gpt-4o": 0.0025,
-  "gemini-pro": 0.00125,
-};
-
-// Average token consumption per story point across the full 7-agent team
-export const TOKENS_PER_POINT = {
-  input: 12000,
-  output: 8000,
-  rounds: 3.5, // avg agent interaction rounds per point
-};
-
-// Defaults — PM can override per project via team-cost.json
-export const DEFAULT_US_HOURLY_RATE = 150;
-export const DEFAULT_REVIEW_HOURS_PER_POINT = 0.35;
+// ── Dynamic Token Cost & ROI Estimation ──────────────
+// Reads pricing config from API to calculate costs.
+// When pricing changes, costs/ROI automatically update.
 
 export interface TokenCost {
   inputTokens: number;
@@ -34,45 +15,39 @@ export interface TokenCost {
 export interface ROI {
   estimatedValue: number;
   totalCost: number;
-  roi: number; // value / cost ratio
-  roiMultiple: string; // e.g. "12.5x"
+  roi: number;
+  roiMultiple: string;
   verdict: "strong" | "moderate" | "weak" | "negative" | "unknown";
 }
 
-/**
- * Estimate the AI agent team + developer review cost for a story.
- */
+// ── Dynamic estimation (accepts pricing config) ──────
+
+export interface PricingParams {
+  aiOverheadPercent: number;
+  developerHourlyRate: number;
+  hoursPerPoint: number;
+  model: string;
+}
+
 export function estimateTokenCost(
   points: number,
-  modelTier: string = "sonnet"
+  pricing: PricingParams
 ): TokenCost {
-  const costPer1k = COST_PER_1K_TOKENS[modelTier] ?? COST_PER_1K_TOKENS.sonnet;
+  const baseHours = points * pricing.hoursPerPoint;
+  const devCost = baseHours * pricing.developerHourlyRate;
+  const aiCost = devCost * (pricing.aiOverheadPercent / 100);
 
-  const inputTokens = Math.round(
-    points * TOKENS_PER_POINT.input * TOKENS_PER_POINT.rounds
-  );
-  const outputTokens = Math.round(
-    points * TOKENS_PER_POINT.output * TOKENS_PER_POINT.rounds
-  );
-
-  const inputCost = (inputTokens / 1000) * costPer1k;
-  const outputCost = (inputTokens / 1000) * costPer1k * 3; // output priced 3× input
-  const singleAgentCost = inputCost + outputCost;
-
-  const agentMultiplier = 7; // 7 agents on the team
-  const totalAiCost = singleAgentCost * agentMultiplier;
-
-  const reviewHours = points * DEFAULT_REVIEW_HOURS_PER_POINT;
-  const reviewCost = reviewHours * DEFAULT_US_HOURLY_RATE;
+  // Estimated token count (derived from ai cost, for display only)
+  const estimatedTokens = Math.round(aiCost * 500);
 
   return {
-    inputTokens,
-    outputTokens,
-    aiCost: totalAiCost,
-    reviewHours,
-    reviewCost,
-    totalCost: totalAiCost + reviewCost,
-    modelUsed: modelTier,
+    inputTokens: Math.round(estimatedTokens * 0.6),
+    outputTokens: Math.round(estimatedTokens * 0.4),
+    aiCost,
+    reviewHours: baseHours,
+    reviewCost: devCost,
+    totalCost: devCost + aiCost,
+    modelUsed: pricing.model,
   };
 }
 
@@ -81,9 +56,10 @@ export function estimateTokenCost(
  */
 export function calculateROI(
   estimatedValue: number | undefined,
-  points: number
+  points: number,
+  pricing: PricingParams
 ): ROI {
-  const cost = estimateTokenCost(points);
+  const cost = estimateTokenCost(points, pricing);
   const totalCost = cost.totalCost;
   const value = estimatedValue ?? 0;
 
@@ -112,6 +88,28 @@ export function calculateROI(
     roiMultiple: roi > 0 ? `${roi.toFixed(1)}x` : "—",
     verdict,
   };
+}
+
+/**
+ * Score a story for ranking purposes.
+ * Higher score = higher priority.
+ */
+export function storyRankScore(
+  story: { points: number; estimatedValue?: number },
+  pricing: PricingParams
+): number {
+  const cost = estimateTokenCost(story.points, pricing);
+  const value = story.estimatedValue ?? 0;
+
+  if (value === 0 && story.points === 0) return 0;
+
+  // ROI-based score: value/cost, normalized
+  if (cost.totalCost > 0) {
+    const roi = value / cost.totalCost;
+    return roi * 10 + (value > 0 ? 100 : 0) + (story.points > 0 ? 50 / story.points : 0);
+  }
+
+  return value > 0 ? 50 : 0;
 }
 
 // ── Formatting helpers ──────────────────────────────

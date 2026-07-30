@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Columns3,
   GripVertical,
@@ -36,6 +36,8 @@ import {
   formatCost,
   formatDollars,
   getVerdictColor,
+  storyRankScore,
+  type PricingParams,
 } from "@/lib/cost-estimation";
 
 // ── Types ──────────────────────────────────────────
@@ -151,9 +153,11 @@ function StatusColumnHeader({
 
 function KanbanStoryCard({
   story,
+  pricing,
   onClick,
 }: {
   story: KanbanStory;
+  pricing: PricingParams;
   onClick: () => void;
 }) {
   const {
@@ -171,8 +175,8 @@ function KanbanStoryCard({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const cost = estimateTokenCost(story.points);
-  const roi = calculateROI(story.estimatedValue, story.points);
+  const cost = estimateTokenCost(story.points, pricing);
+  const roi = calculateROI(story.estimatedValue, story.points, pricing);
   const isIntelligence = story.source === "intelligence";
   const agentBadge = getAgentBadge(story.assignedAgent);
 
@@ -327,14 +331,35 @@ export function KanbanBoard({
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
+  const [pricing, setPricing] = useState<PricingParams>({
+    aiOverheadPercent: 3,
+    developerHourlyRate: 150,
+    hoursPerPoint: 0.35,
+    model: "claude-sonnet-4",
+  });
 
   // Fetch intelligence stories
   useEffect(() => {
     fetch(`/api/projects/${slug}/intelligence-stories`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.stories) {
-          setIntelStories(data.stories);
+        if (data.stories) setIntelStories(data.stories);
+      })
+      .catch(() => {});
+  }, [slug]);
+
+  // Fetch pricing config — when this changes, costs/ROI/rankings auto-recalculate
+  useEffect(() => {
+    fetch(`/api/projects/${slug}/pricing`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setPricing({
+            aiOverheadPercent: data.aiOverheadPercent ?? 3,
+            developerHourlyRate: data.developerHourlyRate ?? 150,
+            hoursPerPoint: data.hoursPerPoint ?? 0.35,
+            model: data.model ?? "claude-sonnet-4",
+          });
         }
       })
       .catch(() => {});
@@ -350,21 +375,35 @@ export function KanbanBoard({
     });
   }, [intelStories]);
 
-  // Group stories by status
-  const columns = STATUS_COLUMNS.map((col) => {
-    const colStories = stories.filter((s) => s.status === col.id);
-    const totalPoints = colStories.reduce((sum, s) => sum + s.points, 0);
-    return { ...col, stories: colStories, totalPoints };
-  });
-
-  const totalStories = stories.length;
-  const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = stories.reduce(
-    (sum, s) => sum + estimateTokenCost(s.points).totalCost,
-    0
+  // Recalculate everything when stories or pricing changes
+  const columns = useMemo(() =>
+    STATUS_COLUMNS.map((col) => {
+      const colStories = stories.filter((s) => s.status === col.id);
+      const totalPoints = colStories.reduce((sum, s) => sum + s.points, 0);
+      return { ...col, stories: colStories, totalPoints };
+    }),
+    [stories]
   );
-  const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
-  const totalIntel = stories.filter((s) => s.source === "intelligence").length;
+
+  const totals = useMemo(() => {
+    const totalStories = stories.length;
+    const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
+    const totalCost = stories.reduce(
+      (sum, s) => sum + estimateTokenCost(s.points, pricing).totalCost,
+      0
+    );
+    const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
+    const totalIntel = stories.filter((s) => s.source === "intelligence").length;
+    return { totalStories, totalPoints, totalCost, totalValue, totalIntel };
+  }, [stories, pricing]);
+
+  const {
+    totalStories,
+    totalPoints,
+    totalCost,
+    totalValue,
+    totalIntel,
+  } = totals;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -582,6 +621,7 @@ export function KanbanBoard({
                       <KanbanStoryCard
                         key={story.id}
                         story={story}
+                        pricing={pricing}
                         onClick={() => handleStoryClick(story)}
                       />
                     ))}
@@ -618,7 +658,7 @@ export function KanbanBoard({
               <div className="mt-1 flex items-center gap-1">
                 <Zap className="w-2.5 h-2.5 text-violet-500" />
                 <span className="text-[9px] font-mono text-violet-600">
-                  {formatCost(estimateTokenCost(activeStory.points).totalCost)}
+                  {formatCost(estimateTokenCost(activeStory.points, pricing).totalCost)}
                 </span>
                 {activeStory.estimatedValue && activeStory.estimatedValue > 0 && (
                   <>
