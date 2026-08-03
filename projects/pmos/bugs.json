@@ -1,0 +1,13 @@
+[
+  {
+    "id": "BUG-001",
+    "title": "Kanban drag-drop loses card position",
+    "description": "When dragging a card from Doing to Review, the card reverts to its old position after drop.",
+    "severity": "major",
+    "status": "open",
+    "stepsToReproduce": "1. Open Kanban\n2. Drag card from Doing to Review\n3. Card jumps back",
+    "reportedBy": "PM",
+    "createdAt": "2026-08-03T20:41:35.647Z",
+    "updatedAt": "2026-08-03T20:41:35.647Z"
+  }
+]

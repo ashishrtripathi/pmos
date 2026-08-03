@@ -1,0 +1,16 @@
+[
+  {
+    "id": "CR-001",
+    "title": "Add dark mode support",
+    "description": "Users want the ability to switch the entire dashboard to dark mode. All pages, charts and story cards should support the dark theme with a toggle in the sidebar.",
+    "priority": "high",
+    "category": "enhancement",
+    "status": "in-review",
+    "requestedBy": "PM",
+    "storyIds": [
+      "STORY-001"
+    ],
+    "createdAt": "2026-08-03T20:41:41.423Z",
+    "updatedAt": "2026-08-03T20:41:45.892Z"
+  }
+]

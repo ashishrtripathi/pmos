@@ -154,3 +154,49 @@ export interface PipelineStep {
   description: string;
   status: "pending" | "running" | "done" | "failed" | "skipped";
 }
+
+export type BugSeverity = "critical" | "major" | "minor" | "cosmetic";
+export type BugStatus = "open" | "in-progress" | "review" | "fixed" | "closed";
+
+export interface Bug {
+  id: string;
+  title: string;
+  description: string;
+  severity: BugSeverity;
+  status: BugStatus;
+  stepsToReproduce?: string;
+  expectedBehavior?: string;
+  actualBehavior?: string;
+  reportedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  storyId?: string; // optional link to a Story
+}
+
+export type ChangeRequestPriority = "high" | "medium" | "low";
+export type ChangeRequestCategory =
+  | "new-feature"
+  | "enhancement"
+  | "bugfix"
+  | "refactor"
+  | "design";
+export type ChangeRequestStatus =
+  | "submitted"
+  | "in-review"
+  | "approved"
+  | "rejected"
+  | "implemented";
+
+export interface ChangeRequest {
+  id: string;
+  title: string;
+  description: string;
+  priority: ChangeRequestPriority;
+  category: ChangeRequestCategory;
+  status: ChangeRequestStatus;
+  requestedBy: string;
+  linkedObjectiveId?: string; // optional link to Objective.id
+  storyIds: string[]; // stories generated from this change request
+  createdAt: string;
+  updatedAt: string;
+}
