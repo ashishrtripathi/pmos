@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { assignToCodingAgent } from "@/lib/pmos";
 
 const PMOS_HOME = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -43,8 +44,7 @@ export async function PUT(
   }
 
   if (!foundFile) {
-    // Story not found as a file — it might be from intelligence (not persisted)
-    // Check if it's in the DB
+    // Story not found as a file - it might be from intelligence (not persisted)
     return NextResponse.json(
       { message: "Story status updated in memory (not persisted as file)" },
       { status: 200 }
@@ -65,6 +65,26 @@ export async function PUT(
     `status: ${status}`
   );
 
+  // When a story moves to Doing (in-progress), the coding agent picks it up
+  let pickedUpBy: string | null = null;
+  if (status === "in-progress") {
+    // Ensure the story is assigned to the Software Engineer agent (inside frontmatter)
+    const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (fmMatch) {
+      const fm = fmMatch[1];
+      let newFm: string;
+      if (/^assigned-agent:\s*.+/m.test(fm)) {
+        newFm = fm.replace(/^assigned-agent:\s*.+/m, `assigned-agent: software-engineer`);
+      } else if (/^assignedAgent:\s*.+/m.test(fm)) {
+        newFm = fm.replace(/^assignedAgent:\s*.+/m, `assignedAgent: software-engineer`);
+      } else {
+        newFm = fm.replace(/\n*$/, "") + `\nassigned-agent: software-engineer`;
+      }
+      content = content.replace(fmMatch[0], `---\n${newFm}\n---`);
+    }
+    pickedUpBy = assignToCodingAgent(slug, storyId);
+  }
+
   // Write to new location
   const newDir = path.join(projectDir, "stories", status);
   if (!fs.existsSync(newDir)) {
@@ -84,5 +104,6 @@ export async function PUT(
     storyId,
     oldStatus: currentStatus,
     newStatus: status,
+    pickedUpBy,
   });
 }

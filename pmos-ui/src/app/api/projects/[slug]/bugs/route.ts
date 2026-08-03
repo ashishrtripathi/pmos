@@ -5,6 +5,7 @@ import {
   updateBug,
   deleteBug,
 } from "@/lib/pmos-bugs";
+import { assignToCodingAgent } from "@/lib/pmos";
 
 type Params = { params: { slug: string } };
 
@@ -47,7 +48,12 @@ export async function POST(req: NextRequest, { params }: Params) {
         if (!bug) {
           return NextResponse.json({ error: "Bug not found" }, { status: 404 });
         }
-        return NextResponse.json({ bug });
+        // When a bug moves to in-progress, the coding agent picks it up
+        let pickedUpBy: string | null = null;
+        if (data.status === "in-progress") {
+          pickedUpBy = assignToCodingAgent(params.slug, data.id);
+        }
+        return NextResponse.json({ bug, pickedUpBy });
       }
       case "delete": {
         if (!data.id) {

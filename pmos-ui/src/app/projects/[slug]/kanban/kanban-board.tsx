@@ -11,6 +11,7 @@ import {
   Brain,
   ExternalLink,
   ArrowRight,
+  Bot,
 } from "lucide-react";
 import {
   DndContext,
@@ -329,6 +330,7 @@ export function KanbanBoard({
   const [stories, setStories] = useState<KanbanStory[]>(allStories);
   const [activeStory, setActiveStory] = useState<KanbanStory | null>(null);
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
+  const [pickupNotice, setPickupNotice] = useState<string | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
   const [pricing, setPricing] = useState<PricingParams>({
@@ -468,18 +470,32 @@ export function KanbanBoard({
     async (storyId: string, newStatus: string) => {
       setSavingStatus((prev) => ({ ...prev, [storyId]: true }));
       try {
-        await fetch(`/api/projects/${slug}/stories/${storyId}/status`, {
+        const res = await fetch(`/api/projects/${slug}/stories/${storyId}/status`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: newStatus }),
         });
+        const data = await res.json();
+        if (data.pickedUpBy) {
+          const story = stories.find((s) => s.id === storyId);
+          setPickupNotice(
+            `"${story?.title || storyId}" picked up by the coding agent`
+          );
+          window.setTimeout(() => setPickupNotice(null), 5000);
+          // Reflect the assignment locally so the agent badge appears
+          setStories((prev) =>
+            prev.map((s) =>
+              s.id === storyId ? { ...s, assignedAgent: "software-engineer" } : s
+            )
+          );
+        }
       } catch {
         // Silently fail — the UI already reflects the change
       } finally {
         setSavingStatus((prev) => ({ ...prev, [storyId]: false }));
       }
     },
-    [slug]
+    [slug, stories]
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -546,6 +562,14 @@ export function KanbanBoard({
 
   return (
     <div className="p-8 max-w-full mx-auto">
+      {/* Agent pickup notice */}
+      {pickupNotice && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-md bg-violet-50 border border-violet-200 text-violet-700 text-sm">
+          <Bot className="w-4 h-4" />
+          <span>{pickupNotice}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">

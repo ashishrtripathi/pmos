@@ -64,6 +64,7 @@ export default function BugsPage({ params }: { params: { slug: string } }) {
   const [expected, setExpected] = useState("");
   const [actual, setActual] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const loadBugs = useCallback(async () => {
     try {
@@ -118,11 +119,23 @@ export default function BugsPage({ params }: { params: { slug: string } }) {
   };
 
   const handleStatus = async (id: string, status: Status) => {
-    await fetch(`/api/projects/${params.slug}/bugs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "status", id, status }),
-    });
+    try {
+      const res = await fetch(`/api/projects/${params.slug}/bugs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "status", id, status }),
+      });
+      const data = await res.json();
+      if (data.pickedUpBy) {
+        const bug = bugs.find((b) => b.id === id);
+        setNotice(
+          `"${bug?.title || id}" handed to the coding agent`
+        );
+        window.setTimeout(() => setNotice(null), 5000);
+      }
+    } catch {
+      // ignore
+    }
     await loadBugs();
   };
 
@@ -169,6 +182,14 @@ export default function BugsPage({ params }: { params: { slug: string } }) {
           <Plus className="w-4 h-4" /> Add Bug
         </button>
       </div>
+
+      {/* Agent pickup notice */}
+      {notice && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-md bg-violet-50 border border-violet-200 text-violet-700 text-sm">
+          <AlertTriangle className="w-4 h-4" />
+          <span>{notice}</span>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">

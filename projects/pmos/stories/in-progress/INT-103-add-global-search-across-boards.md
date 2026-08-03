@@ -2,8 +2,8 @@
 id: INT-103
 title: "Add Global Search Across Boards"
 points: 5
-status: backlog
-assigned-agent: ux-designer
+status: in-progress
+assigned-agent: software-engineer
 estimated-value: 25000
 category: UX/Product
 priority: medium

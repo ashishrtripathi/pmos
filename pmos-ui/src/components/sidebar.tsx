@@ -15,7 +15,6 @@ import {
   Layers,
   Bot,
   Target,
-  GitPullRequest,
   Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,7 +25,6 @@ const navItems = [
   { href: "/pipeline", icon: Workflow, label: "Pipeline" },
   { href: "/intelligence", icon: Brain, label: "Intelligence" },
   { href: "/okrs", icon: Target, label: "OKRs" },
-  { href: "/change-requests", icon: GitPullRequest, label: "Change Requests" },
   { href: "/journey", icon: Map, label: "Journey" },
   { href: "/story-map", icon: Layers, label: "Story Map" },
   { href: "/kanban", icon: Columns3, label: "Kanban" },

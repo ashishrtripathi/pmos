@@ -419,6 +419,52 @@ export function getAllAgents(slug: string): Agent[] {
   });
 }
 
+/**
+ * Assign a story or bug to the coding (Software Engineer) agent.
+ * Adds the item ID to the agent's "Active Stories" section in the
+ * agent markdown file (deduplicated). Returns the agent id, or null
+ * if no software-engineer agent exists.
+ */
+export function assignToCodingAgent(
+  slug: string,
+  itemId: string
+): string | null {
+  const agentsDir = pmosPath("projects", slug, "agents");
+  const filePath = path.join(agentsDir, "software-engineer.md");
+  if (!fs.existsSync(filePath)) return null;
+
+  const raw = readFileSafe(filePath) || "";
+  const { data, content } = matter(raw);
+
+  // Parse existing Active Stories bullet list
+  const activeMatch = content.match(/## Active Stories\s*\n([\s\S]*?)(?=\n## |\n$)/);
+  const existing = activeMatch
+    ? activeMatch[1]
+        .split("\n")
+        .filter((l: string) => l.trim().startsWith("- "))
+        .map((l: string) => l.replace(/^-\s*/, "").trim())
+    : [];
+
+  if (existing.includes(itemId)) return "software-engineer";
+
+  const activeSection = `## Active Stories\n${[...existing, itemId]
+    .map((id) => `- ${id}`)
+    .join("\n")}`;
+
+  let newContent: string;
+  if (activeMatch) {
+    newContent = content.replace(activeMatch[0], activeSection);
+  } else {
+    newContent = content.endsWith("\n")
+      ? `${content}\n${activeSection}\n`
+      : `${content}\n\n${activeSection}\n`;
+  }
+
+  const rebuilt = matter.stringify(newContent, data);
+  fs.writeFileSync(filePath, rebuilt, "utf-8");
+  return "software-engineer";
+}
+
 // ── Intelligence ───────────────────────────────────
 
 export function getIntelligence(slug: string): Intelligence {
