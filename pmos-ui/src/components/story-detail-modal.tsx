@@ -21,7 +21,15 @@ import {
   formatCost,
   formatDollars,
   getVerdictColor,
+  type PricingParams,
 } from "@/lib/cost-estimation";
+
+const DEFAULT_PRICING: PricingParams = {
+  aiOverheadPercent: 14,
+  developerHourlyRate: 150,
+  hoursPerPoint: 0.35,
+  model: "opus-4",
+};
 
 // ── Types ──────────────────────────────────────────
 
@@ -115,18 +123,24 @@ export function StoryDetailModal({
   onSave,
   personas,
   agents,
+  pricing,
 }: {
   story: StoryDetail;
   onClose: () => void;
   onSave: (updated: StoryDetail) => void;
   personas?: string[];
   agents?: string[];
+  pricing?: PricingParams;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ ...story });
 
-  const cost = estimateTokenCost(draft.points);
-  const roi = calculateROI(draft.estimatedValue, draft.points);
+  const cost = estimateTokenCost(draft.points, pricing || DEFAULT_PRICING);
+  const roi = calculateROI(
+    draft.estimatedValue,
+    draft.points,
+    pricing || DEFAULT_PRICING
+  );
 
   const handleSave = () => {
     onSave(draft);

@@ -982,6 +982,7 @@ export function StoryMapBoard({
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
           personas={allPersonas.length > 0 ? allPersonas : ["Sarah", "Mike", "Emma"]}
+          pricing={pricing || undefined}
         />
       )}
     </div>

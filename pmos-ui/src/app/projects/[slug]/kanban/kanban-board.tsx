@@ -680,6 +680,7 @@ export function KanbanBoard({
           story={detailStory}
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
+          pricing={pricing || undefined}
         />
       )}
     </div>
