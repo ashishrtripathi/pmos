@@ -5,7 +5,7 @@ export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const source = getSourceLocation(params.slug);
+  const source = await getSourceLocation(params.slug);
   if (!source) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -17,6 +17,6 @@ export async function PUT(
   { params }: { params: { slug: string } }
 ) {
   const body = await request.json();
-  updateSourceLocation(params.slug, body);
+  await updateSourceLocation(params.slug, body);
   return NextResponse.json({ ok: true });
 }

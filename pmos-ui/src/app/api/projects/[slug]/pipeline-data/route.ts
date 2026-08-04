@@ -74,7 +74,7 @@ export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const source = getSourceLocation(params.slug);
+  const source = await getSourceLocation(params.slug);
   if (!source) {
     return NextResponse.json({ error: "No source location configured" }, { status: 404 });
   }

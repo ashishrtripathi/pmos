@@ -43,6 +43,13 @@ import {
 
 // --- Types -----------------------------------------------------------
 
+const DEFAULT_PRICING: PricingParams = {
+  aiOverheadPercent: 14,
+  developerHourlyRate: 150,
+  hoursPerPoint: 0.35,
+  model: "opus-4",
+};
+
 interface AcceptanceCriterion {
   scenario: string;
   given: string[];
@@ -672,13 +679,6 @@ export function StoryMapBoard({
   const [detailStory, setDetailStory] = useState<Story | null>(null);
   const [intelStories, setIntelStories] = useState<Story[]>([]);
   const [pricing, setPricing] = useState<PricingParams | null>(null);
-
-  const DEFAULT_PRICING: PricingParams = {
-    aiOverheadPercent: 14,
-    developerHourlyRate: 150,
-    hoursPerPoint: 0.35,
-    model: "opus-4",
-  };
 
   useEffect(() => {
     fetch(`/api/projects/${params.slug}/pipeline-data`)

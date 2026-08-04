@@ -5,7 +5,7 @@ export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const journeys = getPersonaJourneys(params.slug);
+  const journeys = await getPersonaJourneys(params.slug);
   const enriched = journeys.map((j) => ({
     ...j,
     steps: j.steps.map((s) => ({

@@ -11,7 +11,7 @@ export async function GET(
   const { slug } = params;
   const { stories, files } = parseAllIntelligenceStories(slug);
 
-  const costBreakdown = calculateTotalCost(slug, stories);
+  const costBreakdown = await calculateTotalCost(slug, stories);
 
   return NextResponse.json({
     stories,

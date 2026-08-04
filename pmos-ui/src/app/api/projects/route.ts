@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { getRegistry, updateRegistry } from "@/lib/pmos";
+import { writeDoc } from "@/lib/postbase";
+import type { Registry } from "@/types/pmos";
 
 const PMOS_ROOT = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -26,15 +29,16 @@ export async function POST(request: Request) {
       .replace(/^-+|-+$/g, "");
 
     // Check if project already exists
-    const projectDir = path.join(PMOS_ROOT, "projects", slug);
-    if (fs.existsSync(projectDir)) {
+    const registry = await getRegistry();
+    if (registry?.projects?.some((p) => p.slug === slug)) {
       return NextResponse.json(
         { error: `Project "${slug}" already exists` },
         { status: 409 }
       );
     }
 
-    // Create project directory structure
+    // Create project directory structure (mirror scaffolding for external tooling)
+    const projectDir = path.join(PMOS_ROOT, "projects", slug);
     const dirs = [
       "",
       "journey",
@@ -56,7 +60,7 @@ export async function POST(request: Request) {
     // Determine source mode
     const mode = source || (repoUrl && localPath ? "github" : localPath ? "local" : "github-only");
 
-    // Write source-location.json
+    // Write source-location.json (PostBase + mirror)
     const sourceLocation = {
       mode,
       localPath: localPath || null,
@@ -71,12 +75,13 @@ export async function POST(request: Request) {
         method: null,
       },
     };
+    await writeDoc("source_location", slug, sourceLocation);
     fs.writeFileSync(
       path.join(projectDir, "source-location.json"),
       JSON.stringify(sourceLocation, null, 2)
     );
 
-    // Write project.md
+    // Write project.md (PostBase + mirror)
     const projectMd = `# ${name}
 
 ## Project Overview
@@ -90,34 +95,29 @@ Project registered via PMOS Dashboard. Run intelligence analysis to populate det
 ${repoUrl ? `- **Repository**: ${repoUrl}` : ""}
 ${localPath ? `- **Local Path**: ${localPath}` : ""}
 `;
+    await writeDoc("projects", slug, { markdown: projectMd });
     fs.writeFileSync(path.join(projectDir, "project.md"), projectMd);
 
-    // Update registry.json
-    const registryPath = path.join(PMOS_ROOT, "registry.json");
-    const registry = JSON.parse(fs.readFileSync(registryPath, "utf-8"));
-
-    registry.projects.push({
-      slug,
-      name: name.trim(),
-      source: mode,
-      repoUrl: repoUrl || null,
-      localPath: localPath || null,
-      path: `~/.pmos/projects/${slug}`,
-      status: "attached",
-      attachedAt: new Date().toISOString().split("T")[0],
-      projectType: "full-codebase",
-      teams: [
-        "product-manager",
-        "ux-designer",
-        "architect",
-        "software-engineer",
-        "qa-engineer",
-        "documentation-agent",
-        "product-intelligence",
+    // Update registry (PostBase + mirror)
+    const nextRegistry: Registry = {
+      version: String(registry?.version ?? "1"),
+      createdAt: String(registry?.createdAt || new Date().toISOString().split("T")[0]),
+      projects: [
+        ...(registry?.projects || []),
+        {
+          slug,
+          name: name.trim(),
+          source: mode,
+          repoUrl: repoUrl || null,
+          localPath: localPath || null,
+          path: `~/.pmos/projects/${slug}`,
+          status: "attached",
+          attachedAt: new Date().toISOString().split("T")[0],
+          projectType: "full-codebase",
+        },
       ],
-    });
-
-    fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
+    };
+    await updateRegistry(nextRegistry);
 
     return NextResponse.json({
       success: true,

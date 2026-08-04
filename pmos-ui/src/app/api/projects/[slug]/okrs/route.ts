@@ -12,7 +12,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const okrs = getOKRs(params.slug);
+  const okrs = await getOKRs(params.slug);
   return NextResponse.json(okrs);
 }
 
@@ -29,19 +29,19 @@ export async function POST(
       if (!objective?.id || !objective?.title) {
         return NextResponse.json({ error: "Objective needs id and title" }, { status: 400 });
       }
-      createObjective(slug, {
+      await createObjective(slug, {
         ...objective,
         keyResults: objective.keyResults || [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-      return NextResponse.json({ success: true, objective: getObjective(slug, objective.id) });
+      return NextResponse.json({ success: true, objective: await getObjective(slug, objective.id) });
 
     case "update":
       if (!objectiveId) {
         return NextResponse.json({ error: "objectiveId required" }, { status: 400 });
       }
-      const updated = updateObjective(slug, objectiveId, body.updates || body);
+      const updated = await updateObjective(slug, objectiveId, body.updates || body);
       if (!updated) {
         return NextResponse.json({ error: "Objective not found" }, { status: 404 });
       }
@@ -51,7 +51,7 @@ export async function POST(
       if (!objectiveId) {
         return NextResponse.json({ error: "objectiveId required" }, { status: 400 });
       }
-      deleteObjective(slug, objectiveId);
+      await deleteObjective(slug, objectiveId);
       return NextResponse.json({ success: true });
 
     case "add-key-result":
@@ -59,7 +59,7 @@ export async function POST(
         return NextResponse.json({ error: "objectiveId and keyResult (id, title) required" }, { status: 400 });
       }
       const { addKeyResult } = await import("@/lib/pmos-okr");
-      const objWithKR = addKeyResult(slug, objectiveId, keyResult);
+      const objWithKR = await addKeyResult(slug, objectiveId, keyResult);
       if (!objWithKR) {
         return NextResponse.json({ error: "Objective not found" }, { status: 404 });
       }
@@ -70,7 +70,7 @@ export async function POST(
         return NextResponse.json({ error: "objectiveId and keyResult.id required" }, { status: 400 });
       }
       const { updateKeyResult } = await import("@/lib/pmos-okr");
-      const objWithKRUpdated = updateKeyResult(slug, objectiveId, keyResult.id, keyResult);
+      const objWithKRUpdated = await updateKeyResult(slug, objectiveId, keyResult.id, keyResult);
       if (!objWithKRUpdated) {
         return NextResponse.json({ error: "Objective or KeyResult not found" }, { status: 404 });
       }
@@ -81,7 +81,7 @@ export async function POST(
         return NextResponse.json({ error: "objectiveId and keyResult.id required" }, { status: 400 });
       }
       const { deleteKeyResult } = await import("@/lib/pmos-okr");
-      const objAfterDelete = deleteKeyResult(slug, objectiveId, keyResult.id);
+      const objAfterDelete = await deleteKeyResult(slug, objectiveId, keyResult.id);
       if (!objAfterDelete) {
         return NextResponse.json({ error: "Objective not found" }, { status: 404 });
       }
@@ -91,7 +91,7 @@ export async function POST(
       if (!Array.isArray(body.objectives)) {
         return NextResponse.json({ error: "objectives array required" }, { status: 400 });
       }
-      saveOKRs(slug, body.objectives);
+      await saveOKRs(slug, body.objectives);
       return NextResponse.json({ success: true, count: body.objectives.length });
 
     default:

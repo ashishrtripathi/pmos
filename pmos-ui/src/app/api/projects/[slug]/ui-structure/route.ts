@@ -102,7 +102,7 @@ export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const source = getSourceLocation(params.slug);
+  const source = await getSourceLocation(params.slug);
   if (!source?.localPath) {
     return NextResponse.json({ error: "No source location" }, { status: 404 });
   }

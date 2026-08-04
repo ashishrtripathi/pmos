@@ -19,10 +19,10 @@ export default async function ProjectDashboard({
   params: { slug: string };
 }) {
   const { slug } = params;
-  const dashboard = getDashboard(slug);
-  const stories = getAllStories(slug);
-  const agents = getAllAgents(slug);
-  const pipeline = getPipelineSteps(slug);
+  const dashboard = await getDashboard(slug);
+  const stories = await getAllStories(slug);
+  const agents = await getAllAgents(slug);
+  const pipeline = await getPipelineSteps(slug);
   const completedSteps = pipeline.filter((s) => s.status === "done").length;
 
   const navCards = [

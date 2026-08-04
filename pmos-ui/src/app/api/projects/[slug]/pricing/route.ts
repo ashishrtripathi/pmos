@@ -10,7 +10,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const config = getPricingConfig(params.slug);
+  const config = await getPricingConfig(params.slug);
   return NextResponse.json(config);
 }
 
@@ -37,7 +37,7 @@ export async function PUT(
     "marginMultiplier",
   ];
 
-  const current = getPricingConfig(params.slug);
+  const current = await getPricingConfig(params.slug);
   const updated = { ...current };
 
   for (const key of validKeys) {
@@ -54,6 +54,6 @@ export async function PUT(
     updated.aiOverheadPercent = deriveAIOverheadPercent(body.model);
   }
 
-  updatePricingConfig(params.slug, updated);
+  await updatePricingConfig(params.slug, updated);
   return NextResponse.json(updated);
 }

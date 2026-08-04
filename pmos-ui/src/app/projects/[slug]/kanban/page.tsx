@@ -6,7 +6,7 @@ export default async function KanbanPage({
 }: {
   params: { slug: string };
 }) {
-  const allStories = getAllStories(params.slug);
+  const allStories = await getAllStories(params.slug);
 
   return (
     <KanbanBoard

@@ -6,15 +6,15 @@ export default async function StoryMapPage({
 }: {
   params: { slug: string };
 }) {
-  const journeys = getPersonaJourneys(params.slug).map((j) => ({
+  const journeys = (await getPersonaJourneys(params.slug)).map((j) => ({
     ...j,
     steps: j.steps.map((s) => ({
       ...s,
       mockup: getScreenMockup(s.name),
     })),
   }));
-  const stories = getAllStories(params.slug);
-  const storyMap = getStoryMap(params.slug);
+  const stories = await getAllStories(params.slug);
+  const storyMap = await getStoryMap(params.slug);
 
   return (
     <StoryMapBoard

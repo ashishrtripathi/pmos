@@ -12,6 +12,7 @@ import type {
   DashboardData,
   PipelineStep,
 } from "@/types/pmos";
+import { db, readDoc, writeDoc, readItems, writeItems } from "./postbase";
 
 const PMOS_HOME = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -52,42 +53,66 @@ function writeFile(filePath: string, content: string) {
   fs.writeFileSync(filePath, content, "utf-8");
 }
 
-// ── Registry ──────────────────────────────────────
+// ============================================================
+// Registry
+// ============================================================
 
-export function getRegistry(): Registry | null {
-  return readJson<Registry>(pmosPath("registry.json"));
+export async function getRegistry(): Promise<Registry | null> {
+  const doc = await readDoc<Registry>("registry", "main");
+  if (doc) return doc;
+  // one-time bootstrap from legacy file
+  const file = readJson<Registry>(pmosPath("registry.json"));
+  if (file) await writeDoc("registry", "main", file);
+  return file;
 }
 
-export function updateRegistry(registry: Registry) {
-  writeJson(pmosPath("registry.json"), registry);
+export async function updateRegistry(registry: Registry): Promise<void> {
+  await writeDoc("registry", "main", registry);
+  writeJson(pmosPath("registry.json"), registry); // mirror
 }
 
-// ── Projects ──────────────────────────────────────
+// ============================================================
+// Projects
+// ============================================================
 
-export function listProjects() {
-  const registry = getRegistry();
+export async function listProjects() {
+  const registry = await getRegistry();
   return registry?.projects || [];
 }
 
-export function getProject(slug: string) {
+export async function getProject(slug: string) {
   const projectDir = pmosPath("projects", slug);
-  const projectMd = readFileSafe(path.join(projectDir, "project.md"));
+  const doc = await readDoc<{ markdown: string | null }>("projects", slug);
+  let projectMd = doc?.markdown ?? null;
+  if (projectMd === null) {
+    projectMd = readFileSafe(path.join(projectDir, "project.md"));
+    if (projectMd) await writeDoc("projects", slug, { markdown: projectMd });
+  }
   return { slug, projectDir, projectMd };
 }
 
-// ── Source Location ────────────────────────────────
+// ============================================================
+// Source Location
+// ============================================================
 
-export function getSourceLocation(slug: string): SourceLocation | null {
-  return readJson<SourceLocation>(
+export async function getSourceLocation(slug: string): Promise<SourceLocation | null> {
+  const doc = await readDoc<SourceLocation>("source_location", slug);
+  if (doc) return doc;
+  const file = readJson<SourceLocation>(
     pmosPath("projects", slug, "source-location.json")
   );
+  if (file) await writeDoc("source_location", slug, file);
+  return file;
 }
 
-export function updateSourceLocation(slug: string, data: SourceLocation) {
-  writeJson(pmosPath("projects", slug, "source-location.json"), data);
+export async function updateSourceLocation(slug: string, data: SourceLocation): Promise<void> {
+  await writeDoc("source_location", slug, data);
+  writeJson(pmosPath("projects", slug, "source-location.json"), data); // mirror
 }
 
-// ── Pricing Config ────────────────────────────────────
+// ============================================================
+// Pricing Config
+// ============================================================
 
 export interface PricingConfig {
   model: string;
@@ -125,10 +150,16 @@ export const DEFAULT_PRICING: PricingConfig = {
   marginMultiplier: 7,
 };
 
-export function getPricingConfig(slug: string): PricingConfig {
-  const saved = readJson<Partial<PricingConfig>>(
-    pmosPath("projects", slug, "pricing.json")
-  );
+export async function getPricingConfig(slug: string): Promise<PricingConfig> {
+  let saved = await readDoc<Partial<PricingConfig>>("pricing", slug);
+  if (!saved) {
+    saved = readJson<Partial<PricingConfig>>(
+      pmosPath("projects", slug, "pricing.json")
+    ) ?? {};
+    if (Object.keys(saved).length > 0) {
+      await writeDoc("pricing", slug, saved);
+    }
+  }
   const merged = { ...DEFAULT_PRICING, ...saved } as PricingConfig;
 
   // Auto-derive aiOverheadPercent from the selected model
@@ -137,11 +168,14 @@ export function getPricingConfig(slug: string): PricingConfig {
   return merged;
 }
 
-export function updatePricingConfig(slug: string, data: PricingConfig) {
-  writeJson(pmosPath("projects", slug, "pricing.json"), data);
+export async function updatePricingConfig(slug: string, data: PricingConfig): Promise<void> {
+  await writeDoc("pricing", slug, data);
+  writeJson(pmosPath("projects", slug, "pricing.json"), data); // mirror
 }
 
-// ── Stories ────────────────────────────────────────
+// ============================================================
+// Stories
+// ============================================================
 
 const STORY_DIRS: Record<StoryStatus, string> = {
   backlog: "stories/backlog",
@@ -247,7 +281,8 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
   };
 }
 
-export function getAllStories(slug: string): Story[] {
+/** Legacy disk reader — used as a one-time bootstrap when PostBase is empty. */
+function readStoriesFromFiles(slug: string): Story[] {
   const stories: Story[] = [];
   for (const [status, dir] of Object.entries(STORY_DIRS)) {
     const fullPath = pmosPath("projects", slug, dir);
@@ -261,8 +296,16 @@ export function getAllStories(slug: string): Story[] {
   return stories;
 }
 
-export function getStoriesByStatus(slug: string): Record<StoryStatus, Story[]> {
-  const stories = getAllStories(slug);
+export async function getAllStories(slug: string): Promise<Story[]> {
+  const items = await readItems<Story>("stories", slug);
+  if (items.length > 0) return items;
+  const fromFiles = readStoriesFromFiles(slug);
+  if (fromFiles.length > 0) await writeItems("stories", slug, fromFiles);
+  return fromFiles;
+}
+
+export async function getStoriesByStatus(slug: string): Promise<Record<StoryStatus, Story[]>> {
+  const stories = await getAllStories(slug);
   const grouped: Record<StoryStatus, Story[]> = {
     backlog: [],
     "in-progress": [],
@@ -275,7 +318,7 @@ export function getStoriesByStatus(slug: string): Record<StoryStatus, Story[]> {
   return grouped;
 }
 
-export function createStory(
+export async function createStory(
   slug: string,
   story: {
     title: string;
@@ -290,7 +333,7 @@ export function createStory(
     acceptanceCriteria?: { scenario: string; given: string[]; when: string; then: string }[];
   }
 ) {
-  const existing = getAllStories(slug);
+  const existing = await getAllStories(slug);
   const maxNum = existing.reduce((max, s) => {
     const num = parseInt(s.id.replace("STORY-", ""));
     return isNaN(num) ? max : Math.max(max, num);
@@ -344,14 +387,39 @@ ${acLines || "- **Scenario:** To be defined\n- **Given:** TBD\n- **When:** TBD\n
 `;
 
   const filePath = pmosPath("projects", slug, "stories", "backlog", fileName);
-  writeFile(filePath, content);
+
+  const newStory: Story = {
+    id: nextId,
+    title: story.title,
+    description: story.description,
+    points: story.points,
+    status: "backlog",
+    useCase: uc,
+    businessGoal: story.businessGoal,
+    acceptanceCriteria:
+      story.acceptanceCriteria && story.acceptanceCriteria.length > 0
+        ? story.acceptanceCriteria
+        : [{ scenario: "To be defined", given: [], when: "", then: "" }],
+    persona: story.persona,
+    personaRole: story.personaRole,
+    journeyStep: story.journeyStep,
+    estimatedValue: story.estimatedValue,
+    source: "manual",
+    filePath,
+  };
+
+  existing.push(newStory);
+  await writeItems("stories", slug, existing);
+  writeFile(filePath, content); // mirror
+
   return { id: nextId, filePath };
 }
 
-export function moveStory(slug: string, storyId: string, from: StoryStatus, to: StoryStatus) {
+/** Mirror a story move onto the legacy markdown files (best-effort). */
+function mirrorMoveStoryFile(slug: string, storyId: string, from: StoryStatus, to: StoryStatus): string | null {
   const fromDir = pmosPath("projects", slug, STORY_DIRS[from]);
   const toDir = pmosPath("projects", slug, STORY_DIRS[to]);
-  if (!fs.existsSync(toDir)) fs.mkdirSync(toDir, { recursive: true });
+  if (!fs.existsSync(fromDir)) return null;
 
   const files = fs.readdirSync(fromDir).filter((f) => f.includes(storyId));
   if (files.length === 0) return null;
@@ -371,22 +439,31 @@ export function moveStory(slug: string, storyId: string, from: StoryStatus, to: 
   return dest;
 }
 
-export function updateStoryStatus(slug: string, storyId: string, to: StoryStatus) {
-  // Find the story in any column and move it
-  for (const from of Object.keys(STORY_DIRS) as StoryStatus[]) {
-    const fromDir = pmosPath("projects", slug, STORY_DIRS[from]);
-    if (!fs.existsSync(fromDir)) continue;
-    const files = fs.readdirSync(fromDir).filter((f) => f.includes(storyId));
-    if (files.length > 0) {
-      return moveStory(slug, storyId, from, to);
-    }
-  }
-  return null;
+export async function moveStory(slug: string, storyId: string, from: StoryStatus, to: StoryStatus): Promise<string | null> {
+  const stories = await getAllStories(slug);
+  const story = stories.find((s) => s.id === storyId && s.status === from);
+  if (!story) return null;
+  story.status = to;
+  await writeItems("stories", slug, stories);
+  return mirrorMoveStoryFile(slug, storyId, from, to);
 }
 
-// ── Agents ─────────────────────────────────────────
+export async function updateStoryStatus(slug: string, storyId: string, to: StoryStatus): Promise<string | null> {
+  const stories = await getAllStories(slug);
+  const story = stories.find((s) => s.id === storyId);
+  if (!story || story.status === to) return null;
+  const from = story.status;
+  story.status = to;
+  await writeItems("stories", slug, stories);
+  return mirrorMoveStoryFile(slug, storyId, from, to);
+}
 
-export function getAllAgents(slug: string): Agent[] {
+// ============================================================
+// Agents
+// ============================================================
+
+/** Legacy disk reader — used as a one-time bootstrap when PostBase is empty. */
+function readAgentsFromFiles(slug: string): Agent[] {
   const agentsDir = pmosPath("projects", slug, "agents");
   if (!fs.existsSync(agentsDir)) return [];
   const files = fs.readdirSync(agentsDir).filter((f) => f.endsWith(".md"));
@@ -419,35 +496,21 @@ export function getAllAgents(slug: string): Agent[] {
   });
 }
 
-/**
- * Assign a story or bug to the coding (Software Engineer) agent.
- * Adds the item ID to the agent's "Active Stories" section in the
- * agent markdown file (deduplicated). Returns the agent id, or null
- * if no software-engineer agent exists.
- */
-export function assignToCodingAgent(
-  slug: string,
-  itemId: string
-): string | null {
-  const agentsDir = pmosPath("projects", slug, "agents");
-  const filePath = path.join(agentsDir, "software-engineer.md");
-  if (!fs.existsSync(filePath)) return null;
+export async function getAllAgents(slug: string): Promise<Agent[]> {
+  const items = await readItems<Agent>("agents", slug);
+  if (items.length > 0) return items;
+  const fromFiles = readAgentsFromFiles(slug);
+  if (fromFiles.length > 0) await writeItems("agents", slug, fromFiles);
+  return fromFiles;
+}
 
-  const raw = readFileSafe(filePath) || "";
+/** Rebuild an agent's markdown mirror file from its PostBase state. */
+function mirrorAgentMarkdown(agent: Agent) {
+  const raw = readFileSafe(agent.filePath);
+  if (!raw) return;
   const { data, content } = matter(raw);
-
-  // Parse existing Active Stories bullet list
   const activeMatch = content.match(/## Active Stories\s*\n([\s\S]*?)(?=\n## |\n$)/);
-  const existing = activeMatch
-    ? activeMatch[1]
-        .split("\n")
-        .filter((l: string) => l.trim().startsWith("- "))
-        .map((l: string) => l.replace(/^-\s*/, "").trim())
-    : [];
-
-  if (existing.includes(itemId)) return "software-engineer";
-
-  const activeSection = `## Active Stories\n${[...existing, itemId]
+  const activeSection = `## Active Stories\n${agent.activeStories
     .map((id) => `- ${id}`)
     .join("\n")}`;
 
@@ -460,14 +523,40 @@ export function assignToCodingAgent(
       : `${content}\n\n${activeSection}\n`;
   }
 
-  const rebuilt = matter.stringify(newContent, data);
-  fs.writeFileSync(filePath, rebuilt, "utf-8");
+  writeFile(agent.filePath, matter.stringify(newContent, data));
+}
+
+/**
+ * Assign a story or bug to the coding (Software Engineer) agent.
+ * Adds the item ID to the agent's "Active Stories" (deduplicated).
+ * Returns the agent id, or null if no software-engineer agent exists.
+ */
+export async function assignToCodingAgent(
+  slug: string,
+  itemId: string
+): Promise<string | null> {
+  const agents = await getAllAgents(slug);
+  const agent = agents.find((a) => a.id === "software-engineer");
+  if (!agent) return null;
+
+  if (agent.activeStories.includes(itemId)) return "software-engineer";
+  agent.activeStories.push(itemId);
+
+  await writeItems("agents", slug, agents);
+  mirrorAgentMarkdown(agent); // mirror
+
   return "software-engineer";
 }
 
-// ── Intelligence ───────────────────────────────────
+// ============================================================
+// Intelligence
+// ============================================================
 
-export function getIntelligence(slug: string): Intelligence {
+export async function getIntelligence(slug: string): Promise<Intelligence> {
+  const doc = await readDoc<Intelligence>("intelligence", slug);
+  if (doc) return doc;
+
+  // fall back to the legacy files (external tools write these)
   const intelDir = pmosPath("projects", slug, "intelligence");
   return {
     architecture: readFileSafe(path.join(intelDir, "architecture.md")),
@@ -481,11 +570,15 @@ export function getIntelligence(slug: string): Intelligence {
   };
 }
 
-// ── Dashboard ──────────────────────────────────────
+// ============================================================
+// Dashboard
+// ============================================================
 
-export function getDashboard(slug: string): DashboardData {
-  const stories = getAllStories(slug);
-  const agents = getAllAgents(slug);
+export async function getDashboard(slug: string): Promise<DashboardData> {
+  const [stories, agents] = await Promise.all([
+    getAllStories(slug),
+    getAllAgents(slug),
+  ]);
   const storyBreakdown = {
     backlog: stories.filter((s) => s.status === "backlog").length,
     inProgress: stories.filter((s) => s.status === "in-progress").length,
@@ -510,9 +603,11 @@ export function getDashboard(slug: string): DashboardData {
   };
 }
 
-// ── Pipeline ───────────────────────────────────────
+// ============================================================
+// Pipeline
+// ============================================================
 
-export function getPipelineSteps(slug: string): PipelineStep[] {
+export async function getPipelineSteps(slug: string): Promise<PipelineStep[]> {
   const steps: PipelineStep[] = [
     { number: 1, name: "Resolve Source", description: "Find code wherever it lives", status: "pending" },
     { number: 2, name: "Repository Intelligence", description: "Architecture, domain model, tech stack", status: "pending" },
@@ -525,54 +620,90 @@ export function getPipelineSteps(slug: string): PipelineStep[] {
     { number: 9, name: "Continuous Learning", description: "Auto-update on every commit", status: "pending" },
   ];
 
-  const source = getSourceLocation(slug);
+  const source = await getSourceLocation(slug);
   if (source) steps[0].status = "done";
 
-  const intel = getIntelligence(slug);
+  const intel = await getIntelligence(slug);
   if (intel.architecture || intel.techStack) steps[1].status = "done";
   if (source?.runtime?.status === "ready" || source?.runtime?.status === "running") steps[2].status = "done";
 
-  const journey = readFileSafe(pmosPath("projects", slug, "journey", "journey.md"));
+  const journey = await getJourneyMarkdown(slug);
   if (journey) steps[3].status = "done";
 
-  const storyMap = readFileSafe(pmosPath("projects", slug, "stories", "story-map.md"));
+  const storyMap = await getStoryMapMarkdown(slug);
   if (storyMap) steps[4].status = "done";
 
-  const stories = getAllStories(slug);
+  const stories = await getAllStories(slug);
   if (stories.length > 0) steps[5].status = "done";
 
-  if (agentsExist(slug)) steps[6].status = "done";
+  if (await agentsExist(slug)) steps[6].status = "done";
 
-  const dash = readFileSafe(pmosPath("projects", slug, "dashboard.md"));
+  const dash = await getDashboardMarkdown(slug);
   if (dash) steps[7].status = "done";
 
   return steps;
 }
 
-function agentsExist(slug: string): boolean {
-  const agentsDir = pmosPath("projects", slug, "agents");
-  return fs.existsSync(agentsDir) && fs.readdirSync(agentsDir).length > 0;
+async function agentsExist(slug: string): Promise<boolean> {
+  const agents = await getAllAgents(slug);
+  return agents.length > 0;
 }
 
-// ── Journey / Personas ─────────────────────────────
-
-export function getJourneyMarkdown(slug: string): string | null {
-  return readFileSafe(pmosPath("projects", slug, "journey", "journey.md"));
+/** stories/story-map.md content — PostBase first, legacy file fallback. */
+async function getStoryMapMarkdown(slug: string): Promise<string | null> {
+  const doc = await readDoc<{ markdown: string }>("story_map_md", slug);
+  if (doc?.markdown) return doc.markdown;
+  const file = readFileSafe(pmosPath("projects", slug, "stories", "story-map.md"));
+  if (file) await writeDoc("story_map_md", slug, { markdown: file });
+  return file;
 }
 
-export function getPersonasMarkdown(slug: string): string | null {
-  return readFileSafe(pmosPath("projects", slug, "journey", "personas.md"));
+/** dashboard.md content — PostBase first, legacy file fallback. */
+async function getDashboardMarkdown(slug: string): Promise<string | null> {
+  const doc = await readDoc<{ markdown: string }>("dashboard_md", slug);
+  if (doc?.markdown) return doc.markdown;
+  const file = readFileSafe(pmosPath("projects", slug, "dashboard.md"));
+  if (file) await writeDoc("dashboard_md", slug, { markdown: file });
+  return file;
 }
 
-export function updateJourneyMarkdown(slug: string, content: string) {
-  writeFile(pmosPath("projects", slug, "journey", "journey.md"), content);
+// ============================================================
+// Journey / Personas
+// ============================================================
+
+export async function getJourneyMarkdown(slug: string): Promise<string | null> {
+  const doc = await readDoc<{ journey: string | null; personas: string | null }>("journeys", slug);
+  if (doc?.journey) return doc.journey;
+  const file = readFileSafe(pmosPath("projects", slug, "journey", "journey.md"));
+  if (file) await writeDoc("journeys", slug, { journey: file, personas: null });
+  return file;
 }
 
-export function updatePersonasMarkdown(slug: string, content: string) {
-  writeFile(pmosPath("projects", slug, "journey", "personas.md"), content);
+export async function getPersonasMarkdown(slug: string): Promise<string | null> {
+  const doc = await readDoc<{ journey: string | null; personas: string | null }>("journeys", slug);
+  if (doc?.personas) return doc.personas;
+  const file = readFileSafe(pmosPath("projects", slug, "journey", "personas.md"));
+  if (file) await writeDoc("journeys", slug, { journey: null, personas: file });
+  return file;
 }
 
-// ── Per-Persona Journeys ───────────────────────────
+export async function updateJourneyMarkdown(slug: string, content: string): Promise<void> {
+  const doc = (await readDoc<{ journey: string | null; personas: string | null }>("journeys", slug)) ?? { journey: null, personas: null };
+  doc.journey = content;
+  await writeDoc("journeys", slug, doc);
+  writeFile(pmosPath("projects", slug, "journey", "journey.md"), content); // mirror
+}
+
+export async function updatePersonasMarkdown(slug: string, content: string): Promise<void> {
+  const doc = (await readDoc<{ journey: string | null; personas: string | null }>("journeys", slug)) ?? { journey: null, personas: null };
+  doc.personas = content;
+  await writeDoc("journeys", slug, doc);
+  writeFile(pmosPath("projects", slug, "journey", "personas.md"), content); // mirror
+}
+
+// ============================================================
+// Per-Persona Journeys
+// ============================================================
 
 export interface PersonaJourneyStep {
   stepNumber: number;
@@ -640,7 +771,10 @@ function parsePersonaJourney(md: string): PersonaJourney {
   return { personaId, personaName, role, quote, steps, rawMarkdown: md };
 }
 
-export function getPersonaJourneys(slug: string): PersonaJourney[] {
+const personaJourneyDocId = (slug: string, personaId: string) => `${slug}::${personaId}`;
+
+/** Legacy disk reader — used as a one-time bootstrap when PostBase is empty. */
+function readPersonaJourneysFromFiles(slug: string): PersonaJourney[] {
   const journeyDir = pmosPath("projects", slug, "journey");
   if (!fs.existsSync(journeyDir)) return [];
 
@@ -651,7 +785,34 @@ export function getPersonaJourneys(slug: string): PersonaJourney[] {
   }).filter(Boolean) as PersonaJourney[];
 }
 
-// ── Story Map (Jeff Patton style) ──────────────────
+export async function getPersonaJourneys(slug: string): Promise<PersonaJourney[]> {
+  const snap = await db.collection("persona_journeys").get();
+  const docs = snap.docs
+    .filter((d) => d.id.startsWith(`${slug}::`))
+    .map((d) => {
+      const data = d.data() as { markdown?: string };
+      return data?.markdown ? parsePersonaJourney(data.markdown) : null;
+    })
+    .filter(Boolean) as PersonaJourney[];
+
+  if (docs.length > 0) {
+    return docs.sort((a, b) => a.personaId.localeCompare(b.personaId));
+  }
+
+  const fromFiles = readPersonaJourneysFromFiles(slug);
+  if (fromFiles.length > 0) {
+    for (const j of fromFiles) {
+      await writeDoc("persona_journeys", personaJourneyDocId(slug, j.personaId), {
+        markdown: j.rawMarkdown,
+      });
+    }
+  }
+  return fromFiles;
+}
+
+// ============================================================
+// Story Map (Jeff Patton style)
+// ============================================================
 
 export interface StoryMapActivity {
   name: string;
@@ -668,9 +829,11 @@ export interface StoryMap {
   activities: StoryMapActivity[][]; // Per-persona rows of activities
 }
 
-export function getStoryMap(slug: string): StoryMap {
-  const journeys = getPersonaJourneys(slug);
-  const stories = getAllStories(slug);
+export async function getStoryMap(slug: string): Promise<StoryMap> {
+  const [journeys, stories] = await Promise.all([
+    getPersonaJourneys(slug),
+    getAllStories(slug),
+  ]);
 
   // Use the first persona's journey as the backbone (all personas share same step names)
   const backbone = journeys[0]?.steps || [];
@@ -694,7 +857,9 @@ export function getStoryMap(slug: string): StoryMap {
   return { backbone, activities };
 }
 
-// ── Screen Mockups (maps step names to screen types) ─
+// ============================================================
+// Screen Mockups (maps step names to screen types)
+// ============================================================
 
 export interface ScreenMockup {
   stepName: string;
@@ -752,7 +917,7 @@ const SCREEN_MAP: Record<string, ScreenMockup> = {
     screenType: "subject-input",
     components: [
       { id: "subject", label: "Subject Input", type: "input", description: "Describe what the video should be about" },
-      { id: "length", label: "Duration Picker", type: "settings", description: "Set video length (30s / 60s / 120s)" },
+      { id: "length", label: "Duration Picker", type: "settings", description: "Set video length (30s / 60s / 90s / 120s)" },
       { id: "generate", label: "Generate Script", type: "button", description: "AI generates scene table" },
     ],
   },
@@ -884,7 +1049,9 @@ export function getScreenMockup(stepName: string): ScreenMockup {
   };
 }
 
-// ── Markdown → HTML ────────────────────────────────
+// ============================================================
+// Markdown → HTML
+// ============================================================
 
 export async function markdownToHtml(md: string): Promise<string> {
   const { marked } = await import("marked");

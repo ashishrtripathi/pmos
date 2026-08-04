@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { getPricingConfig } from "./pmos";
+import { getPricingConfig, getAllStories } from "./pmos";
+import { writeItems } from "./postbase";
+import type { Story } from "@/types/pmos";
 
 // ── Types ─────────────────────────────────────────────
 
@@ -539,13 +541,16 @@ export function parseAllIntelligenceStories(slug: string): {
 
 // ── Write Stories as Backlog Files ─────────────────
 
-export function writeIntelligenceStoriesToBacklog(slug: string): number {
+export async function writeIntelligenceStoriesToBacklog(slug: string): Promise<number> {
   const { stories } = parseAllIntelligenceStories(slug);
   const backlogDir = path.join(PMOS_ROOT, "projects", slug, "stories", "backlog");
 
   if (!fs.existsSync(backlogDir)) {
     fs.mkdirSync(backlogDir, { recursive: true });
   }
+
+  // PostBase is the source of truth for stories
+  const existing = await getAllStories(slug);
 
   let written = 0;
   for (const story of stories) {
@@ -557,27 +562,8 @@ export function writeIntelligenceStoriesToBacklog(slug: string): number {
     const fileName = `${story.id}-${safeTitle}.md`;
     const filePath = path.join(backlogDir, fileName);
 
-    // Skip if already exists
-    if (fs.existsSync(filePath)) continue;
-
-    const frontmatter = {
-      id: story.id,
-      title: story.title,
-      points: story.points,
-      status: "backlog",
-      "assigned-agent": story.assignedAgent,
-      "estimated-value": story.estimatedValue || 0,
-      category: story.category,
-      priority: story.priority,
-      effort: story.effort,
-      source: story.source,
-      "source-file": story.sourceFile,
-      "source-section": story.sourceSection,
-    };
-
-    // Only add persona fields if they exist
-    if (story.persona) (frontmatter as any)["persona"] = story.persona;
-    if (story.personaRole) (frontmatter as any)["persona-role"] = story.personaRole;
+    // Skip if already in PostBase
+    if (existing.some((s) => s.id === story.id)) continue;
 
     const acBullets = story.acceptanceCriteria
       .map(
@@ -627,8 +613,29 @@ ${story.businessGoal}
 ${acBullets}
 `;
 
-    fs.writeFileSync(filePath, content, "utf-8");
+    const newStory: Story = {
+      id: story.id,
+      title: story.title,
+      description: story.description,
+      points: story.points,
+      status: "backlog",
+      useCase: story.useCase,
+      businessGoal: story.businessGoal,
+      acceptanceCriteria: story.acceptanceCriteria,
+      persona: story.persona,
+      personaRole: story.personaRole,
+      estimatedValue: story.estimatedValue,
+      source: story.source,
+      filePath,
+    };
+
+    existing.push(newStory);
+    fs.writeFileSync(filePath, content, "utf-8"); // mirror
     written++;
+  }
+
+  if (written > 0) {
+    await writeItems("stories", slug, existing);
   }
 
   return written;
@@ -655,11 +662,11 @@ export interface CostBreakdown {
   }[];
 }
 
-export function calculateTotalCost(
+export async function calculateTotalCost(
   slug: string,
   stories: { id: string; title: string; points: number }[]
-): CostBreakdown {
-  const pricing = getPricingConfig(slug);
+): Promise<CostBreakdown> {
+  const pricing = await getPricingConfig(slug);
 
   let totalAiCost = 0;
   let totalDevCost = 0;

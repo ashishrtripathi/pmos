@@ -21,7 +21,7 @@ export default async function IntelligencePage({
 }) {
   const { slug } = params;
   const activeTab = searchParams.tab || "architecture";
-  const intel = getIntelligence(slug);
+  const intel = await getIntelligence(slug);
 
   const content = intel[activeTab as keyof typeof intel] || "No data available for this section.";
 

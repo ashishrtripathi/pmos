@@ -701,7 +701,7 @@ export function KanbanBoard({
       {/* Story Detail Modal */}
       {detailStory && (
         <StoryDetailModal
-          story={detailStory}
+          story={{ ...detailStory, description: detailStory.description || "" }}
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
           pricing={pricing || undefined}

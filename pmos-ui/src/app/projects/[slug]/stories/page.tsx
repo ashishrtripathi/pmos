@@ -6,6 +6,6 @@ export default async function StoriesPage({
 }: {
   params: { slug: string };
 }) {
-  const storiesByStatus = getStoriesByStatus(params.slug);
+  const storiesByStatus = await getStoriesByStatus(params.slug);
   return <StoriesBoard params={params} initialStories={storiesByStatus} />;
 }

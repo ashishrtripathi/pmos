@@ -2,19 +2,15 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { Settings, Folder, Globe, Check, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
+import { MODEL_REGISTRY } from "@/lib/models";
 
-const MODELS = [
-  { id: "claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic", desc: "Best balance of speed & quality" },
-  { id: "claude-haiku-3.5", name: "Claude Haiku 3.5", provider: "Anthropic", desc: "Fast & economical" },
-  { id: "claude-opus-4", name: "Claude Opus 4", provider: "Anthropic", desc: "Maximum capability" },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", desc: "Latest GPT-4 class" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", desc: "Lightweight & fast" },
-  { id: "gpt-4-turbo", name: "GPT-4 Turbo", provider: "OpenAI", desc: "Previous generation" },
-  { id: "gemini-2-flash", name: "Gemini 2.0 Flash", provider: "Google", desc: "Very low cost" },
-  { id: "gemini-2-pro", name: "Gemini 2.0 Pro", provider: "Google", desc: "High quality" },
-  { id: "local-llama", name: "Llama 3 (local)", provider: "Local", desc: "Free if self-hosted" },
-  { id: "custom", name: "Custom pricing", provider: "Custom", desc: "Set your own cost per 1K tokens" },
-];
+const MODELS = MODEL_REGISTRY.map((m) => ({
+  id: m.id,
+  name: m.name,
+  provider: m.provider,
+  desc: m.notes,
+  costPer1KTokens: m.costPer1KTokens,
+}));
 
 const RATE_FIELDS = [
   { key: "developerHourlyRate", label: "Developer Hourly Rate ($)", step: "1", default: 150 },

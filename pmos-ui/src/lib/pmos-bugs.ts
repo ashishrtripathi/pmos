@@ -1,9 +1,11 @@
 // PMOS Bugs
-// Stored as JSON per project: ~/.pmos/projects/{slug}/bugs.json
+// Stored in PostBase (collection `bugs`, doc per project slug) with a legacy
+// JSON mirror per project: ~/.pmos/projects/{slug}/bugs.json
 
 import fs from "fs";
 import path from "path";
 import type { Bug, BugStatus, BugSeverity } from "@/types/pmos";
+import { readItems, writeItems } from "./postbase";
 
 const PMOS_HOME = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -47,19 +49,26 @@ export const BUG_SEVERITIES: BugSeverity[] = [
   "cosmetic",
 ];
 
-export function getBugs(slug: string): Bug[] {
-  return readJSON<Bug[]>(bugsPath(slug)) || [];
+export async function getBugs(slug: string): Promise<Bug[]> {
+  const items = await readItems<Bug>("bugs", slug);
+  if (items.length > 0) return items;
+  // one-time bootstrap from legacy file
+  const fromFile = readJSON<Bug[]>(bugsPath(slug)) || [];
+  if (fromFile.length > 0) await writeItems("bugs", slug, fromFile);
+  return fromFile;
 }
 
-export function saveBugs(slug: string, bugs: Bug[]): void {
-  writeJSON(bugsPath(slug), bugs);
+export async function saveBugs(slug: string, bugs: Bug[]): Promise<void> {
+  await writeItems("bugs", slug, bugs);
+  writeJSON(bugsPath(slug), bugs); // mirror
 }
 
-export function getBug(slug: string, id: string): Bug | null {
-  return getBugs(slug).find((b) => b.id === id) || null;
+export async function getBug(slug: string, id: string): Promise<Bug | null> {
+  const bugs = await getBugs(slug);
+  return bugs.find((b) => b.id === id) || null;
 }
 
-export function createBug(
+export async function createBug(
   slug: string,
   data: {
     title: string;
@@ -72,8 +81,8 @@ export function createBug(
     reportedBy?: string;
     storyId?: string;
   }
-): Bug {
-  const bugs = getBugs(slug);
+): Promise<Bug> {
+  const bugs = await getBugs(slug);
   const maxNum = bugs.reduce((max, b) => {
     const num = parseInt(b.id.replace("BUG-", ""));
     return isNaN(num) ? max : Math.max(max, num);
@@ -93,27 +102,27 @@ export function createBug(
     storyId: data.storyId,
   };
   bugs.push(bug);
-  saveBugs(slug, bugs);
+  await saveBugs(slug, bugs);
   return bug;
 }
 
-export function updateBug(
+export async function updateBug(
   slug: string,
   id: string,
   updates: Partial<Bug>
-): Bug | null {
-  const bugs = getBugs(slug);
+): Promise<Bug | null> {
+  const bugs = await getBugs(slug);
   const idx = bugs.findIndex((b) => b.id === id);
   if (idx < 0) return null;
   bugs[idx] = { ...bugs[idx], ...updates, updatedAt: new Date().toISOString() };
-  saveBugs(slug, bugs);
+  await saveBugs(slug, bugs);
   return bugs[idx];
 }
 
-export function deleteBug(slug: string, id: string): boolean {
-  const bugs = getBugs(slug);
+export async function deleteBug(slug: string, id: string): Promise<boolean> {
+  const bugs = await getBugs(slug);
   const filtered = bugs.filter((b) => b.id !== id);
   if (filtered.length === bugs.length) return false;
-  saveBugs(slug, filtered);
+  await saveBugs(slug, filtered);
   return true;
 }

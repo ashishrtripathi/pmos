@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
-import path from "path";
+import {
+  getSourceLocation,
+  getIntelligence,
+  getAllStories,
+  getPersonaJourneys,
+} from "@/lib/pmos";
 import { writeIntelligenceStoriesToBacklog } from "@/lib/intelligence";
-
-const PMOS_ROOT = path.join(
-  process.env.HOME || process.env.USERPROFILE || "",
-  ".pmos"
-);
+import { readDoc, writeDoc } from "@/lib/postbase";
 
 // Pipeline step definitions
 const PIPELINE_STEPS = [
@@ -66,38 +67,28 @@ const PIPELINE_STEPS = [
   },
 ];
 
-function getPipelineStateFile(slug: string): string {
-  return path.join(PMOS_ROOT, "projects", slug, "pipeline-state.json");
+// Pipeline execution state lives in PostBase (collection `pipeline`, doc per slug)
+async function readPipelineState(slug: string): Promise<Record<string, string>> {
+  const doc = await readDoc<{ state: Record<string, string> }>("pipeline", slug);
+  return doc?.state ?? {};
 }
 
-function readPipelineState(slug: string): Record<string, string> {
-  const stateFile = getPipelineStateFile(slug);
-  if (fs.existsSync(stateFile)) {
-    return JSON.parse(fs.readFileSync(stateFile, "utf-8"));
-  }
-  return {};
-}
-
-function writePipelineState(slug: string, state: Record<string, string>) {
-  const stateFile = getPipelineStateFile(slug);
-  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
+async function writePipelineState(slug: string, state: Record<string, string>) {
+  await writeDoc("pipeline", slug, { state });
 }
 
 // Step execution logic
-function executeStep(
+async function executeStep(
   slug: string,
   stepNumber: number
-): { success: boolean; message: string } {
-  const projectDir = path.join(PMOS_ROOT, "projects", slug);
-  const sourceFile = path.join(projectDir, "source-location.json");
-
+): Promise<{ success: boolean; message: string }> {
   switch (stepNumber) {
     case 1: {
       // Resolve Source
-      if (!fs.existsSync(sourceFile)) {
-        return { success: false, message: "No source-location.json found" };
+      const source = await getSourceLocation(slug);
+      if (!source) {
+        return { success: false, message: "No source location configured" };
       }
-      const source = JSON.parse(fs.readFileSync(sourceFile, "utf-8"));
       if (source.mode === "local" || source.mode === "github") {
         if (!source.localPath || !fs.existsSync(source.localPath)) {
           return {
@@ -114,11 +105,10 @@ function executeStep(
 
     case 2: {
       // Repository Intelligence — check if intelligence files exist, then parse into stories
-      const intelDir = path.join(projectDir, "intelligence");
-      if (!fs.existsSync(intelDir)) {
-        fs.mkdirSync(intelDir, { recursive: true });
-      }
-      const intelFiles = fs.readdirSync(intelDir).filter((f) => f.endsWith(".md"));
+      const intel = await getIntelligence(slug);
+      const intelFiles = Object.entries(intel)
+        .filter(([, md]) => !!md)
+        .map(([name]) => `${name}.md`);
       if (intelFiles.length === 0) {
         return {
           success: false,
@@ -129,10 +119,10 @@ function executeStep(
         };
       }
 
-      // Parse intelligence files and write stories to backlog
+      // Parse intelligence files and write stories to backlog (PostBase + mirror)
       let storiesWritten = 0;
       try {
-        storiesWritten = writeIntelligenceStoriesToBacklog(slug);
+        storiesWritten = await writeIntelligenceStoriesToBacklog(slug);
       } catch (err) {
         // Parsing may fail if file format doesn't match expected tables — still report as partial success
       }
@@ -145,9 +135,7 @@ function executeStep(
 
     case 3: {
       // Run Application — check if server is running
-      const source = fs.existsSync(sourceFile)
-        ? JSON.parse(fs.readFileSync(sourceFile, "utf-8"))
-        : null;
+      const source = await getSourceLocation(slug);
       return {
         success: true,
         message: source?.runtime?.status === "running"
@@ -157,14 +145,8 @@ function executeStep(
     }
 
     case 4: {
-      // Customer Journey — check for persona files
-      const journeyDir = path.join(projectDir, "journey");
-      if (!fs.existsSync(journeyDir)) {
-        fs.mkdirSync(journeyDir, { recursive: true });
-      }
-      const personas = fs
-        .readdirSync(journeyDir)
-        .filter((f) => f.startsWith("persona-") && f.endsWith(".md"));
+      // Customer Journey — check for persona journeys
+      const personas = await getPersonaJourneys(slug);
       if (personas.length === 0) {
         return {
           success: false,
@@ -176,45 +158,31 @@ function executeStep(
       }
       return {
         success: true,
-        message: `${personas.length} persona journeys: ${personas.map((p) => p.replace("persona-", "").replace(".md", "")).join(", ")}`,
+        message: `${personas.length} persona journeys: ${personas.map((p) => p.personaId).join(", ")}`,
       };
     }
 
     case 5: {
       // Story Map — check for stories linked to journey steps
-      const storiesDir = path.join(projectDir, "stories");
-      const allStoryFiles: string[] = [];
-      for (const status of ["backlog", "in-progress", "review", "done"]) {
-        const dir = path.join(storiesDir, status);
-        if (fs.existsSync(dir)) {
-          allStoryFiles.push(
-            ...fs.readdirSync(dir).filter((f) => f.endsWith(".md"))
-          );
-        }
-      }
+      const stories = await getAllStories(slug);
       return {
-        success: allStoryFiles.length > 0,
+        success: stories.length > 0,
         message:
-          allStoryFiles.length > 0
-            ? `${allStoryFiles.length} stories mapped`
+          stories.length > 0
+            ? `${stories.length} stories mapped`
             : "No stories yet. Create stories from the Story Map or ask an AI agent.",
       };
     }
 
     case 6: {
       // Build Backlog
-      const backlogDir = path.join(projectDir, "stories", "backlog");
-      if (!fs.existsSync(backlogDir)) {
-        fs.mkdirSync(backlogDir, { recursive: true });
-      }
-      const backlogFiles = fs
-        .readdirSync(backlogDir)
-        .filter((f) => f.endsWith(".md"));
+      const stories = await getAllStories(slug);
+      const backlogCount = stories.filter((s) => s.status === "backlog").length;
       return {
-        success: backlogFiles.length > 0,
+        success: backlogCount > 0,
         message:
-          backlogFiles.length > 0
-            ? `${backlogFiles.length} stories in backlog`
+          backlogCount > 0
+            ? `${backlogCount} stories in backlog`
             : "Backlog empty. Create stories or run intelligence to generate suggestions.",
       };
     }
@@ -255,7 +223,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   const { slug } = params;
-  const state = readPipelineState(slug);
+  const state = await readPipelineState(slug);
 
   const steps = PIPELINE_STEPS.map((step) => {
     const stepState = state[`step-${step.number}`] || "pending";
@@ -286,7 +254,7 @@ export async function POST(
   const body = await request.json().catch(() => ({}));
   const { stepNumber, runAll } = body;
 
-  const state = readPipelineState(slug);
+  const state = await readPipelineState(slug);
 
   if (runAll) {
     // Run from next pending step onward
@@ -298,12 +266,12 @@ export async function POST(
 
       // Mark as running
       state[`step-${step.number}`] = "running";
-      writePipelineState(slug, state);
+      await writePipelineState(slug, state);
 
       // Execute
-      const result = executeStep(slug, step.number);
+      const result = await executeStep(slug, step.number);
       state[`step-${step.number}`] = result.success ? "done" : "failed";
-      writePipelineState(slug, state);
+      await writePipelineState(slug, state);
 
       results.push({
         step: step.number,
@@ -335,11 +303,11 @@ export async function POST(
     }
 
     state[`step-${stepNumber}`] = "running";
-    writePipelineState(slug, state);
+    await writePipelineState(slug, state);
 
-    const result = executeStep(slug, stepNumber);
+    const result = await executeStep(slug, stepNumber);
     state[`step-${stepNumber}`] = result.success ? "done" : "failed";
-    writePipelineState(slug, state);
+    await writePipelineState(slug, state);
 
     return NextResponse.json({
       step: stepNumber,
@@ -360,9 +328,6 @@ export async function DELETE(
   { params }: { params: { slug: string } }
 ) {
   const { slug } = params;
-  const stateFile = getPipelineStateFile(slug);
-  if (fs.existsSync(stateFile)) {
-    fs.unlinkSync(stateFile);
-  }
+  await writeDoc("pipeline", slug, { state: {} });
   return NextResponse.json({ success: true, message: "Pipeline state reset" });
 }

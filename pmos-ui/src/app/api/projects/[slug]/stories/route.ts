@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   const { getAllStories } = await import("@/lib/pmos");
-  const stories = getAllStories(params.slug);
+  const stories = await getAllStories(params.slug);
   return NextResponse.json(stories);
 }
 
@@ -15,7 +15,7 @@ export async function POST(
   { params }: { params: { slug: string } }
 ) {
   const body = await request.json();
-  const result = createStory(params.slug, body);
+  const result = await createStory(params.slug, body);
   return NextResponse.json(result);
 }
 
@@ -25,6 +25,6 @@ export async function PATCH(
 ) {
   const body = await request.json();
   const { storyId, from, to } = body;
-  const result = moveStory(params.slug, storyId, from, to);
+  const result = await moveStory(params.slug, storyId, from, to);
   return NextResponse.json({ ok: true, result });
 }

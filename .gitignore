@@ -78,3 +78,7 @@ docker-compose.override.yml
 
 # Secrets
 *.key
+
+# Local PostBase (embedded PostgreSQL cluster)
+postgres-data/
+postbase/backend/*.log

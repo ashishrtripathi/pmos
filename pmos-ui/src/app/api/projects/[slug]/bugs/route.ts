@@ -10,7 +10,7 @@ import { assignToCodingAgent } from "@/lib/pmos";
 type Params = { params: { slug: string } };
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const bugs = getBugs(params.slug);
+  const bugs = await getBugs(params.slug);
   return NextResponse.json({ bugs });
 }
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     switch (action) {
       case "create": {
-        const bug = createBug(params.slug, data);
+        const bug = await createBug(params.slug, data);
         return NextResponse.json({ bug }, { status: 201 });
       }
       case "update": {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             { status: 400 }
           );
         }
-        const bug = updateBug(params.slug, data.id, data.updates || data);
+        const bug = await updateBug(params.slug, data.id, data.updates || data);
         if (!bug) {
           return NextResponse.json({ error: "Bug not found" }, { status: 404 });
         }
@@ -44,14 +44,14 @@ export async function POST(req: NextRequest, { params }: Params) {
             { status: 400 }
           );
         }
-        const bug = updateBug(params.slug, data.id, { status: data.status });
+        const bug = await updateBug(params.slug, data.id, { status: data.status });
         if (!bug) {
           return NextResponse.json({ error: "Bug not found" }, { status: 404 });
         }
         // When a bug moves to in-progress, the coding agent picks it up
         let pickedUpBy: string | null = null;
         if (data.status === "in-progress") {
-          pickedUpBy = assignToCodingAgent(params.slug, data.id);
+          pickedUpBy = await assignToCodingAgent(params.slug, data.id);
         }
         return NextResponse.json({ bug, pickedUpBy });
       }
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest, { params }: Params) {
             { status: 400 }
           );
         }
-        const ok = deleteBug(params.slug, data.id);
+        const ok = await deleteBug(params.slug, data.id);
         if (!ok) {
           return NextResponse.json({ error: "Bug not found" }, { status: 404 });
         }
