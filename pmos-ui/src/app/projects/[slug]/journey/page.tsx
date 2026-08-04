@@ -24,7 +24,7 @@ const PERSONA_AVATARS: Record<string, string> = {
   mike: "B",
   emma: "T",
   priya: "PM",
-  dev: "Dev",
+  dev: "D",
   agent: "AI",
 };
 
@@ -111,8 +111,8 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
               >
                 <span className="text-xl font-bold">{PERSONA_AVATARS[j.personaId] || "?"}</span>
                 <div className="text-left">
-                  <div className="text-sm font-medium">{j.personaName}</div>
-                  <div className="text-[10px] text-muted-foreground">{j.role}</div>
+                  <div className="text-sm font-medium">{j.role}</div>
+                  <div className="text-[10px] text-muted-foreground">{j.personaName}</div>
                 </div>
               </button>
             ))}

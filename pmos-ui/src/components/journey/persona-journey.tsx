@@ -139,8 +139,8 @@ export function PersonaJourneyBoard({
         <div className="flex items-center gap-3">
           <span className="text-3xl"><AvatarIcon className="w-8 h-8" /></span>
           <div>
-            <h3 className="text-lg font-bold">{journey.personaName}</h3>
-            <p className="text-sm opacity-80">{journey.role}</p>
+            <h3 className="text-lg font-bold">{journey.role}</h3>
+            <p className="text-sm opacity-80">{journey.personaName}</p>
           </div>
           <div className="ml-auto flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1.5">
             <Quote className="w-3 h-3" />
