@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Map, Loader2, Monitor, MonitorOff } from "lucide-react";
 import { PersonaJourneyBoard } from "@/components/journey/persona-journey";
+import { personaInitials } from "@/lib/persona-utils";
 
 interface PipelineData {
   scenes: any[];
@@ -19,14 +20,9 @@ interface UIInfo {
   features: { hasCostTracker: boolean; hasHalftonePreview: boolean };
 }
 
-const PERSONA_AVATARS: Record<string, string> = {
-  sarah: "A",
-  mike: "B",
-  emma: "T",
-  priya: "PM",
-  dev: "D",
-  agent: "AI",
-};
+/**
+ * Persona tab avatar + label - generic, derived from each persona's role.
+ */
 
 export default function JourneyPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
@@ -109,7 +105,7 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
                     : "border-border hover:border-primary/30 bg-card"
                 }`}
               >
-                <span className="text-xl font-bold">{PERSONA_AVATARS[j.personaId] || "?"}</span>
+                <span className="w-9 h-9 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center text-xs font-bold">{personaInitials(j)}</span>
                 <div className="text-left">
                   <div className="text-sm font-medium">{j.role}</div>
                   <div className="text-[10px] text-muted-foreground">{j.personaName}</div>

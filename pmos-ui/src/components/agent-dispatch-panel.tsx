@@ -201,7 +201,7 @@ const COMMANDS: PMOSCommand[] = [
         label: "Persona Name",
         type: "text",
         required: true,
-        placeholder: "e.g. Sarah, Mike, Emma",
+        placeholder: "e.g. Product Manager, Developer, Designer",
       },
       {
         name: "role",

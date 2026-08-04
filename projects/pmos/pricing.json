@@ -8,9 +8,9 @@
   "numProductManagers": 1,
   "numQA": 0,
   "aiOverheadPercent": 2.8,
-  "costPerToken": 0.003,
+  "costPerToken": 0.0001,
   "tokensPerPoint": 20000,
-  "tokenMultiplier": 3.5,
+  "tokenMultiplier": 0.1,
   "tokensPerK": 1000,
-  "marginMultiplier": 7
+  "marginMultiplier": 0.1
 }

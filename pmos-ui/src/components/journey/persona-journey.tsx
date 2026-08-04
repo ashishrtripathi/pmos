@@ -11,9 +11,6 @@ import {
   Loader2,
   ImageIcon,
   Palette,
-  Code2,
-  GraduationCap,
-  User,
   Globe,
   FileText,
   FolderPlus,
@@ -31,6 +28,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { PipelineScreen } from "./pipeline-screen";
+import { personaGradient, personaInitials } from "@/lib/persona-utils";
 
 interface PersonaJourneyStep {
   stepNumber: number;
@@ -64,18 +62,6 @@ interface UIInfo {
   steps: { number: number; title: string; description: string; fields: string[] }[];
   features: { hasCostTracker: boolean; hasHalftonePreview: boolean };
 }
-
-const PERSONA_COLORS: Record<string, string> = {
-  sarah: "from-pink-500 to-rose-500",
-  mike: "from-blue-500 to-indigo-500",
-  emma: "from-green-500 to-emerald-500",
-};
-
-const PERSONA_AVATARS: Record<string, React.ComponentType<{ className?: string }>> = {
-  sarah: Palette,
-  mike: Code2,
-  emma: GraduationCap,
-};
 
 const STEP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Discovery: Globe,
@@ -112,8 +98,7 @@ export function PersonaJourneyBoard({
   const [zoomStep, setZoomStep] = useState<number | null>(null);
   const [screenshotLoaded, setScreenshotLoaded] = useState<Record<number, boolean>>({});
   const [screenshotError, setScreenshotError] = useState<Record<number, boolean>>({});
-  const color = PERSONA_COLORS[journey.personaId] || "from-gray-500 to-gray-600";
-  const AvatarIcon = PERSONA_AVATARS[journey.personaId] || User;
+  const color = personaGradient(journey.personaId);
 
   // Parse screen field for markdown image: ![alt](path)
   const getScreenshotUrl = (screen: string): string | null => {
@@ -137,7 +122,7 @@ export function PersonaJourneyBoard({
       {/* Persona Header */}
       <div className={`bg-gradient-to-r ${color} rounded-xl p-4 text-white`}>
         <div className="flex items-center gap-3">
-          <span className="text-3xl"><AvatarIcon className="w-8 h-8" /></span>
+          <span className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center text-sm font-bold shrink-0">{personaInitials(journey)}</span>
           <div>
             <h3 className="text-lg font-bold">{journey.role}</h3>
             <p className="text-sm opacity-80">{journey.personaName}</p>

@@ -20,6 +20,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { personaColor } from "@/lib/persona-utils";
 
 // ── Types ──────────────────────────────────────────
 
@@ -57,15 +58,9 @@ const COLUMNS: { id: ColumnId; label: string; color: string }[] = [
   { id: "done", label: "Done", color: "border-t-green-500" },
 ];
 
-const PERSONA_COLORS: Record<string, string> = {
-  Sarah: "bg-purple-100 text-purple-700 border-purple-300",
-  Mike: "bg-blue-100 text-blue-700 border-blue-300",
-  Emma: "bg-green-100 text-green-700 border-green-300",
-};
-
 function getPersonaColor(name?: string): string {
   if (!name) return "bg-gray-100 text-gray-700 border-gray-300";
-  return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
+  return personaColor(name).badge;
 }
 
 // ── Story Card ──────────────────────────────────────
@@ -690,7 +685,7 @@ export function StoriesBoard({
         <CreateStoryForm
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
-          personas={allPersonas.length > 0 ? allPersonas : ["Sarah", "Mike", "Emma"]}
+          personas={allPersonas.length > 0 ? allPersonas : ["Product Manager", "Developer", "Designer"]}
         />
       )}
     </div>

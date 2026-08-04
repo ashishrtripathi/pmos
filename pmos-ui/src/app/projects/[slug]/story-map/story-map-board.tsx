@@ -30,6 +30,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { PipelineScreen } from "@/components/journey/pipeline-screen";
 import type { UIInfo } from "@/components/journey/pipeline-screen";
 import { StoryDetailModal } from "@/components/story-detail-modal";
+import { personaColor } from "@/lib/persona-utils";
 import {
   estimateTokenCost,
   calculateROI,
@@ -99,15 +100,9 @@ interface PipelineData {
 
 // --- Persona colors --------------------------------------------------
 
-const PERSONA_COLORS: Record<string, string> = {
-  Sarah: "bg-purple-100 text-purple-700 border-purple-300",
-  Mike: "bg-blue-100 text-blue-700 border-blue-300",
-  Emma: "bg-green-100 text-green-700 border-green-300",
-};
-
 function getPersonaColor(name?: string): string {
   if (!name) return "bg-gray-100 text-gray-700 border-gray-300";
-  return PERSONA_COLORS[name] || "bg-gray-100 text-gray-700 border-gray-300";
+  return personaColor(name).badge;
 }
 
 // --- Story Card (Sortable) -------------------------------------------
@@ -971,7 +966,7 @@ export function StoryMapBoard({
           onClose={() => { setShowCreate(false); setCreateForStep(""); }}
           onCreate={handleCreateStory}
           stepName={createForStep}
-          personas={allPersonas.length > 0 ? allPersonas : ["Sarah", "Mike", "Emma"]}
+          personas={allPersonas.length > 0 ? allPersonas : ["Product Manager", "Developer", "Designer"]}
           pricing={pricing || DEFAULT_PRICING}
         />
       )}
@@ -981,7 +976,7 @@ export function StoryMapBoard({
           story={detailStory}
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
-          personas={allPersonas.length > 0 ? allPersonas : ["Sarah", "Mike", "Emma"]}
+          personas={allPersonas.length > 0 ? allPersonas : ["Product Manager", "Developer", "Designer"]}
           pricing={pricing || undefined}
         />
       )}
