@@ -1,7 +1,35 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, ChevronRight, Quote, Maximize2, X, Camera, Loader2, ImageIcon } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Quote,
+  Maximize2,
+  X,
+  Camera,
+  Loader2,
+  ImageIcon,
+  Palette,
+  Code2,
+  GraduationCap,
+  User,
+  Globe,
+  FileText,
+  FolderPlus,
+  PenLine,
+  NotebookPen,
+  Search,
+  Flag,
+  Accessibility,
+  PlayCircle,
+  RefreshCw,
+  Scissors,
+  Users,
+  Share2,
+  Bookmark,
+  AlertTriangle,
+} from "lucide-react";
 import { PipelineScreen } from "./pipeline-screen";
 
 interface PersonaJourneyStep {
@@ -43,30 +71,30 @@ const PERSONA_COLORS: Record<string, string> = {
   emma: "from-green-500 to-emerald-500",
 };
 
-const PERSONA_AVATARS: Record<string, string> = {
-  sarah: "ðŸ‘©â€ðŸŽ¨",
-  mike: "ðŸ‘¨â€ðŸ’¼",
-  emma: "ðŸ‘©â€ðŸ«",
+const PERSONA_AVATARS: Record<string, React.ComponentType<{ className?: string }>> = {
+  sarah: Palette,
+  mike: Code2,
+  emma: GraduationCap,
 };
 
-const STEP_ICONS: Record<string, string> = {
-  "Discovery": "ðŸŒ",
-  "Sign Up": "ðŸ“",
-  "Choose Template": "ðŸŽ¨",
-  "Choose Educational Template": "ðŸŽ¨",
-  "Create Project": "ðŸ“",
-  "Enter Subject": "âœï¸",
-  "Generate Script": "ðŸ“‹",
-  "Review Script for Accuracy": "ðŸ”",
-  "Add Branding": "ðŸ·ï¸",
-  "Add Accessibility": "â™¿",
-  "Preview Video": "â–¶ï¸",
-  "Review & Iterate": "ðŸ”„",
-  "Edit Scenes": "âœ‚ï¸",
-  "Team Review": "ðŸ‘¥",
-  "Export & Share": "ðŸ“¤",
-  "Export & Distribute": "ðŸ“¤",
-  "Export for LMS": "ðŸ“¤",
+const STEP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Discovery: Globe,
+  "Sign Up": FileText,
+  "Choose Template": Palette,
+  "Choose Educational Template": Palette,
+  "Create Project": FolderPlus,
+  "Enter Subject": PenLine,
+  "Generate Script": NotebookPen,
+  "Review Script for Accuracy": Search,
+  "Add Branding": Flag,
+  "Add Accessibility": Accessibility,
+  "Preview Video": PlayCircle,
+  "Review & Iterate": RefreshCw,
+  "Edit Scenes": Scissors,
+  "Team Review": Users,
+  "Export & Share": Share2,
+  "Export & Distribute": Share2,
+  "Export for LMS": Share2,
 };
 
 export function PersonaJourneyBoard({
@@ -85,7 +113,7 @@ export function PersonaJourneyBoard({
   const [screenshotLoaded, setScreenshotLoaded] = useState<Record<number, boolean>>({});
   const [screenshotError, setScreenshotError] = useState<Record<number, boolean>>({});
   const color = PERSONA_COLORS[journey.personaId] || "from-gray-500 to-gray-600";
-  const avatar = PERSONA_AVATARS[journey.personaId] || "ðŸ‘¤";
+  const AvatarIcon = PERSONA_AVATARS[journey.personaId] || User;
 
   // Parse screen field for markdown image: ![alt](path)
   const getScreenshotUrl = (screen: string): string | null => {
@@ -109,7 +137,7 @@ export function PersonaJourneyBoard({
       {/* Persona Header */}
       <div className={`bg-gradient-to-r ${color} rounded-xl p-4 text-white`}>
         <div className="flex items-center gap-3">
-          <span className="text-3xl">{avatar}</span>
+          <span className="text-3xl"><AvatarIcon className="w-8 h-8" /></span>
           <div>
             <h3 className="text-lg font-bold">{journey.personaName}</h3>
             <p className="text-sm opacity-80">{journey.role}</p>
@@ -125,7 +153,7 @@ export function PersonaJourneyBoard({
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-3 min-w-max">
           {journey.steps.map((step, idx) => {
-            const icon = STEP_ICONS[step.name] || "ðŸ“Œ";
+            const StepIcon = STEP_ICONS[step.name] || Bookmark;
             const isExpanded = expandedStep === idx;
 
             return (
@@ -139,7 +167,7 @@ export function PersonaJourneyBoard({
                   {/* Step Header */}
                   <div className="p-3 border-b border-border">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{icon}</span>
+                      <span className="text-lg flex items-center"><StepIcon className="w-5 h-5" /></span>
                       <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
                         {step.stepNumber}
                       </span>
@@ -148,7 +176,7 @@ export function PersonaJourneyBoard({
                     <p className="text-xs text-muted-foreground ml-9">{step.activity}</p>
                   </div>
 
-                  {/* Preview area â€” shows screenshot, pipeline data, or placeholder */}
+                  {/* Preview area - shows screenshot, pipeline data, or placeholder */}
                   <div className="px-3 py-2">
                     <button
                       className="w-full text-left hover:ring-1 hover:ring-primary/30 rounded-lg transition-all overflow-hidden border border-border relative group"
@@ -224,7 +252,7 @@ export function PersonaJourneyBoard({
                       ) : step.name === "Preview Video" || step.name === "Review & Iterate" ? (
                         <div className="bg-black aspect-video flex items-center justify-center">
                           {pipelineData?.video?.exists ? (
-                            <div className="text-white text-xs">â–¶ Video Preview Available</div>
+                            <div className="text-white text-xs flex items-center gap-1"><PlayCircle className="w-3.5 h-3.5" /> Video Preview Available</div>
                           ) : (
                             <div className="text-gray-500 text-xs">No video rendered yet</div>
                           )}
@@ -254,7 +282,7 @@ export function PersonaJourneyBoard({
                       <div className="text-[10px] font-medium text-red-500 uppercase mb-1">Pain Points</div>
                       {step.painPoints.map((pp, pi) => (
                         <div key={pi} className="text-xs text-red-400 flex items-start gap-1 mb-0.5">
-                          <span>âš ï¸</span>
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
                           <span>{pp}</span>
                         </div>
                       ))}
@@ -326,7 +354,7 @@ export function PersonaJourneyBoard({
           <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
               <h3 className="text-lg font-bold">
-                {STEP_ICONS[journey.steps[zoomStep].name]} {journey.steps[zoomStep].name}
+                {(() => { const ZoomIcon = STEP_ICONS[journey.steps[zoomStep].name] || Bookmark; return <><ZoomIcon className="w-4 h-4" /> {journey.steps[zoomStep].name}</>; })()}
               </h3>
               <button onClick={() => setZoomStep(null)} className="p-1 rounded-lg hover:bg-muted transition-colors">
                 <X className="w-5 h-5" />
