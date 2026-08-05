@@ -114,6 +114,7 @@ ${localPath ? `- **Local Path**: ${localPath}` : ""}
           status: "attached",
           attachedAt: new Date().toISOString().split("T")[0],
           projectType: "full-codebase",
+          version: "0.1.0",
         },
       ],
     };

@@ -7,3 +7,4 @@ public/voxstyle-assets/
 public/voxstyle-audio/
 public/voxstyle-video/
 scripts/capture-*.js
+*.log

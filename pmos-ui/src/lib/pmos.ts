@@ -59,11 +59,28 @@ function writeFile(filePath: string, content: string) {
 
 export async function getRegistry(): Promise<Registry | null> {
   const doc = await readDoc<Registry>("registry", "main");
-  if (doc) return doc;
+  if (doc) return ensureProjectVersions(doc);
   // one-time bootstrap from legacy file
   const file = readJson<Registry>(pmosPath("registry.json"));
-  if (file) await writeDoc("registry", "main", file);
-  return file;
+  if (file) {
+    const upgraded = ensureProjectVersions(file);
+    await writeDoc("registry", "main", upgraded);
+    return upgraded;
+  }
+  return null;
+}
+
+/** Backfill `version` on any project that predates the release-version field. */
+function ensureProjectVersions(registry: Registry): Registry {
+  let changed = false;
+  const projects = registry.projects.map((p) => {
+    if (!p.version || typeof p.version !== "string") {
+      changed = true;
+      return { ...p, version: "0.1.0" };
+    }
+    return p;
+  });
+  return changed ? { ...registry, projects } : registry;
 }
 
 export async function updateRegistry(registry: Registry): Promise<void> {

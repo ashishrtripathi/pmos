@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ArrowRight,
   Bot,
+  Plus,
 } from "lucide-react";
 import {
   DndContext,
@@ -32,6 +33,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { StoryDetailModal } from "@/components/story-detail-modal";
+import { StoryCreateModal } from "@/components/story-create-modal";
 import { AGENT_INITIALS, AGENT_COLORS, getAgentBadge } from "@/lib/agent-badges";
 import {
   estimateTokenCost,
@@ -205,11 +207,19 @@ function KanbanStoryCard({
                 AI
               </span>
             )}
-            {agentBadge && (
-              <span className={`text-[8px] px-1 py-0 rounded-full border font-bold ${agentBadge.color}`}>
-                {agentBadge.initial}
+            {agentBadge ? (
+              <span
+                className={`flex items-center gap-1 text-[8px] px-1.5 py-0.5 rounded-md border font-semibold ${agentBadge.color}`}
+                title={`Being worked on by ${agentBadge.name}`}
+              >
+                <Bot className="w-2.5 h-2.5" />
+                {agentBadge.name}
               </span>
-            )}
+            ) : story.status === "in-progress" ? (
+              <span className="text-[8px] px-1.5 py-0.5 rounded-md border border-dashed border-blue-300 bg-blue-50/60 text-blue-500 font-medium">
+                Working · unassigned
+              </span>
+            ) : null}
             <span className="text-[10px] font-mono text-muted-foreground">
               {story.id}
             </span>
@@ -319,9 +329,11 @@ function KanbanStoryCard({
 export function KanbanBoard({
   params,
   allStories,
+  projectVersion,
 }: {
   params: { slug: string };
   allStories: KanbanStory[];
+  projectVersion?: string;
 }) {
   const { slug } = params;
   const [stories, setStories] = useState<KanbanStory[]>(allStories);
@@ -331,6 +343,7 @@ export function KanbanBoard({
   const [pickupNotice, setPickupNotice] = useState<string | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
+  const [showCreate, setShowCreate] = useState(false);
   const [pricing, setPricing] = useState<PricingParams>({
     aiOverheadPercent: 3,
     developerHourlyRate: 150,
@@ -570,6 +583,13 @@ export function KanbanBoard({
     setDetailStory(null);
   };
 
+  const handleStoryCreated = (story: KanbanStory) => {
+    // Persisted via POST /api/projects/[slug]/stories — append to the board
+    setStories((prev) =>
+      prev.some((s) => s.id === story.id) ? prev : [...prev, story]
+    );
+  };
+
   return (
     <div className="p-8 max-w-full mx-auto">
       {/* Agent pickup notice */}
@@ -585,6 +605,11 @@ export function KanbanBoard({
         <div className="flex items-center gap-3">
           <Columns3 className="w-5 h-5" />
           <h1 className="text-2xl font-bold">Kanban</h1>
+          {projectVersion && (
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-semibold font-mono">
+              v{projectVersion}
+            </span>
+          )}
           <span className="text-sm text-muted-foreground">
             {totalStories} stories &middot;{" "}
             {totalPoints} pts
@@ -604,6 +629,13 @@ export function KanbanBoard({
             </span>
           )}
         </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          New Story
+        </button>
       </div>
 
       {/* Kanban Grid — Status Columns */}
@@ -708,6 +740,16 @@ export function KanbanBoard({
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
           pricing={pricing || undefined}
+        />
+      )}
+
+      {/* Create Story Modal */}
+      {showCreate && (
+        <StoryCreateModal
+          slug={slug}
+          pricing={pricing || undefined}
+          onClose={() => setShowCreate(false)}
+          onCreated={handleStoryCreated}
         />
       )}
     </div>

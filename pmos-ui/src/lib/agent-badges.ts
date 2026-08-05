@@ -35,5 +35,9 @@ export function getAgentBadge(agentId?: string) {
   const initial = AGENT_INITIALS[agentId];
   const color =
     AGENT_COLORS[agentId] || "bg-gray-100 text-gray-700 border-gray-300";
-  return { initial, color };
+  const name = agentId
+    .split("-")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
+  return { initial, color, name };
 }

@@ -21,6 +21,7 @@ interface Project {
   localPath?: string;
   repoUrl?: string;
   status: string;
+  version?: string;
 }
 
 interface Dashboard {
@@ -124,6 +125,11 @@ export default function HomePage() {
                     {project.source === "github" ? " · github.com" : ""}
                     {project.source === "local" ? " · local" : ""}
                   </span>
+                  {project.version && (
+                    <span className="ml-2 inline-block px-1.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-[10px] font-semibold font-mono">
+                      v{project.version}
+                    </span>
+                  )}
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
               </div>

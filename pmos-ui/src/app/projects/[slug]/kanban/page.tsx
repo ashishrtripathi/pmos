@@ -1,4 +1,4 @@
-import { getAllStories } from "@/lib/pmos";
+import { getAllStories, getRegistry } from "@/lib/pmos";
 import { KanbanBoard } from "./kanban-board";
 
 export default async function KanbanPage({
@@ -6,12 +6,19 @@ export default async function KanbanPage({
 }: {
   params: { slug: string };
 }) {
-  const allStories = await getAllStories(params.slug);
+  const [allStories, registry] = await Promise.all([
+    getAllStories(params.slug),
+    getRegistry(),
+  ]);
+  const registryProject = registry?.projects?.find(
+    (p) => p.slug === params.slug
+  );
 
   return (
     <KanbanBoard
       params={params}
       allStories={allStories}
+      projectVersion={registryProject?.version}
     />
   );
 }

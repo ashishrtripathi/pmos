@@ -8,6 +8,8 @@ export interface RegistryProject {
   status: string;
   attachedAt: string;
   projectType: string;
+  /** Release version of this project, e.g. "0.1.0" */
+  version: string;
 }
 
 export interface Registry {

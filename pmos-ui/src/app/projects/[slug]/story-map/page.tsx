@@ -1,4 +1,10 @@
-import { getPersonaJourneys, getAllStories, getStoryMap, getScreenMockup } from "@/lib/pmos";
+import {
+  getPersonaJourneys,
+  getAllStories,
+  getStoryMap,
+  getScreenMockup,
+  getRegistry,
+} from "@/lib/pmos";
 import { StoryMapBoard } from "./story-map-board";
 
 export default async function StoryMapPage({
@@ -15,6 +21,10 @@ export default async function StoryMapPage({
   }));
   const stories = await getAllStories(params.slug);
   const storyMap = await getStoryMap(params.slug);
+  const registry = await getRegistry();
+  const registryProject = registry?.projects?.find(
+    (p) => p.slug === params.slug
+  );
 
   return (
     <StoryMapBoard
@@ -22,6 +32,7 @@ export default async function StoryMapPage({
       journeys={journeys}
       allStories={stories}
       storyMap={storyMap}
+      projectVersion={registryProject?.version}
     />
   );
 }
