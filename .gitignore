@@ -82,3 +82,5 @@ docker-compose.override.yml
 # Local PostBase (embedded PostgreSQL cluster)
 postgres-data/
 postbase/backend/*.log
+pmos-ui/next-dev*.log
+

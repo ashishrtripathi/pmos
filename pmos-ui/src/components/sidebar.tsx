@@ -16,6 +16,7 @@ import {
   Bot,
   Target,
   Bug,
+  Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/journey", icon: Map, label: "Journey" },
   { href: "/story-map", icon: Layers, label: "Story Map" },
   { href: "/kanban", icon: Columns3, label: "Kanban" },
+  { href: "/standup", icon: Mic, label: "Standup" },
   { href: "/bugs", icon: Bug, label: "Bugs" },
   { href: "/agents", icon: Bot, label: "Agents" },
 ];

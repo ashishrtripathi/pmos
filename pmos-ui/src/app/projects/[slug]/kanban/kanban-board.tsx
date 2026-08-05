@@ -31,6 +31,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { StoryDetailModal } from "@/components/story-detail-modal";
+import { AGENT_INITIALS, AGENT_COLORS, getAgentBadge } from "@/lib/agent-badges";
 import {
   estimateTokenCost,
   calculateROI,
@@ -73,26 +74,6 @@ const STATUS_COLUMNS = [
   { id: "done", label: "Done", color: "border-t-emerald-500", bg: "bg-emerald-50/50" },
 ];
 
-const AGENT_INITIALS: Record<string, string> = {
-  "product-manager": "PM",
-  "ux-designer": "UX",
-  architect: "AR",
-  "software-engineer": "SE",
-  "qa-engineer": "QA",
-  "documentation-agent": "DO",
-  "product-intelligence": "PI",
-};
-
-const AGENT_COLORS: Record<string, string> = {
-  "product-manager": "bg-purple-100 text-purple-700 border-purple-300",
-  "ux-designer": "bg-pink-100 text-pink-700 border-pink-300",
-  architect: "bg-orange-100 text-orange-700 border-orange-300",
-  "software-engineer": "bg-blue-100 text-blue-700 border-blue-300",
-  "qa-engineer": "bg-green-100 text-green-700 border-green-300",
-  "documentation-agent": "bg-yellow-100 text-yellow-700 border-yellow-300",
-  "product-intelligence": "bg-red-100 text-red-700 border-red-300",
-};
-
 const CATEGORY_BADGE_COLORS: Record<string, string> = {
   "Code Analysis": "bg-blue-50 text-blue-600 border-blue-200",
   "UX/Product": "bg-pink-50 text-pink-600 border-pink-200",
@@ -101,13 +82,6 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   "Critical Issue": "bg-red-100 text-red-700 border-red-300",
   "High Priority Issue": "bg-orange-100 text-orange-700 border-orange-300",
 };
-
-function getAgentBadge(agentId?: string) {
-  if (!agentId || !AGENT_INITIALS[agentId]) return null;
-  const initial = AGENT_INITIALS[agentId];
-  const color = AGENT_COLORS[agentId] || "bg-gray-100 text-gray-700 border-gray-300";
-  return { initial, color };
-}
 
 // ── Status Column Header ──────────────────────────
 
