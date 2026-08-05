@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Columns3,
   GripVertical,
@@ -20,6 +20,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -124,6 +125,28 @@ function StatusColumnHeader({
   );
 }
 
+// ── Kanban Column (Droppable) ─────────────────────
+
+function KanbanColumn({
+  column,
+  children,
+}: {
+  column: { id: string };
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col rounded-xl bg-card min-w-[260px] w-[260px] shrink-0 transition-shadow ${
+        isOver ? "ring-2 ring-primary/60" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
 // ── Kanban Story Card (Sortable + Clickable) ────────
 
 function KanbanStoryCard({
@@ -159,20 +182,20 @@ function KanbanStoryCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-2.5 rounded-lg border bg-background shadow-sm hover:shadow-md hover:border-primary/30 transition-all group cursor-pointer ${
+      className={`p-2.5 rounded-lg border bg-background shadow-sm hover:shadow-md hover:border-primary/30 transition-all group cursor-grab active:cursor-grabbing ${
         isIntelligence ? "border-l-[3px] border-l-amber-400" : "border-border"
       }`}
       onClick={onClick}
+      {...attributes}
+      {...listeners}
     >
       <div className="flex items-start gap-2">
-        <button
+        <span
           className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
+          aria-hidden
         >
           <GripVertical className="w-3.5 h-3.5" />
-        </button>
+        </span>
         <div className="flex-1 min-w-0">
           {/* Badges row */}
           <div className="flex items-center gap-1 mb-0.5 flex-wrap">
@@ -303,6 +326,7 @@ export function KanbanBoard({
   const { slug } = params;
   const [stories, setStories] = useState<KanbanStory[]>(allStories);
   const [activeStory, setActiveStory] = useState<KanbanStory | null>(null);
+  const dragStartStatusRef = useRef<string | null>(null);
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
   const [pickupNotice, setPickupNotice] = useState<string | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
@@ -395,7 +419,10 @@ export function KanbanBoard({
 
   const handleDragStart = (event: DragStartEvent) => {
     const story = event.active.data.current?.story as KanbanStory;
-    if (story) setActiveStory(story);
+    if (story) {
+      setActiveStory(story);
+      dragStartStatusRef.current = story.status;
+    }
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -408,10 +435,10 @@ export function KanbanBoard({
     const activeStatus = findStoryStatus(activeId);
     if (!activeStatus) return;
 
-    // Find which column the over element is in
+    // Find which column the over element is in (card id OR column id)
     let overStatus: string | null = null;
     for (const col of columns) {
-      if (col.stories.some((s) => s.id === overId)) {
+      if (overId === col.id || col.stories.some((s) => s.id === overId)) {
         overStatus = col.id;
         break;
       }
@@ -450,16 +477,20 @@ export function KanbanBoard({
           body: JSON.stringify({ status: newStatus }),
         });
         const data = await res.json();
+        if (!res.ok && !data.ok) {
+          console.error("Failed to persist status change:", data);
+        }
         if (data.pickedUpBy) {
           const story = stories.find((s) => s.id === storyId);
+          const agentName = data.pickedUpByName || data.pickedUpBy;
           setPickupNotice(
-            `"${story?.title || storyId}" picked up by the coding agent`
+            `"${story?.title || storyId}" picked up by ${agentName}`
           );
           window.setTimeout(() => setPickupNotice(null), 5000);
           // Reflect the assignment locally so the agent badge appears
           setStories((prev) =>
             prev.map((s) =>
-              s.id === storyId ? { ...s, assignedAgent: "software-engineer" } : s
+              s.id === storyId ? { ...s, assignedAgent: data.pickedUpBy } : s
             )
           );
         }
@@ -485,10 +516,15 @@ export function KanbanBoard({
     const story = stories.find((s) => s.id === activeId);
     if (!story) return;
 
+    // The optimistic reorder in handleDragOver already changed story.status,
+    // so compare against the status captured at drag start instead.
+    const originalStatus = dragStartStatusRef.current ?? story.status;
+    dragStartStatusRef.current = null;
+
     // Find which column the over element is in
     for (const col of columns) {
       if (col.stories.some((s) => s.id === overId) || col.id === overId) {
-        if (col.id !== story.status) {
+        if (col.id !== originalStatus) {
           persistStatusChange(activeId, col.id);
         }
         break;
@@ -581,16 +617,9 @@ export function KanbanBoard({
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-3 min-w-max">
             {columns.map((col) => (
-              <div
-                key={col.id}
-                className={`flex flex-col border-t-2 ${col.color} rounded-xl bg-card min-w-[260px] w-[260px] shrink-0`}
-                onDragOver={(e) => {
-                  // Allow drop on the column itself
-                  if (!e.dataTransfer.types.includes("application/dnd")) return;
-                }}
-              >
+              <KanbanColumn key={col.id} column={col}>
                 {/* Column Header */}
-                <div className="p-3 border-b border-border">
+                <div className={`p-3 border-b border-border border-t-2 ${col.color} rounded-t-xl`}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">
                       {col.id === "backlog" ? "📋" : col.id === "in-progress" ? "🔄" : col.id === "review" ? "👀" : "✅"}
@@ -630,7 +659,7 @@ export function KanbanBoard({
                     </div>
                   )}
                 </div>
-              </div>
+              </KanbanColumn>
             ))}
           </div>
         </div>

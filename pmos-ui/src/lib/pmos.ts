@@ -527,25 +527,213 @@ function mirrorAgentMarkdown(agent: Agent) {
 }
 
 /**
- * Assign a story or bug to the coding (Software Engineer) agent.
- * Adds the item ID to the agent's "Active Stories" (deduplicated).
- * Returns the agent id, or null if no software-engineer agent exists.
+ * Pick the best-fit agent to pick up a story.
+ *
+ * The team decides who owns the work:
+ *  1. Focus-area match — keywords in the story (title, description, persona,
+ *     use case) are scored against each agent's focus areas and role.
+ *  2. Load balancing — agents with fewer in-progress stories are preferred.
+ *  3. Advisory agents (Product Manager, Product Intelligence) never pick up.
+ *
+ * On pickup the story gets `assignedAgent` and the agent's Active Stories is
+ * updated (deduplicated). Returns `{ agentId, agentName }` or null.
  */
-export async function assignToCodingAgent(
+export interface StoryPickup {
+  agentId: string;
+  agentName: string;
+}
+
+/** Agents that pick up implementation work (advisory roles are excluded). */
+const PICKUP_AGENT_IDS = new Set([
+  "software-engineer",
+  "ux-designer",
+  "architect",
+  "qa-engineer",
+  "documentation-agent",
+  "security-officer",
+  "release-engineer",
+  "debugger",
+  "code-reviewer",
+]);
+
+/** Agent id → keywords that attract that agent to a story. */
+const PICKUP_KEYWORDS: Record<string, string[]> = {
+  "software-engineer": [
+    "implement", "build", "feature", "api", "endpoint", "backend", "frontend",
+    "component", "integration", "refactor", "code", "function", "logic",
+    "database", "query", "ui", "interface", "button", "form", "list",
+  ],
+  "ux-designer": [
+    "design", "ux", "user experience", "interface", "usability", "flow",
+    "wireframe", "prototype", "persona", "journey", "visual", "layout",
+    "accessibility", "dark mode", "responsive",
+  ],
+  architect: [
+    "architecture", "architect", "system", "design", "scalab", "modular",
+    "pattern", "domain", "service layer", "infrastructure", "schema",
+  ],
+  "qa-engineer": [
+    "test", "testing", "qa", "coverage", "regression", "acceptance",
+    "quality", "verify", "validation", "edge case", "unit test",
+  ],
+  "documentation-agent": [
+    "document", "docs", "readme", "wiki", "guide", "tutorial", "comment",
+    "changelog", "release notes", "walkthrough",
+  ],
+  "security-officer": [
+    "security", "auth", "oauth", "password", "encryption", "vulnerab",
+    "sso", "permission", "privacy", "token", "2fa", "owasp", "audit",
+  ],
+  "release-engineer": [
+    "release", "deploy", "ship", "ci", "cd", "pipeline", "version",
+    "rollout", "staging", "production", "changelog", "rollback",
+  ],
+  debugger: [
+    "bug", "fix", "error", "crash", "exception", "fail", "broken",
+    "incident", "regression", "trace", "debug", "stack trace", "issue",
+  ],
+  "code-reviewer": [
+    "review", "code review", "lint", "quality", "maintainab", "best practice",
+    "refactor", "clean code", "standards", "pr",
+  ],
+};
+
+function storyPickupText(story: Story): string {
+  return [
+    story.title,
+    story.description,
+    story.persona,
+    story.personaRole,
+    story.journeyStep,
+    story.useCase?.asA,
+    story.useCase?.iWant,
+    story.useCase?.soThat,
+    story.businessGoal,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export async function pickUpStory(
   slug: string,
-  itemId: string
-): Promise<string | null> {
+  storyId: string
+): Promise<StoryPickup | null> {
+  const [agents, stories] = await Promise.all([
+    getAllAgents(slug),
+    getAllStories(slug),
+  ]);
+
+  const story = stories.find((s) => s.id === storyId);
+  if (!story) return null;
+
+  // Already picked up by a pickup-capable agent → keep them on it.
+  if (
+    story.assignedAgent &&
+    PICKUP_AGENT_IDS.has(story.assignedAgent) &&
+    agents.some((a) => a.id === story.assignedAgent)
+  ) {
+    const existing = agents.find((a) => a.id === story.assignedAgent)!;
+    return { agentId: existing.id, agentName: existing.name };
+  }
+
+  const candidates = agents.filter((a) => PICKUP_AGENT_IDS.has(a.id));
+  if (candidates.length === 0) return null;
+
+  const text = storyPickupText(story);
+  const inProgressByAgent = new Map<string, number>();
+  for (const a of candidates) {
+    inProgressByAgent.set(
+      a.id,
+      a.activeStories.filter((id) => {
+        const s = stories.find((x) => x.id === id);
+        return s && s.status === "in-progress";
+      }).length
+    );
+  }
+
+  let best: Agent | null = null;
+  let bestScore = -Infinity;
+  for (const a of candidates) {
+    const keywords = PICKUP_KEYWORDS[a.id] ?? [];
+    let focusScore = 0;
+    for (const kw of keywords) {
+      if (text.includes(kw)) focusScore += 1;
+    }
+    // Role + focus areas also count (agents may carry custom focus lists).
+    const roleText = `${a.name} ${a.role} ${(a.focus ?? []).join(" ")}`.toLowerCase();
+    for (const kw of keywords) {
+      if (roleText.includes(kw)) focusScore += 1;
+    }
+
+    const load = inProgressByAgent.get(a.id) ?? 0;
+    // Score: strong focus match dominates; load breaks ties.
+    const score = focusScore * 100 - load;
+    if (score > bestScore) {
+      bestScore = score;
+      best = a;
+    }
+  }
+  if (!best) return null;
+
+  // Assign: update the story + the agent's Active Stories (dedup).
+  story.assignedAgent = best.id;
+  await writeItems("stories", slug, stories);
+
+  if (!best.activeStories.includes(storyId)) {
+    best.activeStories.push(storyId);
+    await writeItems("agents", slug, agents);
+    mirrorAgentMarkdown(best); // mirror
+  }
+
+  return { agentId: best.id, agentName: best.name };
+}
+
+/**
+ * Pick the best-fit agent for a bug. Bugs go to the Debugger first,
+ * falling back to QA Engineer, then Software Engineer, then any pickup agent.
+ */
+export async function pickUpBug(
+  slug: string,
+  bugId: string
+): Promise<StoryPickup | null> {
   const agents = await getAllAgents(slug);
-  const agent = agents.find((a) => a.id === "software-engineer");
-  if (!agent) return null;
+  const order = ["debugger", "qa-engineer", "software-engineer"];
+  const pickupable = agents.filter((a) => PICKUP_AGENT_IDS.has(a.id));
+  if (pickupable.length === 0) return null;
 
-  if (agent.activeStories.includes(itemId)) return "software-engineer";
-  agent.activeStories.push(itemId);
+  let best: Agent | null = null;
+  let bestRank = Infinity;
+  for (const a of pickupable) {
+    const rank = order.indexOf(a.id);
+    if (rank >= 0 && rank < bestRank) {
+      bestRank = rank;
+      best = a;
+    }
+  }
+  // No dedicated debugging agent → least-loaded pickup agent.
+  if (!best) {
+    const stories = await getAllStories(slug);
+    let leastLoad = Infinity;
+    for (const a of pickupable) {
+      const load = a.activeStories.filter((id) =>
+        stories.some((s) => s.id === id && s.status === "in-progress")
+      ).length;
+      if (load < leastLoad) {
+        leastLoad = load;
+        best = a;
+      }
+    }
+  }
+  if (!best) return null;
 
-  await writeItems("agents", slug, agents);
-  mirrorAgentMarkdown(agent); // mirror
+  if (!best.activeStories.includes(bugId)) {
+    best.activeStories.push(bugId);
+    await writeItems("agents", slug, agents);
+    mirrorAgentMarkdown(best); // mirror
+  }
 
-  return "software-engineer";
+  return { agentId: best.id, agentName: best.name };
 }
 
 // ============================================================

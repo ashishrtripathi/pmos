@@ -5,7 +5,7 @@ import {
   updateBug,
   deleteBug,
 } from "@/lib/pmos-bugs";
-import { assignToCodingAgent } from "@/lib/pmos";
+import { pickUpBug } from "@/lib/pmos";
 
 type Params = { params: { slug: string } };
 
@@ -48,12 +48,17 @@ export async function POST(req: NextRequest, { params }: Params) {
         if (!bug) {
           return NextResponse.json({ error: "Bug not found" }, { status: 404 });
         }
-        // When a bug moves to in-progress, the coding agent picks it up
+        // When a bug moves to in-progress, the team picks it up (Debugger first)
         let pickedUpBy: string | null = null;
+        let pickedUpByName: string | null = null;
         if (data.status === "in-progress") {
-          pickedUpBy = await assignToCodingAgent(params.slug, data.id);
+          const pickup = await pickUpBug(params.slug, data.id);
+          if (pickup) {
+            pickedUpBy = pickup.agentId;
+            pickedUpByName = pickup.agentName;
+          }
         }
-        return NextResponse.json({ bug, pickedUpBy });
+        return NextResponse.json({ bug, pickedUpBy, pickedUpByName });
       }
       case "delete": {
         if (!data.id) {

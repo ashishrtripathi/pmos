@@ -2,7 +2,7 @@
 id: INT-101
 title: "-------------"
 points: 3
-status: backlog
+status: backlog-progress
 assigned-agent: ux-designer
 estimated-value: 25000
 category: UX/Product
