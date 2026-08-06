@@ -2,7 +2,9 @@
 id: INT-103
 title: "Add Global Search Across Boards"
 points: 5
-status: in-progress
+status: done
+completed: true
+completed-at: 2026-08-05
 assigned-agent: software-engineer
 estimated-value: 25000
 category: UX/Product
