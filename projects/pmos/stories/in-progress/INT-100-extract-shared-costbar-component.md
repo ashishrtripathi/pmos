@@ -2,7 +2,7 @@
 id: INT-100
 title: "Extract Shared CostBar Component"
 points: 2
-status: backlog
+status: in-progress
 assigned-agent: software-engineer
 estimated-value: 10000
 category: Code Quality

@@ -10,7 +10,6 @@ role: Software Engineer
 - API design and implementation
 
 ## Active Stories
-- INT-100
 - INT-101
 - INT-102
 - INT-103

@@ -14,3 +14,4 @@ role: Debugger
 - BUG-001
 - BUG-002
 - BUG-003
+- INT-100

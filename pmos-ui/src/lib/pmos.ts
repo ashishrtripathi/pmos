@@ -657,7 +657,6 @@ export async function pickUpStory(
   const candidates = agents.filter((a) => PICKUP_AGENT_IDS.has(a.id));
   if (candidates.length === 0) return null;
 
-  const text = storyPickupText(story);
   const inProgressByAgent = new Map<string, number>();
   for (const a of candidates) {
     inProgressByAgent.set(
@@ -669,13 +668,32 @@ export async function pickUpStory(
     );
   }
 
+  // Field-weighted keyword matching: the title and use-case dominate; long
+  // prose fields (business goal) contribute less so generic words like
+  // "issue"/"incident" in a goal don't hijack the assignment.
+  const weightedFields = [
+    { text: story.title, weight: 3 },
+    { text: story.description, weight: 2 },
+    {
+      text: `${story.persona ?? ""} ${story.personaRole ?? ""} ${story.journeyStep ?? ""}`,
+      weight: 1,
+    },
+    {
+      text: `${story.useCase?.asA ?? ""} ${story.useCase?.iWant ?? ""} ${story.useCase?.soThat ?? ""}`,
+      weight: 2,
+    },
+    { text: story.businessGoal, weight: 1 },
+  ];
+
   let best: Agent | null = null;
   let bestScore = -Infinity;
   for (const a of candidates) {
     const keywords = PICKUP_KEYWORDS[a.id] ?? [];
     let focusScore = 0;
     for (const kw of keywords) {
-      if (text.includes(kw)) focusScore += 1;
+      for (const f of weightedFields) {
+        if (f.text && f.text.toLowerCase().includes(kw)) focusScore += f.weight;
+      }
     }
     // Role + focus areas also count (agents may carry custom focus lists).
     const roleText = `${a.name} ${a.role} ${(a.focus ?? []).join(" ")}`.toLowerCase();
