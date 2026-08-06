@@ -95,6 +95,107 @@ Each project has a `source-location.json` that tells PMOS where to find the code
 
 ---
 
+## 📦 Dependencies
+
+### Runtime prerequisites
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| Node.js | 18.x / 20.x+ | All Node runtimes (pmos-ui, PostBase, OmniRoute) |
+| npm | 9+ | Package manager |
+| PostgreSQL | 14+ | Datastore for PostBase (`localhost:5432`) |
+| Git | 2.x | Repo operations, GitHub sync |
+
+### Services & ports
+
+| Service | Port | How to run |
+|---------|------|------------|
+| PMOS UI (Next.js) | 3100 | `cd pmos-ui && npm run dev` |
+| PostBase backend | 8081 | `cd postbase/backend && npm run start:local` |
+| OmniRoute AI gateway | 20128 | `cd OmniRoute && npm run dev` |
+| Hermes One Desktop (AionUi backend / aioncore) | 62340 | Launch Hermes One Desktop app |
+| LM Studio (local LLM server) | 1234 | LM Studio → Developer tab → Start Server |
+| PostgreSQL | 5432 | Local PostgreSQL service |
+
+### pmos-ui package dependencies
+
+**Dependencies:** `next ^14.2` · `react ^18.3` · `react-dom ^18.3` · `@dnd-kit/core ^6.1` · `@dnd-kit/sortable ^8.0` · `@dnd-kit/utilities ^3.2` · `@postbase/client ^0.1` · `class-variance-authority ^0.7` · `clsx ^2.1` · `gray-matter ^4.0` · `lucide-react ^0.400` · `marked ^12.0` · `playwright ^1.61` · `tailwind-merge ^2.3` · `zod ^3.23`
+
+**Dev dependencies:** `typescript ^5.4` · `tailwindcss ^3.4` · `eslint ^8.57` · `eslint-config-next ^14.2` · `autoprefixer ^10.4` · `postcss ^8.4` · `@types/node ^20.14` · `@types/react ^18.3` · `@types/react-dom ^18.3`
+
+### PostBase backend
+
+`@postbase/backend@0.1.1` — a Postgres-backed JSON document store. Schema: `npm run migrate:up` (uses `node-pg-migrate`). Serve on port 8081: `npm run start:local`.
+
+---
+
+## 🛠 Tool Setup Guide
+
+### 1. OmniRoute — the free AI gateway
+
+OmniRoute aggregates the **free tiers of 271+ AI providers** behind a single OpenAI-compatible endpoint, with automatic failover, model routing, and per-provider usage accounting. PMOS and the agent team use it as the default model pool.
+
+```bash
+cd <omniroute-checkout>   # e.g. %APPDATA%\AionUi\aionui\conversations\<ws>\OmniRoute
+npm install
+npm run dev               # dev server  → http://localhost:20128
+# or: npm start           # production
+```
+
+- **Data & keys:** `%APPDATA%\omniroute\` — `server.env` (encrypted provider API keys), `storage.sqlite` (usage/accounting, provider health)
+- **Client setup:** any OpenAI-compatible client can use `http://localhost:20128` as its base URL
+- **Electron app:** `npm run electron:dev` for the desktop UI
+- Verify: `curl http://localhost:20128` or the provider/usage dashboard in the web UI
+
+### 2. OpenCode — AI coding agent (CLI)
+
+OpenCode is the terminal-first coding agent used for implementation work.
+
+```bash
+npm install -g opencode    # or: curl -fsSL https://opencode.ai/install
+opencode --version         # e.g. v1.17.9
+cd <your-project> && opencode
+```
+
+- **Config:** `~/.config/opencode/opencode.jsonc`
+- **MCP servers included:**
+  - `stock-images` — `npx stock-images-mcp` · env: `PEXELS_API_KEY`, `UNSPLASH_API_KEY`, `PIXABAY_API_KEY`
+  - `stock-videos` — `npx mcp-pexels` · env: `PEXELS_API_KEY`
+- **Point OpenCode at OmniRoute or LM Studio** by setting a custom provider with `baseURL`:
+  - OmniRoute: `http://localhost:20128` (cloud-pooled, zero cost)
+  - LM Studio: `http://localhost:1234/v1` (fully local/offline)
+
+### 3. Hermes One Desktop (AionUi)
+
+Hermes One Desktop is the desktop companion that hosts PMOS conversations, the agent team assistants, and the **PMOS Story Worker** scheduled task (runs every 10 minutes and dispatches stories to agents automatically).
+
+- **Backend:** bundled `aioncore` server at `http://127.0.0.1:62340`
+- **Auth headers** the backend expects: `x-aionui-user-id`, `x-aionui-runtime-token`, `x-aionui-conversation-id` (exported via `AIONUI_USER_ID`, `AIONUI_RUNTIME_TOKEN`, `AIONUI_CONVERSATION_ID`, `AIONUI_BASE_URL`)
+- **Data:**
+  - `~/.hermes/` → `kanban.db` (Hermes kanban), `skills/`, `logs/`
+  - `%APPDATA%\hermes-desktop\` → Electron profile
+  - `%APPDATA%\AionUi\aionui\conversations\<workspace>\` → conversation workspaces (the OmniRoute checkout lives here)
+- **Cron via CLI:**
+  ```powershell
+  & aioncore.exe config cron current list
+  & aioncore.exe config cron current update < payload.json
+  ```
+  Update payload shape: `{ "job_id": "...", "name": "...", "schedule": "*/10 * * * *", "schedule_description": "Every 10 minutes", "message": "<task instruction text>" }`
+
+### 4. Running locally with LM Studio (offline)
+
+Fully local option — no cloud keys needed.
+
+1. **Install** [LM Studio](https://lmstudio.ai) (`%APPDATA%\LM Studio`)
+2. **Download a model** from the model hub (e.g. Llama 3.x, Mistral, Qwen)
+3. **Load the model**, then open the **Developer** tab → **Start Server** → OpenAI-compatible endpoint at `http://localhost:1234/v1`
+4. **Point tools at it:**
+   - OpenCode: `baseURL: http://localhost:1234/v1`, model = loaded model id
+   - OmniRoute: register LM Studio as a local provider (`http://localhost:1234/v1`)
+   - Sanity check: `curl http://localhost:1234/v1/models`
+
+---
+
 ## 🎯 Vision
 
 PMOS is an open-source **Product Management Operating System** that acts as the orchestration layer between Product Managers, UX Designers, AI Coding Agents, GitHub, and deployment environments.
