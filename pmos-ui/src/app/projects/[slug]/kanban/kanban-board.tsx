@@ -61,6 +61,15 @@ interface KanbanStory {
   personaRole?: string;
   journeyStep?: string;
   assignedAgent?: string;
+  agentWork?: {
+    status: "queued" | "working" | "done";
+    assignedAgent?: string;
+    assignedAt?: string;
+    startedAt?: string;
+    lastHeartbeat?: string;
+    completedAt?: string;
+    notes?: string;
+  };
   filePath?: string;
   source?: "manual" | "intelligence";
   sourceFile?: string;
@@ -207,13 +216,23 @@ function KanbanStoryCard({
                 AI
               </span>
             )}
-            {agentBadge ? (
+            {story.assignedAgent ? (
               <span
-                className={`flex items-center gap-1 text-[8px] px-1.5 py-0.5 rounded-md border font-semibold ${agentBadge.color}`}
-                title={`Being worked on by ${agentBadge.name}`}
+                className={`flex items-center gap-1 text-[8px] px-1.5 py-0.5 rounded-md border font-semibold ${agentBadge?.color ?? ""}`}
+                title={`Being worked on by ${agentBadge?.name ?? story.assignedAgent}`}
               >
                 <Bot className="w-2.5 h-2.5" />
-                {agentBadge.name}
+                {agentBadge?.name ?? story.assignedAgent}
+                {story.agentWork?.status === "working" ? (
+                  <span className="ml-0.5 flex items-center gap-1 text-emerald-600">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                    working
+                  </span>
+                ) : story.agentWork?.status === "done" ? (
+                  <span className="ml-0.5 text-green-600">✓ done</span>
+                ) : (
+                  <span className="ml-0.5 text-amber-600">queued</span>
+                )}
               </span>
             ) : story.status === "in-progress" ? (
               <span className="text-[8px] px-1.5 py-0.5 rounded-md border border-dashed border-blue-300 bg-blue-50/60 text-blue-500 font-medium">

@@ -85,6 +85,20 @@ export interface Story {
   category?: string;
   objectiveId?: string; // links to Objective.id
   assignedAgent?: string;
+  /**
+   * Background agent-work tracking. The kanban pickup sets this to
+   * `queued`; the scheduled AionUi story worker flips it to `working`
+   * (with heartbeats) and finally `done` when the implementation is complete.
+   */
+  agentWork?: {
+    status: "queued" | "working" | "done";
+    assignedAgent?: string;
+    assignedAt?: string;
+    startedAt?: string;
+    lastHeartbeat?: string;
+    completedAt?: string;
+    notes?: string;
+  };
 }
 
 export type StoryStatus = "backlog" | "in-progress" | "review" | "done";

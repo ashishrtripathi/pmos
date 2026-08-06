@@ -713,6 +713,11 @@ export async function pickUpStory(
 
   // Assign: update the story + the agent's Active Stories (dedup).
   story.assignedAgent = best.id;
+  story.agentWork = {
+    status: "queued",
+    assignedAgent: best.id,
+    assignedAt: new Date().toISOString(),
+  };
   await writeItems("stories", slug, stories);
 
   if (!best.activeStories.includes(storyId)) {
