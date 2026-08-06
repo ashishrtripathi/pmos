@@ -47,6 +47,9 @@ export function Sidebar() {
             <FolderOpen className="w-4 h-4 text-primary-foreground" />
           </div>
           <span className="font-bold text-lg">PMOS</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-600 font-semibold font-mono">
+            v0.1.0
+          </span>
         </Link>
       </div>
 

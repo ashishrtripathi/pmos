@@ -664,13 +664,11 @@ export function StoryMapBoard({
   journeys,
   allStories,
   storyMap,
-  projectVersion,
 }: {
   params: { slug: string };
   journeys: PersonaJourney[];
   allStories: Story[];
   storyMap: StoryMap;
-  projectVersion?: string;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [createForStep, setCreateForStep] = useState<string>("");
@@ -820,11 +818,6 @@ export function StoryMapBoard({
         <div className="flex items-center gap-3">
           <Layers className="w-5 h-5" />
           <h1 className="text-2xl font-bold">User Story Map</h1>
-          {projectVersion && (
-            <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-semibold font-mono">
-              v{projectVersion}
-            </span>
-          )}
           <span className="text-sm text-muted-foreground">
             {stories.length} stories &middot; {totalPoints} points
           </span>

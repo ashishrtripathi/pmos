@@ -10,18 +10,7 @@ role: Software Engineer
 - API design and implementation
 
 ## Active Stories
-- INT-101
-- INT-102
-- INT-103
-- INT-104
-- INT-105
-- INT-106
-- INT-200
-- INT-201
-- INT-202
-- INT-203
-- INT-204
-- INT-205
-- INT-206
-- INT-207
-- BUG-001
+- (none)
+
+## Completed Stories
+- INT-104 — Closed as non-actionable by the PMOS Story Worker (placeholder story: title was "-------------", no description/acceptance criteria/mirror file). Returned to backlog; rewrite with real content to dispatch.

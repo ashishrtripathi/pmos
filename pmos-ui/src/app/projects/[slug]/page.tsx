@@ -1,4 +1,4 @@
-import { getDashboard, getAllStories, getAllAgents, getPipelineSteps, getRegistry } from "@/lib/pmos";
+import { getDashboard, getAllStories, getAllAgents, getPipelineSteps } from "@/lib/pmos";
 import Link from "next/link";
 import {
   Activity,
@@ -23,8 +23,6 @@ export default async function ProjectDashboard({
   const stories = await getAllStories(slug);
   const agents = await getAllAgents(slug);
   const pipeline = await getPipelineSteps(slug);
-  const registry = await getRegistry();
-  const registryProject = registry?.projects?.find((p) => p.slug === slug);
   const postbaseUp = await checkPostbase();
   const completedSteps = pipeline.filter((s) => s.status === "done").length;
 
@@ -43,11 +41,6 @@ export default async function ProjectDashboard({
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-3xl font-bold capitalize">{slug}</h1>
-          {registryProject?.version && (
-            <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-semibold font-mono">
-              v{registryProject.version}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <p className="text-muted-foreground">Project Dashboard</p>
