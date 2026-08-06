@@ -19,6 +19,7 @@ import {
   Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GlobalSearch } from "./global-search";
 
 const navItems = [
   { href: "", icon: LayoutDashboard, label: "Dashboard" },
@@ -62,6 +63,11 @@ export function Sidebar() {
         >
           {slug}
         </Link>
+      </div>
+
+      {/* Global search across all boards */}
+      <div className="px-4 py-3 border-b border-border">
+        <GlobalSearch />
       </div>
 
       {/* Navigation */}

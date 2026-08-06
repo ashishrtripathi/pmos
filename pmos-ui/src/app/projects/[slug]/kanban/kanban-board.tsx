@@ -356,6 +356,9 @@ export function KanbanBoard({
   const [stories, setStories] = useState<KanbanStory[]>(allStories);
   const [activeStory, setActiveStory] = useState<KanbanStory | null>(null);
   const dragStartStatusRef = useRef<string | null>(null);
+  // dnd-kit fires a click event on the dragged element after a drop;
+  // suppress it so the story detail modal doesn't pop open mid-drag.
+  const suppressClickRef = useRef(false);
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
   const [pickupNotice, setPickupNotice] = useState<string | null>(null);
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
@@ -484,13 +487,16 @@ export function KanbanBoard({
         return s;
       });
 
-      // Reorder within the target column
+      // Reorder within the target column. Only when dropping over another
+      // card (overId is a story id), and account for the removed item
+      // shifting indices down by one (fixes the card snapping back).
       const activeItem = updated.find((s) => s.id === activeId);
+      const activeIndex = updated.findIndex((s) => s.id === activeId);
       const overIndex = updated.findIndex((s) => s.id === overId);
-      if (activeItem && overIndex >= 0) {
-        const activeIndex = updated.findIndex((s) => s.id === activeId);
+      if (activeItem && activeIndex >= 0 && overIndex >= 0) {
         updated.splice(activeIndex, 1);
-        updated.splice(overIndex, 0, activeItem);
+        const insertAt = activeIndex < overIndex ? overIndex - 1 : overIndex;
+        updated.splice(insertAt, 0, activeItem);
       }
 
       return updated;
@@ -536,6 +542,7 @@ export function KanbanBoard({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveStory(null);
+    suppressClickAfterDrag();
     if (!over) return;
 
     const activeId = active.id as string;
@@ -561,21 +568,39 @@ export function KanbanBoard({
       }
     }
 
-    // Reorder within the same column
-    const activeStatus = findStoryStatus(activeId);
+    // Reorder only when the drop stayed within the drag-origin column.
+    // Cross-column moves were already reordered in handleDragOver; re-splicing
+    // here (using the optimistic status) snapped the card back to its old
+    // index — the root cause of BUG-001.
     const overStatus = findStoryStatus(overId);
-    if (activeStatus && overStatus && activeStatus === overStatus) {
+    if (originalStatus && overStatus && originalStatus === overStatus) {
       setStories((prev) => {
         const updated = [...prev];
         const activeIndex = updated.findIndex((s) => s.id === activeId);
         const overIndex = updated.findIndex((s) => s.id === overId);
-        if (activeIndex >= 0 && overIndex >= 0) {
+        if (activeIndex >= 0 && overIndex >= 0 && activeIndex !== overIndex) {
           const [moved] = updated.splice(activeIndex, 1);
-          updated.splice(overIndex, 0, moved);
+          const insertAt = activeIndex < overIndex ? overIndex - 1 : overIndex;
+          updated.splice(insertAt, 0, moved);
         }
         return updated;
       });
     }
+  };
+
+  // Suppress the click event dnd-kit fires after a drop so the story
+  // detail modal doesn't open right after a drag.
+  const suppressClickAfterDrag = () => {
+    suppressClickRef.current = true;
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 0);
+  };
+
+  const handleDragCancel = () => {
+    setActiveStory(null);
+    dragStartStatusRef.current = null;
+    suppressClickAfterDrag();
   };
 
   // Also persist when dropping onto an empty column
@@ -677,6 +702,7 @@ export function KanbanBoard({
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-3 min-w-max">
@@ -713,7 +739,10 @@ export function KanbanBoard({
                         key={story.id}
                         story={story}
                         pricing={pricing}
-                        onClick={() => handleStoryClick(story)}
+                        onClick={() => {
+                    if (suppressClickRef.current) return;
+                    handleStoryClick(story);
+                  }}
                       />
                     ))}
                   </SortableContext>
