@@ -1,4 +1,4 @@
-import { getDashboard, getAllStories, getAllAgents, getPipelineSteps } from "@/lib/pmos";
+import { getDashboard, getAllStories, getAllAgents, getPipelineSteps, getRegistry } from "@/lib/pmos";
 import Link from "next/link";
 import {
   Activity,
@@ -23,6 +23,9 @@ export default async function ProjectDashboard({
   const stories = await getAllStories(slug);
   const agents = await getAllAgents(slug);
   const pipeline = await getPipelineSteps(slug);
+  const registry = await getRegistry();
+  const registryProject = registry?.projects?.find((p) => p.slug === slug);
+  const postbaseUp = await checkPostbase();
   const completedSteps = pipeline.filter((s) => s.status === "done").length;
 
   const navCards = [
@@ -38,8 +41,31 @@ export default async function ProjectDashboard({
     <div className="p-8 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold capitalize mb-1">{slug}</h1>
-        <p className="text-muted-foreground">Project Dashboard</p>
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-3xl font-bold capitalize">{slug}</h1>
+          {registryProject?.version && (
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-semibold font-mono">
+              v{registryProject.version}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <p className="text-muted-foreground">Project Dashboard</p>
+          <span
+            className={`flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full border font-medium ${
+              postbaseUp
+                ? "border-green-200 bg-green-50 text-green-600"
+                : "border-red-200 bg-red-50 text-red-600"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                postbaseUp ? "bg-green-500" : "bg-red-500 animate-pulse"
+              }`}
+            />
+            {postbaseUp ? "All systems live" : "PostBase offline"}
+          </span>
+        </div>
       </div>
 
       {/* Stats Row */}
@@ -126,4 +152,20 @@ function BreakdownItem({
       </span>
     </div>
   );
+}
+
+/** Pings the local PostBase backend so the header can show live system status. */
+async function checkPostbase(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(
+      `${process.env.POSTBASE_URL ?? "http://localhost:8081/api/db"}/stories/pmos`,
+      { signal: controller.signal, cache: "no-store" }
+    );
+    clearTimeout(timer);
+    return res.ok || res.status === 404; // any HTTP response = PostBase is up
+  } catch {
+    return false;
+  }
 }
