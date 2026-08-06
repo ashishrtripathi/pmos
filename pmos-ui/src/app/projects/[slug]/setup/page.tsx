@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { Settings, Folder, Globe, Check, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
+import { Settings, Folder, Globe, Check, DollarSign, ChevronDown, ChevronRight, Search, Loader2, HardDrive, FolderGit2, X } from "lucide-react";
 import { MODEL_REGISTRY } from "@/lib/models";
+import { GitHubRepo, GitHubSearch, FileSystemBrowser } from "@/components/project-source-browser";
 
 const MODELS = MODEL_REGISTRY.map((m) => ({
   id: m.id,
@@ -51,6 +52,7 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
   const [mode, setMode] = useState("local");
   const [localPath, setLocalPath] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
+  const [repoInfo, setRepoInfo] = useState<GitHubRepo | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, startSave] = useTransition();
 
@@ -79,6 +81,11 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
       })
       .catch(() => setLoading(false));
   }, [slug]);
+
+  const handleRepoSelect = (repo: GitHubRepo) => {
+    setRepoInfo(repo);
+    setRepoUrl(repo.cloneUrl);
+  };
 
   const handleSave = () => {
     startSave(async () => {
@@ -199,27 +206,54 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
 
         {(mode === "local" || mode === "github") && (
           <div className="mb-4">
-            <label className="text-sm font-medium mb-2 block">Local Path</label>
-            <input
-              type="text"
-              value={localPath}
-              onChange={(e) => setLocalPath(e.target.value)}
-              placeholder="C:\Users\ashis\Projects\my-project"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+            <label className="text-sm font-medium mb-2 block flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4 text-blue-500" />
+              {mode === "github" ? "Local Clone Path" : "Project Directory"}
+            </label>
+            <FileSystemBrowser
+              onSelect={setLocalPath}
+              initialPath={localPath}
             />
           </div>
         )}
 
-        <div className="mb-4">
-          <label className="text-sm font-medium mb-2 block">GitHub Repository URL (optional)</label>
-          <input
-            type="text"
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            placeholder="https://github.com/user/repo"
-            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        {(mode === "github" || mode === "github-only") && (
+          <div className="mb-4">
+            <label className="text-sm font-medium mb-2 block flex items-center gap-1.5">
+              <FolderGit2 className="w-4 h-4 text-green-500" />
+              GitHub Repository
+            </label>
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={repoUrl}
+                  onChange={(e) => { setRepoUrl(e.target.value); setRepoInfo(null); }}
+                  placeholder="https://github.com/owner/repo"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="text-center text-xs text-muted-foreground">— or search —</div>
+              <GitHubSearch onSelect={handleRepoSelect} />
+              {repoInfo && (
+                <div className="p-3 rounded-lg border border-green-200 bg-green-50/50 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-green-800 truncate">{repoInfo.fullName}</div>
+                    <div className="text-xs text-green-700 truncate">{repoInfo.cloneUrl}</div>
+                  </div>
+                  <button
+                    onClick={() => { setRepoInfo(null); setRepoUrl(""); }}
+                    className="p-1 rounded-md text-green-600 hover:text-green-800 hover:bg-green-100 shrink-0"
+                    title="Clear selection"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
@@ -227,7 +261,11 @@ export default function SetupPage({ params }: { params: { slug: string } }) {
             disabled={saving}
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Source Configuration"}
+            {saving ? (
+              <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...</span>
+            ) : (
+              "Save Source Configuration"
+            )}
           </button>
           {saved && (
             <span className="flex items-center gap-1 text-sm text-green-600">
