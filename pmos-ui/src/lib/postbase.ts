@@ -17,12 +17,37 @@ export function postbaseError(action: string, table: string, id: string, err: un
   );
 }
 
+/**
+ * Recursively convert PostBase data into plain JSON-safe objects.
+ * @postbase/client parses ISO date strings into its own `Timestamp` class
+ * instances, and Next.js App Router refuses to serialize class instances
+ * (or null-prototype objects) from Server Components into Client Components
+ * ("Only plain objects ... can be passed to Client Components"). Normalize
+ * here so every consumer (pages, API routes) receives plain data.
+ */
+export function toPlain<T>(value: T): T {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Date) return value.toISOString() as unknown as T;
+  if (typeof value === "object") {
+    // @postbase/client Timestamp-like objects expose toDate()
+    const ts = value as { toDate?: () => Date };
+    if (typeof ts.toDate === "function") return ts.toDate().toISOString() as unknown as T;
+    if (Array.isArray(value)) return value.map(toPlain) as unknown as T;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      out[key] = toPlain((value as Record<string, unknown>)[key]);
+    }
+    return out as unknown as T;
+  }
+  return value;
+}
+
 /** Read a single document. Returns null when the doc does not exist. */
 export async function readDoc<T>(table: string, id: string): Promise<T | null> {
   try {
     const snap = await db.collection(table).doc(id).get();
     const data = snap.data();
-    return data === undefined || data === null ? null : (data as T);
+    return data === undefined || data === null ? null : toPlain(data as T);
   } catch (err) {
     throw postbaseError("read", table, id, err);
   }
