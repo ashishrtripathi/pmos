@@ -498,9 +498,11 @@ function CreateStoryForm({
 export function StoriesBoard({
   params,
   initialStories,
+  personas: journeyPersonas,
 }: {
   params: { slug: string };
   initialStories: Record<ColumnId, Story[]>;
+  personas: string[];
 }) {
   const { slug } = params;
   const [showCreate, setShowCreate] = useState(false);
@@ -508,10 +510,13 @@ export function StoriesBoard({
 
   const [columns, setColumns] = useState<Record<ColumnId, Story[]>>(initialStories);
 
-  // Extract unique personas from all stories
-  const allPersonas = [...new Set(
-    Object.values(columns).flat().map((s) => s.persona).filter(Boolean)
-  )] as string[];
+  // Journey personas are the source of truth (must match the Customer
+  // Journey), merged with any personas already used on stories so existing
+  // values stay selectable.
+  const allPersonas = [...new Set([
+    ...journeyPersonas,
+    ...Object.values(columns).flat().map((s) => s.persona).filter(Boolean),
+  ])] as string[];
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

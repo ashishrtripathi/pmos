@@ -1,4 +1,4 @@
-import { getStoriesByStatus } from "@/lib/pmos";
+import { getStoriesByStatus, getPersonaJourneys } from "@/lib/pmos";
 import { StoriesBoard } from "./stories-board";
 
 export default async function StoriesPage({
@@ -7,5 +7,15 @@ export default async function StoriesPage({
   params: { slug: string };
 }) {
   const storiesByStatus = await getStoriesByStatus(params.slug);
-  return <StoriesBoard params={params} initialStories={storiesByStatus} />;
+  const personas = (await getPersonaJourneys(params.slug)).map(
+    (j) => j.personaName
+  );
+
+  return (
+    <StoriesBoard
+      params={params}
+      initialStories={storiesByStatus}
+      personas={personas}
+    />
+  );
 }

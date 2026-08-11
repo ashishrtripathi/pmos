@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 import { getRegistry, updateRegistry } from "@/lib/pmos";
 import { writeDoc } from "@/lib/postbase";
 import type { Registry } from "@/types/pmos";
@@ -13,7 +14,8 @@ const PMOS_ROOT = path.join(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, localPath, repoUrl, source } = body;
+    const { name, repoUrl, source } = body;
+    let { localPath } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -55,6 +57,32 @@ export async function POST(request: Request) {
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
       }
+    }
+
+    // PMOS repo policy: when a repo (GitHub URL) is added without a local
+    // path, download it into ~/.pmos/repos/<slug> if it is not already there.
+    if (repoUrl && !localPath) {
+      const reposDir = path.join(PMOS_ROOT, "repos");
+      const managedPath = path.join(reposDir, slug);
+      if (!fs.existsSync(managedPath)) {
+        try {
+          fs.mkdirSync(reposDir, { recursive: true });
+          execSync(`git clone --depth 1 "${repoUrl}" "${managedPath}"`, {
+            stdio: "pipe",
+            timeout: 600000,
+          });
+        } catch (err) {
+          return NextResponse.json(
+            {
+              error: `Failed to clone ${repoUrl}: ${
+                (err as Error).message
+              }`,
+            },
+            { status: 500 }
+          );
+        }
+      }
+      localPath = managedPath;
     }
 
     // Determine source mode

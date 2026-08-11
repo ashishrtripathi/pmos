@@ -15,7 +15,9 @@ export async function POST(
   { params }: { params: { slug: string } }
 ) {
   const body = await request.json();
-  const result = await createStory(params.slug, body);
+  // The UI modal sends { story: {...} }; accept the flat shape too.
+  const story = body.story ?? body;
+  const result = await createStory(params.slug, story);
   return NextResponse.json(result);
 }
 

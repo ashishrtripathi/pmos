@@ -26,6 +26,10 @@ import {
   Share2,
   Bookmark,
   AlertTriangle,
+  Plus,
+  Trash2,
+  Save,
+  Check,
 } from "lucide-react";
 import { PipelineScreen } from "./pipeline-screen";
 import { personaGradient, personaInitials } from "@/lib/persona-utils";
@@ -88,16 +92,28 @@ export function PersonaJourneyBoard({
   pipelineData,
   uiInfo,
   slug,
+  onJourneysChanged,
 }: {
   journey: PersonaJourney;
   pipelineData: PipelineData | null;
   uiInfo?: UIInfo | null;
   slug?: string;
+  onJourneysChanged?: () => Promise<void>;
 }) {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const [zoomStep, setZoomStep] = useState<number | null>(null);
   const [screenshotLoaded, setScreenshotLoaded] = useState<Record<number, boolean>>({});
   const [screenshotError, setScreenshotError] = useState<Record<number, boolean>>({});
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<{
+    mode: "add" | "edit";
+    stepNumber: number | null;
+    name: string;
+    activity: string;
+    tasks: string;
+    painPoints: string;
+    screen: string;
+  } | null>(null);
   const color = personaGradient(journey.personaId);
 
   // Parse screen field for markdown image: ![alt](path)
@@ -117,6 +133,84 @@ export function PersonaJourneyBoard({
     return "View screenshot";
   };
 
+  const refreshJourneys = async () => {
+    if (onJourneysChanged) await onJourneysChanged();
+  };
+
+  const saveStep = async () => {
+    if (!editing || !slug) return;
+    setBusy(true);
+    try {
+      const payload = {
+        name: editing.name.trim() || `Step ${journey.steps.length + 1}`,
+        activity: editing.activity.trim(),
+        tasks: editing.tasks.split(",").map((t) => t.trim()).filter(Boolean),
+        painPoints: editing.painPoints.split(",").map((p) => p.trim()).filter(Boolean),
+        screen: editing.screen.trim(),
+      };
+      const res = await fetch(`/api/projects/${slug}/journeys`, {
+        method: editing.mode === "add" ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editing.mode === "add"
+            ? { personaId: journey.personaId, step: payload }
+            : { personaId: journey.personaId, stepNumber: editing.stepNumber, updates: payload }
+        ),
+      });
+      if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+      setEditing(null);
+      await refreshJourneys();
+    } catch (err) {
+      console.error("Failed to save journey step", err);
+      window.alert("Failed to save step — see console for details.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeStep = async (stepNumber: number) => {
+    if (!slug) return;
+    if (!window.confirm(`Delete step ${stepNumber} "${journey.steps.find((s) => s.stepNumber === stepNumber)?.name}" from ${journey.personaName}'s journey?`)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/projects/${slug}/journeys?personaId=${encodeURIComponent(journey.personaId)}&stepNumber=${stepNumber}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+      await refreshJourneys();
+    } catch (err) {
+      console.error("Failed to delete journey step", err);
+      window.alert("Failed to delete step — see console for details.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startEdit = (step: PersonaJourneyStep) =>
+    setEditing({
+      mode: "edit",
+      stepNumber: step.stepNumber,
+      name: step.name,
+      activity: step.activity,
+      tasks: step.tasks.join(", "),
+      painPoints: step.painPoints.join(", "),
+      screen: step.screen,
+    });
+
+  const startAdd = () =>
+    setEditing({
+      mode: "add",
+      stepNumber: null,
+      name: "",
+      activity: "",
+      tasks: "",
+      painPoints: "",
+      screen: "",
+    });
+
   return (
     <div className="space-y-4">
       {/* Persona Header */}
@@ -133,6 +227,85 @@ export function PersonaJourneyBoard({
           </div>
         </div>
       </div>
+
+      {/* Step Editor */}
+      {editing && (
+        <div className="rounded-xl border border-primary/30 bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              {editing.mode === "add" ? (
+                <><Plus className="w-4 h-4" /> Add Step to {journey.personaName}'s journey</>
+              ) : (
+                <>Edit Step {editing.stepNumber}: {journey.steps.find((s) => s.stepNumber === editing.stepNumber)?.name}</>
+              )}
+            </h4>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setEditing(null)}
+                disabled={busy}
+                className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" /> Cancel
+              </button>
+              <button
+                onClick={saveStep}
+                disabled={busy}
+                className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity flex items-center gap-1"
+              >
+                {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {busy ? "Saving…" : "Save Step"}
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-xs text-muted-foreground">Step Name</span>
+              <input
+                value={editing.name}
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                placeholder="e.g. Deploy to Production"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-muted-foreground">Activity</span>
+              <input
+                value={editing.activity}
+                onChange={(e) => setEditing({ ...editing, activity: e.target.value })}
+                placeholder="What the persona does at this step"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-muted-foreground">Tasks (comma separated)</span>
+              <input
+                value={editing.tasks}
+                onChange={(e) => setEditing({ ...editing, tasks: e.target.value })}
+                placeholder="Click deploy, Verify environment, Monitor rollout"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-muted-foreground">Pain Points (comma separated)</span>
+              <input
+                value={editing.painPoints}
+                onChange={(e) => setEditing({ ...editing, painPoints: e.target.value })}
+                placeholder="Downtime risk, Rollback complexity"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+            <label className="block md:col-span-2">
+              <span className="text-xs text-muted-foreground">Screenshot (markdown image)</span>
+              <input
+                value={editing.screen}
+                onChange={(e) => setEditing({ ...editing, screen: e.target.value })}
+                placeholder="![cap](screens/kanban.png)"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Horizontal Journey Steps */}
       <div className="overflow-x-auto pb-4">
@@ -157,6 +330,26 @@ export function PersonaJourneyBoard({
                         {step.stepNumber}
                       </span>
                       <h4 className="text-sm font-semibold flex-1">{step.name}</h4>
+                      {slug && (
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => startEdit(step)}
+                            disabled={busy}
+                            title="Edit step"
+                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <PenLine className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => removeStep(step.stepNumber)}
+                            disabled={busy}
+                            title="Delete step"
+                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground ml-9">{step.activity}</p>
                   </div>
@@ -311,6 +504,20 @@ export function PersonaJourneyBoard({
               </div>
             );
           })}
+
+          {/* Add Step card */}
+          {slug && (
+            <button
+              onClick={startAdd}
+              disabled={busy}
+              className="w-[180px] shrink-0 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-muted/40 transition-all flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary"
+            >
+              <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Plus className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-medium">Add Step</span>
+            </button>
+          )}
         </div>
       </div>
 

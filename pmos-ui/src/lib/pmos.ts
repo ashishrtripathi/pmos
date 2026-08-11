@@ -948,6 +948,7 @@ export interface PersonaJourney {
   personaId: string;
   personaName: string;
   role: string;
+  personaBlurb: string;
   quote: string;
   steps: PersonaJourneyStep[];
   rawMarkdown: string;
@@ -962,6 +963,8 @@ function parsePersonaJourney(md: string): PersonaJourney {
   const role = nameMatch?.[2] || "Unknown";
   const quoteMatch = md.match(/\*\*Quote\*\*:\s*"(.+?)"/);
   const quote = quoteMatch?.[1] || "";
+  const personaMatch = md.match(/\*\*Persona\*\*:\s*(.+)/);
+  const personaBlurb = personaMatch?.[1]?.trim() || "";
   const personaId = personaName.toLowerCase().replace(/\s+/g, "-");
 
   // Parse the journey steps table
@@ -996,7 +999,7 @@ function parsePersonaJourney(md: string): PersonaJourney {
     }
   }
 
-  return { personaId, personaName, role, quote, steps, rawMarkdown: md };
+  return { personaId, personaName, role, personaBlurb, quote, steps, rawMarkdown: md };
 }
 
 const personaJourneyDocId = (slug: string, personaId: string) => `${slug}::${personaId}`;
@@ -1036,6 +1039,118 @@ export async function getPersonaJourneys(slug: string): Promise<PersonaJourney[]
     }
   }
   return fromFiles;
+}
+
+/** Reverse of parsePersonaJourney — builds the markdown source from a journey. */
+export function serializePersonaJourney(j: PersonaJourney): string {
+  const lines: string[] = [];
+  lines.push(`# Customer Journey — ${j.personaName} (${j.role})`);
+  lines.push("");
+  if (j.personaBlurb) lines.push(`**Persona**: ${j.personaBlurb}`);
+  if (j.quote) lines.push(`**Quote**: "${j.quote}"`);
+  lines.push("");
+  lines.push("| Step | Activity | Tasks | Pain Points | Screenshot |");
+  lines.push("|------|----------|-------|-------------|------------|");
+  for (const s of j.steps) {
+    lines.push(
+      `| **${s.stepNumber}. ${s.name}** | ${s.activity} | ${s.tasks.join(
+        ", "
+      )} | ${s.painPoints.join(", ")} | ${s.screen} |`
+    );
+  }
+  const stepsWithStories = j.steps.filter((s) => s.stories.length > 0);
+  if (stepsWithStories.length > 0) {
+    lines.push("");
+    lines.push("| Story | Step | Points | Status |");
+    lines.push("|-------|------|--------|--------|");
+    for (const s of stepsWithStories) {
+      for (const st of s.stories) {
+        lines.push(
+          `| ${st.id}: ${st.title} | ${s.name} | ${st.points} | ${st.status} |`
+        );
+      }
+    }
+  }
+  return lines.join("\n") + "\n";
+}
+
+/**
+ * Persist a journey: writes the markdown to PostBase (primary store) and
+ * mirrors it to the journey markdown file so the git-tracked source stays
+ * in sync. Returns the freshly parsed journey.
+ */
+export async function savePersonaJourney(
+  slug: string,
+  journey: PersonaJourney
+): Promise<PersonaJourney> {
+  const md = serializePersonaJourney(journey);
+  await writeDoc("persona_journeys", personaJourneyDocId(slug, journey.personaId), {
+    markdown: md,
+  });
+  writeFile(
+    pmosPath("projects", slug, "journey", `persona-${journey.personaId}.md`),
+    md
+  );
+  return parsePersonaJourney(md);
+}
+
+async function mutatePersonaJourney(
+  slug: string,
+  personaId: string,
+  mutate: (j: PersonaJourney) => PersonaJourney
+): Promise<PersonaJourney[]> {
+  const journeys = await getPersonaJourneys(slug);
+  const idx = journeys.findIndex((j) => j.personaId === personaId);
+  if (idx === -1) {
+    throw new Error(`Persona "${personaId}" not found`);
+  }
+  const updated = await savePersonaJourney(slug, mutate(journeys[idx]));
+  journeys[idx] = updated;
+  return journeys;
+}
+
+export async function addPersonaJourneyStep(
+  slug: string,
+  personaId: string,
+  step: Omit<PersonaJourneyStep, "stepNumber" | "stories">
+): Promise<PersonaJourney[]> {
+  return mutatePersonaJourney(slug, personaId, (j) => {
+    const stepNumber =
+      j.steps.length > 0
+        ? Math.max(...j.steps.map((s) => s.stepNumber)) + 1
+        : 1;
+    j.steps.push({ ...step, stepNumber, stories: [] });
+    return j;
+  });
+}
+
+export async function updatePersonaJourneyStep(
+  slug: string,
+  personaId: string,
+  stepNumber: number,
+  updates: Partial<Omit<PersonaJourneyStep, "stepNumber" | "stories">>
+): Promise<PersonaJourney[]> {
+  return mutatePersonaJourney(slug, personaId, (j) => {
+    const step = j.steps.find((s) => s.stepNumber === stepNumber);
+    if (!step) {
+      throw new Error(`Step ${stepNumber} not found in persona "${personaId}"`);
+    }
+    Object.assign(step, updates);
+    return j;
+  });
+}
+
+export async function deletePersonaJourneyStep(
+  slug: string,
+  personaId: string,
+  stepNumber: number
+): Promise<PersonaJourney[]> {
+  return mutatePersonaJourney(slug, personaId, (j) => {
+    j.steps = j.steps
+      .filter((s) => s.stepNumber !== stepNumber)
+      .map((s, i) => ({ ...s, stepNumber: i + 1 }));
+    return j;
+  });
 }
 
 // ============================================================

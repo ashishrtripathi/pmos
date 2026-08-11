@@ -348,9 +348,11 @@ function KanbanStoryCard({
 export function KanbanBoard({
   params,
   allStories,
+  personas: journeyPersonas,
 }: {
   params: { slug: string };
   allStories: KanbanStory[];
+  personas: string[];
 }) {
   const { slug } = params;
   const [stories, setStories] = useState<KanbanStory[]>(allStories);
@@ -437,6 +439,21 @@ export function KanbanBoard({
     totalValue,
     totalIntel,
   } = totals;
+
+  // Persona options for the detail/create modals — journey personas are the
+  // source of truth (must match the Customer Journey), merged with any
+  // personas already used on stories so existing values stay selectable.
+  // Fall back to the default personas only when no journey personas exist.
+  const allPersonas = [
+    ...new Set([
+      ...journeyPersonas,
+      ...stories.map((s) => s.persona).filter(Boolean),
+    ]),
+  ] as string[];
+  const personaOptions =
+    allPersonas.length > 0
+      ? allPersonas
+      : ["Product Manager", "Developer", "Designer"];
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -801,6 +818,7 @@ export function KanbanBoard({
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
           pricing={pricing || undefined}
+          personas={personaOptions}
         />
       )}
 
@@ -811,6 +829,7 @@ export function KanbanBoard({
           pricing={pricing || undefined}
           onClose={() => setShowCreate(false)}
           onCreated={handleStoryCreated}
+          personas={personaOptions}
         />
       )}
     </div>

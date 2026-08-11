@@ -59,6 +59,11 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
     );
   }
 
+  const refreshJourneys = async () => {
+    const data = await fetch(`/api/projects/${slug}/journeys`).then((r) => r.json());
+    setJourneys(data);
+  };
+
   const activeJourney = journeys.find((j: any) => j.personaId === activePersona);
 
   return (
@@ -117,7 +122,7 @@ export default function JourneyPage({ params }: { params: { slug: string } }) {
           <div className="space-y-8">
             {journeys.filter((j: any) => j.personaId === activePersona).map((j: any) => (
               <div key={j.personaId}>
-                <PersonaJourneyBoard journey={j} pipelineData={pipelineData} uiInfo={uiInfo} slug={slug} />
+                <PersonaJourneyBoard journey={j} pipelineData={pipelineData} uiInfo={uiInfo} slug={slug} onJourneysChanged={refreshJourneys} />
               </div>
             ))}
           </div>
