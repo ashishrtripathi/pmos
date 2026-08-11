@@ -1,4 +1,4 @@
-# Customer Journey -- Priya (Senior Product Manager)
+# Customer Journey — Priya (Senior Product Manager)
 
 **Persona**: Senior Product Manager, 35, Expert
 **Quote**: "I need to see the whole picture -- journey, stories, priorities -- without switching between 5 tools."
@@ -9,14 +9,16 @@
 
 | Step | Activity | Tasks | Pain Points | Screen |
 |------|----------|-------|-------------|--------|
-| **1. Onboard Project** | Connect a project to PMOS | Run command, review source-location.json, verify reading | Don't clone repos, understand structure | ![Dashboard -> Project Setup](screens/dashboard.png) |
-| **2. Intelligence Gathering** | Analyze codebase via AI agents | Trigger intelligence scan, review architecture/features/quality | Verify AI understood correctly, see findings | ![Intelligence](screens/intelligence.png) |
-| **3. Journey Mapping** | Define personas and map journey | Create personas, map steps, identify pain points, preview UI | Can't map without seeing UI, per-persona journeys needed | ![Journey -> Persona tabs](screens/journey.png) |
-| **4. Story Mapping** | Build stories from backbone | Create stories, assign persona/business goal, write Gherkin AC, estimate costs, calculate ROI | Stories trace to persona/step, see token costs AND dollars, what's ROI? | ![Story Map -> Journey columns](screens/story-map.png) |
-| **5. Agent Kanban** | Assign stories to agent teams | Review intelligence stories auto-assigned, drag between agents, view/edit | Know which agent does what, intelligence becomes stories automatically | ![Kanban -> 7 agent columns](screens/kanban.png) |
-| **6. Pipeline Execution** | Run pipeline steps | Click Run on steps, monitor progress, reset, view completion | See what step the project is in, continue from failure | ![Pipeline -> 9-step execution](screens/pipeline.png) |
-| **7. Agent Dispatch** | Send commands to AI agents | Select command template, fill parameters, dispatch, view history | Send commands from UI (not error messages), command library ready | ![Agents -> Dispatch panel](screens/agents.png) |
-| **8. Monitor & Iterate** | Track and re-evaluate | Watch stories move, re-prioritize, review completed, generate from feedback | See progress without status updates, auto-update priorities | ![Dashboard -> Project health](screens/dashboard.png) |
+| **1. Setup** | Connect a project | Pick local folder or GitHub repo, review source-location, verify reading | Don't clone repos, understand structure | ![Setup -> Source configuration](screens/setup.png) |
+| **2. Pipeline** | Run pipeline steps | Execute steps, monitor progress, continue from failure, view completion | See what step the project is in, recover from failure | ![Pipeline -> 9-step execution flow](screens/pipeline.png) |
+| **3. Intelligence** | Review codebase analysis | Trigger scan, review architecture/features/quality, act on improvements | Verify AI understood correctly, see findings | ![Intelligence -> Analysis tabs](screens/intelligence.png) |
+| **4. OKRs** | Set quarterly goals | Create OKRs, define key results, link stories, track progress | See goal progress, align roadmap to OKRs | ![Dashboard -> Project health](screens/dashboard.png) |
+| **5. Journey** | Map personas | Create personas, map steps, identify pain points, preview UI | Can't map without seeing UI, per-persona journeys needed | ![Journey -> Persona tabs](screens/journey.png) |
+| **6. Story Map** | Build the backlog | Create stories from backbone, assign persona, write Gherkin AC, estimate ROI | Stories trace to persona/step, see token costs AND dollars | ![Story Map -> Journey columns](screens/story-map.png) |
+| **7. Kanban** | Manage delivery | Review assignments, drag between agents, re-prioritize, close | Know which agent does what, intelligence becomes stories automatically | ![Kanban -> Columns with drag-and-drop](screens/kanban.png) |
+| **8. Standup** | Daily sync | Review in-progress, blockers, plan, share with team | See progress without status updates, surface stale work | ![Dashboard -> Standup summary](screens/dashboard.png) |
+| **9. Bugs** | Triage defects | Review bugs, prioritize fixes, assign, track to closure | Prioritize by impact, trace to story, verify fix | ![Stories -> Bug tracking](screens/stories.png) |
+| **10. Agents** | Dispatch agents | Pick command template, fill parameters, dispatch, view history | Send commands from UI, command library ready | ![Agents -> Dispatch panel](screens/agents.png) |
 
 ### Stories Under This Journey
 | Story | Step | Points | Status |

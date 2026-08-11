@@ -1,7 +1,7 @@
-# Customer Journey -- Agent (AI Coder)
+# Customer Journey — Agent (AI Coder)
 
-**Persona**: AI Coding Agent (Claude, GPT, Gemini), 24/7, Omniscient
-**Quote**: "I don't need a GUI. Give me markdown files and I'll run the full product pipeline."
+**Persona**: AI Coding Agent, 35, Expert
+**Quote**: "I need to read exactly where the data lives, update files the same way every time, and report my work without ambiguity."
 
 ---
 
@@ -9,12 +9,16 @@
 
 | Step | Activity | Tasks | Pain Points | Screen |
 |------|----------|-------|-------------|--------|
-| **1. Discover Context** | Read ~/.pmos/ to understand project | Read registry.json, project.md, source-location.json, persona journeys | Where is data stored? What format? Which project to work on? | ![Dashboard](screens/dashboard.png) |
-| **2. Execute Commands** | Run PMOS commands naturally | Attach project, run pipeline, create story, re-prioritize | What commands available? Expected output format? Must match Mike Cohn + Gherkin | ![Agents -> Command templates](screens/agents.png) |
-| **3. Read Intelligence** | Ingest codebase analysis | Read architecture.md, tech-stack.md, features.md, quality.md, improvements.md | Need structured data not prose. What's new vs tracked? | ![Intelligence files](screens/intelligence.png) |
-| **4. Create Artifacts** | Write PMOS files | Write stories to backlog/, update status, write intelligence, write journeys | Exact markdown format? Required frontmatter fields? Must match Mike Cohn + Gherkin | ![Story Map](screens/story-map.png) |
-| **5. Review Kanban** | Check agent assignments | Read stories/ directory, identify unassigned, check agent capacity | How to know agent assignments? Status distribution? | ![Kanban columns](screens/kanban.png) |
-| **6. Respond to PM** | Answer queries using PMOS data | Project status, prioritized backlog, top risks, sprint cost | Aggregate across files, consistent dollar calculations, flag stale data | ![Agents history](screens/agents.png) |
+| **1. Setup** | Read ~/.pmos and connect | Read registry, project.md, source-location.json, run setup, verify structure | Where is data stored? What format? Which project to work on? | ![Setup -> Source configuration](screens/setup.png) |
+| **2. Pipeline** | Execute pipeline commands | Run steps, create artifacts, check outputs, continue from failure | What commands are available? Expected output format? Must match Mike Cohn + Gherkin | ![Pipeline -> 9-step execution flow](screens/pipeline.png) |
+| **3. Intelligence** | Ingest intelligence outputs | Read architecture.md, tech-stack.md, features.md, quality.md, improvements.md | Need structured data not prose. What's new vs tracked? | ![Intelligence -> Analysis tabs](screens/intelligence.png) |
+| **4. OKRs** | Track OKR state | Read OKR markdown, update key results, flag at-risk goals | Where are OKRs stored? How to update progress? | ![Dashboard -> Project health](screens/dashboard.png) |
+| **5. Journey** | Update persona journeys | Edit step tables, update pain points, add screens | Exact markdown format? Required frontmatter? | ![Journey -> Persona tabs](screens/journey.png) |
+| **6. Story Map** | Write story map artifacts | Write stories to backlog, map to steps, keep Gherkin AC | Markdown conventions, story file locations, status updates | ![Story Map -> Journey columns](screens/story-map.png) |
+| **7. Kanban** | Work the board | Claim stories, update agentWork status, heartbeat, move to done | Claim rules, heartbeat semantics, stale claims | ![Kanban -> Columns with drag-and-drop](screens/kanban.png) |
+| **8. Standup** | Report standup | Write standup notes, report blockers, plan next steps | Where to post? What format? | ![Agents -> Dispatch panel](screens/agents.png) |
+| **9. Bugs** | Handle defects | Read bugs table, fix, verify, close, link to story | Bug schema? Trace to regression? | ![Stories -> Bug tracking](screens/stories.png) |
+| **10. Agents** | Self-manage | Read own profile, update Active/Completed stories, check load | Keep profile in sync, capacity limits | ![Agents -> Dispatch panel](screens/agents.png) |
 
 ### Stories Under This Journey
 | Story | Step | Points | Status |
