@@ -29,6 +29,9 @@ projects/*/journey/screenshots/_capture.js
 # Pipeline state (runtime data)
 projects/*/pipeline-state.json
 
+# Managed repo downloads (auto-cloned when a repo is added to PMOS)
+repos/
+
 # Misc
 .DS_Store
 *.pem

@@ -50,6 +50,32 @@
         "documentation-agent",
         "product-intelligence"
       ]
+    },
+    {
+      "slug": "graphify",
+      "name": "Graphify — Codebase Knowledge Graph",
+      "source": "github",
+      "repoUrl": "https://github.com/Graphify-Labs/graphify",
+      "localPath": "C:\\Users\\ashis\\.pmos\\repos\\graphify",
+      "path": "~/.pmos/projects/graphify",
+      "status": "attached",
+      "attachedAt": "2026-08-11",
+      "projectType": "full-codebase",
+      "teams": [
+        "product-manager",
+        "ux-designer",
+        "architect",
+        "software-engineer",
+        "qa-engineer",
+        "documentation-agent",
+        "product-intelligence"
+      ],
+      "stories": {
+        "backlog": 0,
+        "inProgress": 0,
+        "review": 0,
+        "done": 0
+      }
     }
   ],
   "settings": {
