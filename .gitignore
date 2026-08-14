@@ -73,6 +73,10 @@ Thumbs.db
 tmp_*.txt
 tmp_*.js
 
+# IDE/Tool configs
+.aionrs/
+.opencode/
+
 # Prisma
 prisma/migrations/
 
