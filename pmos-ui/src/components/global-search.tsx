@@ -34,7 +34,7 @@ export function GlobalSearch() {
   const [storiesByProject, setStoriesByProject] = useState<Record<string, SearchStory[]>>({});
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // Load projects + all stories across boards (pmos, voxstyle, …)
+  // Load projects + all stories across boards (pmos, …)
   useEffect(() => {
     let cancelled = false;
     (async () => {

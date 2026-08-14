@@ -37,7 +37,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const slug = pathname.split("/")[2] || "voxstyle";
+  const slug = pathname?.split("/")[2] || "pmos";
 
   return (
     <aside className="w-56 border-r border-border bg-card flex flex-col h-screen sticky top-0">
@@ -77,7 +77,7 @@ export function Sidebar() {
           const isActive =
             item.href === ""
               ? pathname === `/projects/${slug}` || pathname === `/projects/${slug}/`
-              : pathname.startsWith(href);
+              : pathname?.startsWith(href) ?? false;
           const Icon = item.icon;
 
           return (

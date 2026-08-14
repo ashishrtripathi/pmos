@@ -419,10 +419,18 @@ This project is licensed under the MIT License.
 
 This project draws architectural inspiration from:
 
-- **Corey Haines' Marketing Skills** — AI skill architecture and shared context
-- **Jeff Patton's Story Mapping** — User story mapping methodology
-- **Product Manager Skills Repository** — PM skill definitions
-- **PM Brain** — Product management knowledge
+- **AionUI** — AI conversation platform with skill architecture and shared context  
+  <https://github.com/aionui/aionui>
+- **OmniRoute** — Free AI gateway aggregating 271+ providers behind a single OpenAI-compatible endpoint  
+  <https://github.com/omniroute/omniroute>
+- **Jeff Patton's Story Mapping** — User story mapping methodology  
+  <https://www.jpattonassociates.com/user-story-mapping/>
+- **OKR Framework** — Objectives and Key Results for goal-setting and alignment  
+  <https://github.com/google/okr>
+- **PostBase** — Postgres-backed JSON document store for application state  
+  <https://github.com/postbase/postbase>
+- **Graphify** — Graph-based knowledge extraction from codebases  
+  <https://github.com/graphify-ai/graphify>
 
 PMOS expands these ideas into a complete AI-native product lifecycle operating system focused on Product Management first.
 

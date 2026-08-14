@@ -5,6 +5,10 @@ import {
   getScreenMockup,
 } from "@/lib/pmos";
 import { StoryMapBoard } from "./story-map-board";
+import { generateProjectStaticParams } from "@/lib/static-params";
+
+export { generateProjectStaticParams as generateStaticParams };
+export const dynamic = "force-static";
 
 export default async function StoryMapPage({
   params,

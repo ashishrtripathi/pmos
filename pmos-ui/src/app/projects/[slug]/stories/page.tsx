@@ -1,5 +1,9 @@
 import { getStoriesByStatus, getPersonaJourneys } from "@/lib/pmos";
 import { StoriesBoard } from "./stories-board";
+import { generateProjectStaticParams } from "@/lib/static-params";
+
+export { generateProjectStaticParams as generateStaticParams };
+export const dynamic = "force-static";
 
 export default async function StoriesPage({
   params,

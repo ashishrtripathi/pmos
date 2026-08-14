@@ -78,7 +78,7 @@ const COMMANDS: PMOSCommand[] = [
         label: "Project Slug",
         type: "text",
         required: true,
-        placeholder: "e.g. voxstyle, pmos",
+        placeholder: "e.g. pmos",
       },
       {
         name: "focus",
@@ -163,7 +163,7 @@ const COMMANDS: PMOSCommand[] = [
         label: "Project Slug",
         type: "text",
         required: true,
-        placeholder: "e.g. voxstyle, pmos",
+        placeholder: "e.g. pmos",
       },
     ],
   },
@@ -233,7 +233,7 @@ const COMMANDS: PMOSCommand[] = [
         label: "Project Slug",
         type: "text",
         required: true,
-        placeholder: "e.g. voxstyle",
+        placeholder: "e.g. pmos",
       },
       {
         name: "framework",
@@ -265,7 +265,7 @@ const COMMANDS: PMOSCommand[] = [
         label: "Project Slug",
         type: "text",
         required: true,
-        placeholder: "e.g. voxstyle",
+        placeholder: "e.g. pmos",
       },
       {
         name: "scope",

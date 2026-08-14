@@ -1,6 +1,10 @@
 import { getIntelligence } from "@/lib/pmos";
 import { Brain } from "lucide-react";
 import { markdownToHtml } from "@/lib/pmos";
+import { generateProjectStaticParams } from "@/lib/static-params";
+
+export { generateProjectStaticParams as generateStaticParams };
+export const dynamic = "force-static";
 
 const TABS = [
   { key: "architecture", label: "Architecture" },

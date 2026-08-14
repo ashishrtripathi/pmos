@@ -12,6 +12,9 @@ import {
   ArrowRight,
   Layers,
 } from "lucide-react";
+import { generateProjectStaticParams } from "@/lib/static-params";
+
+export { generateProjectStaticParams as generateStaticParams };
 
 export default async function ProjectDashboard({
   params,
