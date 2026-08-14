@@ -165,24 +165,9 @@ cd <your-project> && opencode
   - OmniRoute: `http://localhost:20128` (cloud-pooled, zero cost)
   - LM Studio: `http://localhost:1234/v1` (fully local/offline)
 
-### 3. Hermes One Desktop (AionUi)
 
-Hermes One Desktop is the desktop companion that hosts PMOS conversations, the agent team assistants, and the **PMOS Story Worker** scheduled task (runs every 10 minutes and dispatches stories to agents automatically).
 
-- **Backend:** bundled `aioncore` server at `http://127.0.0.1:62340`
-- **Auth headers** the backend expects: `x-aionui-user-id`, `x-aionui-runtime-token`, `x-aionui-conversation-id` (exported via `AIONUI_USER_ID`, `AIONUI_RUNTIME_TOKEN`, `AIONUI_CONVERSATION_ID`, `AIONUI_BASE_URL`)
-- **Data:**
-  - `~/.hermes/` → `kanban.db` (Hermes kanban), `skills/`, `logs/`
-  - `%APPDATA%\hermes-desktop\` → Electron profile
-  - `%APPDATA%\AionUi\aionui\conversations\<workspace>\` → conversation workspaces (the OmniRoute checkout lives here)
-- **Cron via CLI:**
-  ```powershell
-  & aioncore.exe config cron current list
-  & aioncore.exe config cron current update < payload.json
-  ```
-  Update payload shape: `{ "job_id": "...", "name": "...", "schedule": "*/10 * * * *", "schedule_description": "Every 10 minutes", "message": "<task instruction text>" }`
-
-### 4. Running locally with LM Studio (offline)
+### 3. Running locally with LM Studio (offline)
 
 Fully local option — no cloud keys needed.
 
@@ -214,7 +199,7 @@ No servers. No databases. No login. Just files that any AI can understand.
 
 ## 🧭 Core Philosophy
 
-Traditional tools begin with tickets. **PMOS begins with the customer.**
+Vibe Coding begin with chat. Traditional Coding begins with planning and agile methodologies. Product Management begins with the customer  **PMOS tries to bridge the gap of all three.**
 
 Every artifact must be connected through the Product Knowledge Graph:
 
