@@ -69,6 +69,10 @@ next-env.d.ts
 # OS
 Thumbs.db
 
+# Temp files
+tmp_*.txt
+tmp_*.js
+
 # Prisma
 prisma/migrations/
 
