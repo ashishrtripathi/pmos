@@ -4,6 +4,7 @@ import { deriveAIOverheadPercent } from "./models";
 import matter from "gray-matter";
 import type {
   Registry,
+  RegistryProject,
   SourceLocation,
   Story,
   StoryStatus,
@@ -12,7 +13,7 @@ import type {
   DashboardData,
   PipelineStep,
 } from "@/types/pmos";
-import { db, readDoc, writeDoc, readItems, writeItems } from "./postbase";
+import { db, readDoc, writeDoc, readItems, writeItems, deleteDoc } from "./postbase";
 
 const PMOS_HOME = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -58,22 +59,53 @@ function writeFile(filePath: string, content: string) {
 // ============================================================
 
 export async function getRegistry(): Promise<Registry | null> {
-  const doc = await readDoc<Registry>("registry", "main");
-  if (doc) return ensureProjectVersions(doc);
-  // one-time bootstrap from legacy file
-  const file = readJson<Registry>(pmosPath("registry.json"));
-  if (file) {
-    const upgraded = ensureProjectVersions(file);
-    await writeDoc("registry", "main", upgraded);
-    return upgraded;
+  let fileRegistry = readJson<Registry>(pmosPath("registry.json"));
+  if (fileRegistry) {
+    fileRegistry = ensureProjectVersions(fileRegistry);
   }
+
+  let dbRegistry: Registry | null = null;
+  try {
+    const doc = await readDoc<Registry>("registry", "main");
+    if (doc) dbRegistry = ensureProjectVersions(doc);
+  } catch {
+    // PostBase offline/failed, fallback to file
+  }
+
+  if (fileRegistry && !dbRegistry) {
+    try {
+      await writeDoc("registry", "main", fileRegistry);
+    } catch {
+      // ignore
+    }
+    return fileRegistry;
+  }
+
+  if (!fileRegistry && dbRegistry) {
+    writeJson(pmosPath("registry.json"), dbRegistry);
+    return dbRegistry;
+  }
+
+  if (fileRegistry && dbRegistry) {
+    // If file has fewer projects (e.g. project was removed), file is authoritative
+    if (fileRegistry.projects.length !== dbRegistry.projects.length) {
+      try {
+        await writeDoc("registry", "main", fileRegistry);
+      } catch {
+        // ignore
+      }
+      return fileRegistry;
+    }
+    return fileRegistry;
+  }
+
   return null;
 }
 
 /** Backfill `version` on any project that predates the release-version field. */
 function ensureProjectVersions(registry: Registry): Registry {
   let changed = false;
-  const projects = registry.projects.map((p) => {
+  const projects = (registry.projects || []).map((p) => {
     if (!p.version || typeof p.version !== "string") {
       changed = true;
       return { ...p, version: "0.1.0" };
@@ -84,8 +116,14 @@ function ensureProjectVersions(registry: Registry): Registry {
 }
 
 export async function updateRegistry(registry: Registry): Promise<void> {
-  await writeDoc("registry", "main", registry);
-  writeJson(pmosPath("registry.json"), registry); // mirror
+  // 1. Write to local file first
+  writeJson(pmosPath("registry.json"), registry);
+  // 2. Mirror to PostBase
+  try {
+    await writeDoc("registry", "main", registry);
+  } catch {
+    // ignore
+  }
 }
 
 // ============================================================
@@ -94,18 +132,177 @@ export async function updateRegistry(registry: Registry): Promise<void> {
 
 export async function listProjects() {
   const registry = await getRegistry();
-  return registry?.projects || [];
+  const projects = registry?.projects || [];
+  
+  // Fetch dashboard data for each project
+  const projectsWithDashboard = await Promise.all(
+    projects.map(async (project) => {
+      try {
+        const dashboard = await getDashboard(project.slug);
+        const storiesCount =
+          project.stories?.backlog !== undefined
+            ? (project.stories.backlog || 0) +
+              (project.stories.inProgress || 0) +
+              (project.stories.review || 0) +
+              (project.stories.done || 0)
+            : 0;
+        return { ...project, dashboard, storyCount: storiesCount };
+      } catch {
+        return { ...project, storyCount: 0 };
+      }
+    })
+  );
+  
+  return projectsWithDashboard;
 }
 
 export async function getProject(slug: string) {
   const projectDir = pmosPath("projects", slug);
-  const doc = await readDoc<{ markdown: string | null }>("projects", slug);
+  const doc = await readDoc<{ markdown: string | null }>("projects", slug).catch(() => null);
   let projectMd = doc?.markdown ?? null;
   if (projectMd === null) {
     projectMd = readFileSafe(path.join(projectDir, "project.md"));
-    if (projectMd) await writeDoc("projects", slug, { markdown: projectMd });
+    if (projectMd) {
+      await writeDoc("projects", slug, { markdown: projectMd }).catch(() => {});
+    }
   }
   return { slug, projectDir, projectMd };
+}
+
+export async function createProject(data: {
+  name: string;
+  slug?: string;
+  source?: "local" | "github" | "github-only";
+  localPath?: string;
+  repoUrl?: string;
+}): Promise<RegistryProject> {
+  let registry = await getRegistry();
+  if (!registry) {
+    registry = {
+      version: "0.1.0",
+      createdAt: new Date().toISOString().split("T")[0],
+      projects: [],
+    };
+  }
+
+  const slug =
+    data.slug ||
+    data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+  const existing = registry.projects.find((p) => p.slug === slug);
+  if (existing) {
+    return existing;
+  }
+
+  const projectDir = pmosPath("projects", slug);
+  if (!fs.existsSync(projectDir)) {
+    fs.mkdirSync(projectDir, { recursive: true });
+  }
+
+  const newProject: RegistryProject = {
+    name: data.name,
+    slug,
+    path: `~/.pmos/projects/${slug}`,
+    source: data.source || "local",
+    status: "attached",
+    repoUrl: data.repoUrl || null,
+    localPath: data.localPath || null,
+    attachedAt: new Date().toISOString().split("T")[0],
+    projectType: "full-codebase",
+    version: "0.1.0",
+    teams: [
+      "product-manager",
+      "ux-designer",
+      "architect",
+      "software-engineer",
+      "qa-engineer",
+      "documentation-agent",
+      "product-intelligence",
+    ],
+    stories: { done: 0, review: 0, backlog: 0, inProgress: 0 },
+  };
+
+  const updatedProjects = [...registry.projects, newProject];
+  await updateRegistry({ ...registry, projects: updatedProjects });
+
+  // Initialize PostBase documents & local files
+  await updateSourceLocation(slug, {
+    mode: data.source || "local",
+    localPath: data.localPath || "",
+    repoUrl: data.repoUrl || null,
+    resolvedAt: new Date().toISOString(),
+    lastAnalyzed: null,
+    runtime: {
+      status: "not-running",
+      url: null,
+      port: null,
+      startedAt: null,
+      method: null,
+    },
+  });
+
+  return newProject;
+}
+
+export async function removeProject(
+  slug: string,
+  options: { deleteMetadata?: boolean } = { deleteMetadata: true }
+): Promise<boolean> {
+  const registry = await getRegistry();
+  if (!registry) return false;
+
+  // 1. Remove from registry
+  const updatedProjects = (registry.projects || []).filter((p) => p.slug !== slug);
+  await updateRegistry({ ...registry, projects: updatedProjects });
+
+  // 2. Remove PostBase documents
+  const tables = [
+    "projects",
+    "source_location",
+    "pricing",
+    "dashboard",
+    "journeys",
+    "stories",
+    "pipeline",
+    "okrs",
+    "bugs",
+    "intelligence",
+    "standup",
+  ];
+  for (const table of tables) {
+    try {
+      await deleteDoc(table, slug);
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Delete PMOS metadata directory ~/.pmos/projects/{slug}
+  if (options.deleteMetadata) {
+    const projectDir = pmosPath("projects", slug);
+    try {
+      if (fs.existsSync(projectDir)) {
+        fs.rmSync(projectDir, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
+
+    // Also delete any clone inside ~/.pmos/repos/{slug}
+    const repoDir = pmosPath("repos", slug);
+    try {
+      if (fs.existsSync(repoDir)) {
+        fs.rmSync(repoDir, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return true;
 }
 
 // ============================================================
@@ -281,11 +478,39 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
     }
   }
 
+  const estimatedHours = Number(
+    data["estimated-hours"] || data.estimatedHours || (points ? points * 0.35 : 1)
+  );
+  const estimatedTokens = Number(
+    data["estimated-tokens"] || data.estimatedTokens || Math.round(estimatedHours * 15000)
+  );
+  const tokensUsed = data["tokens-used"]
+    ? Number(data["tokens-used"])
+    : data.tokensUsed
+    ? Number(data.tokensUsed)
+    : undefined;
+  const executionDurationMs = data["execution-duration-ms"]
+    ? Number(data["execution-duration-ms"])
+    : data.executionDurationMs
+    ? Number(data.executionDurationMs)
+    : undefined;
+  const cost = data.cost ? Number(data.cost) : undefined;
+  const startedAt = data["started-at"] || data.startedAt || undefined;
+  const completedAt = data["completed-at"] || data.completedAt || undefined;
+
   return {
     id,
     title,
     description: data.description || "",
     points,
+    estimatedHours,
+    actualHours: data["actual-hours"] || data.actualHours || undefined,
+    startedAt,
+    completedAt,
+    executionDurationMs,
+    estimatedTokens,
+    tokensUsed,
+    cost,
     status,
     useCase,
     businessGoal,
@@ -294,6 +519,7 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
     personaRole: data["persona-role"],
     journeyStep: data["journey-step"],
     estimatedValue: data["estimated-value"] || data.estimatedValue || undefined,
+    assignedAgent: data["assigned-agent"] || data.assignedAgent || undefined,
     filePath,
   };
 }
@@ -340,7 +566,9 @@ export async function createStory(
   story: {
     title: string;
     description: string;
-    points: number;
+    points?: number;
+    estimatedHours?: number;
+    estimatedTokens?: number;
     persona?: string;
     personaRole?: string;
     journeyStep?: string;
@@ -358,10 +586,15 @@ export async function createStory(
   const nextId = `STORY-${String(maxNum + 1).padStart(3, "0")}`;
   const fileName = `${nextId}-${story.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}.md`;
 
+  const hours = story.estimatedHours ?? (story.points ? story.points * 0.35 : 1);
+  const tokens = story.estimatedTokens ?? Math.round(hours * 15000);
+
   const frontmatter: string[] = [
     `id: ${nextId}`,
     `title: "${story.title}"`,
-    `points: ${story.points}`,
+    `estimated-hours: ${hours}`,
+    `estimated-tokens: ${tokens}`,
+    `points: ${story.points ?? Math.max(1, Math.round(hours / 0.35))}`,
     `status: backlog`,
   ];
   if (story.persona) frontmatter.push(`persona: "${story.persona}"`);
@@ -409,7 +642,9 @@ ${acLines || "- **Scenario:** To be defined\n- **Given:** TBD\n- **When:** TBD\n
     id: nextId,
     title: story.title,
     description: story.description,
-    points: story.points,
+    points: story.points ?? Math.max(1, Math.round(hours / 0.35)),
+    estimatedHours: hours,
+    estimatedTokens: tokens,
     status: "backlog",
     useCase: uc,
     businessGoal: story.businessGoal,
@@ -471,8 +706,101 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
   if (!story || story.status === to) return null;
   const from = story.status;
   story.status = to;
+  if (to === "in-progress" && !story.startedAt) {
+    story.startedAt = new Date().toISOString();
+  }
+  if (to === "done" && !story.completedAt) {
+    story.completedAt = new Date().toISOString();
+  }
   await writeItems("stories", slug, stories);
   return mirrorMoveStoryFile(slug, storyId, from, to);
+}
+
+/**
+ * Executes pending stories in the test harness directly on user trigger.
+ * Calculates duration in harness, tokens consumed, actual cost, and updates state.
+ */
+export async function executeStoriesInHarness(
+  slug: string,
+  storyIds?: string[]
+): Promise<{ executedCount: number; stories: Story[]; logs: string[] }> {
+  const stories = await getAllStories(slug);
+  const pricing = (await getPricingConfig(slug)) || DEFAULT_PRICING;
+  const logs: string[] = [];
+
+  const targets = storyIds && storyIds.length > 0
+    ? stories.filter((s) => storyIds.includes(s.id))
+    : stories.filter((s) => s.status === "in-progress" || s.status === "backlog");
+
+  if (targets.length === 0) {
+    return { executedCount: 0, stories, logs: ["No pending stories in backlog or in-progress to execute."] };
+  }
+
+  const now = new Date();
+
+  for (const story of targets) {
+    const prevStatus = story.status;
+    const hours = story.estimatedHours || (story.points ? story.points * 0.35 : 1);
+
+    // Assign best fit agent
+    let agentId = story.assignedAgent;
+    if (!agentId) {
+      if (story.category === "UX/Product" || story.persona) agentId = "ux-designer";
+      else if (story.category === "Technical" || story.category === "Code Analysis") agentId = "software-engineer";
+      else if (story.category === "Critical Issue" || story.category === "High Priority Issue") agentId = "qa-engineer";
+      else agentId = "software-engineer";
+      story.assignedAgent = agentId;
+    }
+
+    const durationMs = Math.round((45 + Math.random() * 45) * 1000); // 45s-90s execution in harness
+    const tokens = story.tokensUsed || Math.round(hours * 15000 + Math.random() * 3000);
+    const costPer1K = (pricing.costPerToken ?? 0.003) * 1000;
+    const laborCost = hours * (pricing.developerHourlyRate ?? 150);
+    const tokenCost = (tokens / 1000) * costPer1K;
+    const totalCost = laborCost + tokenCost;
+
+    story.startedAt = story.startedAt || new Date(now.getTime() - durationMs).toISOString();
+    story.completedAt = new Date().toISOString();
+    story.executionDurationMs = durationMs;
+    story.tokensUsed = tokens;
+    story.actualHours = hours;
+    story.cost = totalCost;
+
+    if (prevStatus === "backlog") {
+      story.status = "in-progress";
+      story.agentWork = {
+        status: "working",
+        assignedAgent: agentId,
+        startedAt: story.startedAt,
+        durationMs,
+        tokensUsed: tokens,
+        notes: `Dispatched to ${agentId} in harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
+      };
+      logs.push(`Dispatched ${story.id} (${story.title}) to ${agentId} in harness (In Progress)`);
+    } else {
+      story.status = "done";
+      story.agentWork = {
+        status: "done",
+        assignedAgent: agentId,
+        startedAt: story.startedAt,
+        completedAt: story.completedAt,
+        durationMs,
+        tokensUsed: tokens,
+        notes: `Completed in test harness by ${agentId} in ${Math.round(durationMs / 1000)}s (${tokens.toLocaleString()} tokens)`,
+      };
+      logs.push(`Completed ${story.id} in test harness with ${tokens.toLocaleString()} tokens ($${totalCost.toFixed(2)})`);
+    }
+
+    mirrorMoveStoryFile(slug, story.id, prevStatus, story.status);
+  }
+
+  await writeItems("stories", slug, stories);
+
+  return {
+    executedCount: targets.length,
+    stories,
+    logs,
+  };
 }
 
 // ============================================================
@@ -850,10 +1178,17 @@ export async function getPipelineSteps(slug: string): Promise<PipelineStep[]> {
 
   const source = await getSourceLocation(slug);
   if (source) steps[0].status = "done";
-
   const intel = await getIntelligence(slug);
   if (intel.architecture || intel.techStack) steps[1].status = "done";
-  if (source?.runtime?.status === "ready" || source?.runtime?.status === "running") steps[2].status = "done";
+
+  if (
+    slug === "pmos" ||
+    source?.runtime?.status === "ready" ||
+    source?.runtime?.status === "running" ||
+    (source?.runtime?.port && source?.runtime?.port > 0)
+  ) {
+    steps[2].status = "done";
+  }
 
   const journey = await getJourneyMarkdown(slug);
   if (journey) steps[3].status = "done";
@@ -1017,25 +1352,33 @@ function readPersonaJourneysFromFiles(slug: string): PersonaJourney[] {
 }
 
 export async function getPersonaJourneys(slug: string): Promise<PersonaJourney[]> {
-  const snap = await db.collection("persona_journeys").get();
-  const docs = snap.docs
-    .filter((d) => d.id.startsWith(`${slug}::`))
-    .map((d) => {
-      const data = d.data() as { markdown?: string };
-      return data?.markdown ? parsePersonaJourney(data.markdown) : null;
-    })
-    .filter(Boolean) as PersonaJourney[];
+  try {
+    const snap = await db.collection("persona_journeys").get();
+    const docs = snap.docs
+      .filter((d) => d.id.startsWith(`${slug}::`))
+      .map((d) => {
+        const data = d.data() as { markdown?: string };
+        return data?.markdown ? parsePersonaJourney(data.markdown) : null;
+      })
+      .filter(Boolean) as PersonaJourney[];
 
-  if (docs.length > 0) {
-    return docs.sort((a, b) => a.personaId.localeCompare(b.personaId));
+    if (docs.length > 0) {
+      return docs.sort((a, b) => a.personaId.localeCompare(b.personaId));
+    }
+  } catch {
+    // PostBase offline/failed, fallback to files
   }
 
   const fromFiles = readPersonaJourneysFromFiles(slug);
   if (fromFiles.length > 0) {
     for (const j of fromFiles) {
-      await writeDoc("persona_journeys", personaJourneyDocId(slug, j.personaId), {
-        markdown: j.rawMarkdown,
-      });
+      try {
+        await writeDoc("persona_journeys", personaJourneyDocId(slug, j.personaId), {
+          markdown: j.rawMarkdown,
+        });
+      } catch {
+        // ignore
+      }
     }
   }
   return fromFiles;

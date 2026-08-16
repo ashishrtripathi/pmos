@@ -36,7 +36,7 @@ We are committed to providing a welcoming and inclusive experience for everyone.
 1. **Fork the repository**
    ```bash
    # Fork on GitHub, then clone
-   git clone https://github.com/YOUR_USERNAME/pmos.git
+   git clone https://github.com/ashishrtripathi/pmos.git
    cd pmos
    ```
 
@@ -271,7 +271,7 @@ Contributors will be recognized in:
 
 ## ❓ Questions?
 
-- 💬 [GitHub Discussions](https://github.com/YOUR_USERNAME/pmos/discussions)
+- 💬 [GitHub Discussions](https://github.com/ashishrtripathi/pmos/discussions)
 - 📧 Email: contribute@pmos.dev
 - 💻 Discord: [Join our server](https://discord.gg/pmos)
 

@@ -2,10 +2,36 @@
   {
     "id": "obj-1",
     "title": "Test Objective",
+    "quarter": "Q3 2026",
     "createdAt": "2026-07-30T18:39:56.812Z",
     "updatedAt": "2026-07-30T18:39:56.812Z",
     "keyResults": [],
-    "description": "Testing",
+    "description": "Testing"
+  },
+  {
+    "id": "OBJ-001",
+    "createdAt": "2026-08-15T19:53:17Z",
+    "progress": 85,
+    "description": "Complete core features, full database persistence, and documentation",
+    "owner": "Product Manager",
+    "keyResults": [
+      {
+        "current": 100,
+        "title": "Zero TypeScript and ESLint errors",
+        "unit": "%",
+        "id": "KR-001",
+        "target": 100
+      },
+      {
+        "current": 100,
+        "title": "All UI screens have full database persistence",
+        "unit": "%",
+        "id": "KR-002",
+        "target": 100
+      }
+    ],
+    "updatedAt": "2026-08-15T19:53:17Z",
+    "title": "Ship PMOS 1.0 Production Release",
     "quarter": "Q3 2026"
   }
 ]

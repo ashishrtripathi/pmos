@@ -11,6 +11,7 @@ import {
   Package,
   FileCode,
   FolderOpen,
+  Folder,
   ChevronRight,
   ArrowUp,
   AlertCircle,
@@ -59,16 +60,39 @@ export function GitHubSearch({
   onSelect: (repo: GitHubRepo) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ name: string; fullName: string; description: string; htmlUrl: string; language: string; stars: number; updatedAt: string; topics: string[] }[]>([]);
+  const [results, setResults] = useState<{ name: string; fullName: string; description: string; htmlUrl: string; cloneUrl: string; language: string; stars: number; updatedAt: string; topics: string[] }[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<GitHubRepo | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  const search = useCallback(async () => {
-    if (!query.trim()) return;
+  const loadInitialRepos = useCallback(async () => {
     setSearching(true);
     try {
-      const res = await fetch(`/api/github/repos?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch("/api/github/repos");
+      const data = await res.json();
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        setResults(data.items);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInitialRepos();
+  }, [loadInitialRepos]);
+
+  const search = useCallback(async (searchQuery?: string) => {
+    const q = searchQuery !== undefined ? searchQuery : query;
+    if (!q.trim()) {
+      loadInitialRepos();
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/github/repos?q=${encodeURIComponent(q.trim())}`);
       const data = await res.json();
       setResults(data.items || []);
     } catch {
@@ -76,7 +100,7 @@ export function GitHubSearch({
     } finally {
       setSearching(false);
     }
-  }, [query]);
+  }, [query, loadInitialRepos]);
 
   const loadDetail = async (fullName: string) => {
     const [owner, repo] = fullName.split("/");
@@ -167,49 +191,77 @@ export function GitHubSearch({
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && search()}
-          placeholder="Search GitHub repositories... (e.g., 'react dashboard')"
-          className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          autoFocus
-        />
-        {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && search()}
+            placeholder="Search GitHub repositories..."
+            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+        </div>
+        <button
+          type="button"
+          onClick={() => search()}
+          className="px-3.5 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+        >
+          Search
+        </button>
+        <a
+          href="https://github.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors flex items-center gap-1 text-muted-foreground hover:text-foreground"
+          title="Open GitHub in browser"
+        >
+          <ExternalLink className="w-4 h-4" />
+          GitHub
+        </a>
       </div>
-      <p className="text-[10px] text-muted-foreground">
-        Or paste a direct URL: <span className="font-mono">https://github.com/owner/repo</span>
-      </p>
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{query ? "Search Results" : "Available Repositories"}</span>
+        <span>{results.length} found</span>
+      </div>
+
       {results.length > 0 && (
-        <div className="max-h-[300px] overflow-y-auto space-y-1.5">
+        <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-1">
           {results.map((repo) => (
             <button
               key={repo.fullName}
-              onClick={() => loadDetail(repo.fullName)}
-              className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-muted/50 transition-all"
+              type="button"
+              onClick={() => {
+                loadDetail(repo.fullName);
+              }}
+              className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-muted/50 transition-all flex flex-col gap-0.5"
             >
               <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-medium">{repo.fullName}</span>
+                <span className="text-sm font-medium text-foreground">{repo.fullName}</span>
+                <div className="flex items-center gap-2">
                   {repo.language && (
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{repo.language}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">{repo.language}</span>
+                  )}
+                  {repo.stars > 0 && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Star className="w-2.5 h-2.5" /> {repo.stars}
+                    </span>
                   )}
                 </div>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <Star className="w-2.5 h-2.5" /> {repo.stars}
-                </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{repo.description || "No description"}</p>
+              {repo.description && (
+                <p className="text-xs text-muted-foreground line-clamp-1">{repo.description}</p>
+              )}
             </button>
           ))}
         </div>
       )}
       {query && !searching && results.length === 0 && (
-        <div className="text-center py-8 text-sm text-muted-foreground">
-          No repositories found. Try a different search.
+        <div className="text-center py-6 text-sm text-muted-foreground">
+          No repositories found for &ldquo;{query}&rdquo;.
         </div>
       )}
     </div>
@@ -238,24 +290,66 @@ export function FileSystemBrowser({
     try {
       const res = await fetch(`/api/fs/browse?path=${encodeURIComponent(dirPath)}`);
       const data: BrowseResult = await res.json();
-      if (data.error) {
+      if (data.error && (!data.directories || data.directories.length === 0)) {
         setError(data.error);
       } else {
         setCurrentPath(data.currentPath);
         setParentPath(data.parentPath);
-        setDirectories(data.directories);
+        setDirectories(data.directories || []);
         setManualPath(data.currentPath);
+        onSelect(data.currentPath);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to browse");
+      setError(err.message || "Failed to browse directory");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onSelect]);
 
   useEffect(() => {
     browse(initialPath || "");
   }, []);
+
+  const openBrowserDirectoryPicker = async () => {
+    try {
+      // @ts-ignore
+      if (typeof window !== "undefined" && window.showDirectoryPicker) {
+        // @ts-ignore
+        const dirHandle = await window.showDirectoryPicker();
+        if (dirHandle && dirHandle.name) {
+          const guessedPath = manualPath
+            ? `${manualPath.replace(/[\\/][^\\/]+$/, "")}\\${dirHandle.name}`
+            : dirHandle.name;
+          setManualPath(guessedPath);
+          onSelect(guessedPath);
+          browse(guessedPath);
+        }
+      } else {
+        // Fallback to hidden input
+        const input = document.createElement("input");
+        input.type = "file";
+        // @ts-ignore
+        input.webkitdirectory = true;
+        // @ts-ignore
+        input.directory = true;
+        input.onchange = (e: any) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            const rel = files[0].webkitRelativePath || "";
+            const folder = rel.split("/")[0] || files[0].name;
+            if (folder) {
+              setManualPath(folder);
+              onSelect(folder);
+              browse(folder);
+            }
+          }
+        };
+        input.click();
+      }
+    } catch {
+      // User cancelled picker
+    }
+  };
 
   const goUp = () => {
     if (parentPath) browse(parentPath);
@@ -267,7 +361,32 @@ export function FileSystemBrowser({
 
   return (
     <div className="space-y-3">
-      {/* Manual path input */}
+      {/* Primary Browser Folder Picker Action */}
+      <div className="p-4 rounded-xl border-2 border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <FolderOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-foreground">Select Project Folder</div>
+            <div className="text-xs text-muted-foreground">
+              Choose your local codebase folder using the browser folder selector
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={openBrowserDirectoryPicker}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            <FolderOpen className="w-4 h-4" />
+            Browser Picker
+          </button>
+        </div>
+      </div>
+
+      {/* Manual path input & explorer */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -276,85 +395,79 @@ export function FileSystemBrowser({
             value={manualPath}
             onChange={(e) => setManualPath(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && browse(manualPath)}
-            placeholder="C:\Users\you\projects"
+            placeholder="C:\Users\you\projects\my-app"
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
         <button
+          type="button"
           onClick={() => browse(manualPath)}
-          className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+          className="px-3.5 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
         >
           Go
         </button>
       </div>
 
       {/* Current path breadcrumb */}
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        {currentPath.split(/[\\/]/).filter(Boolean).map((part, i, arr) => (
-          <span key={i} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight className="w-2.5 h-2.5" />}
-            <button
-              onClick={() => {
-                const fullPath = arr.slice(0, i + 1).join("\\");
-                // On Windows paths, re-add drive letter separator
-                const rebuildPath = i === 0 ? fullPath : arr.slice(0, i + 1).join("\\");
-                navigateTo(rebuildPath);
-              }}
-              className="hover:text-foreground transition-colors"
-            >
-              {part}
-            </button>
-          </span>
-        ))}
-      </div>
+      {currentPath && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap bg-muted/40 p-2 rounded-lg font-mono">
+          <span className="text-muted-foreground font-sans text-[11px] mr-1">Current:</span>
+          {currentPath.split(/[\\/]/).filter(Boolean).map((part, i, arr) => (
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/60" />}
+              <button
+                type="button"
+                onClick={() => {
+                  const fullPath = arr.slice(0, i + 1).join("\\");
+                  navigateTo(fullPath);
+                }}
+                className="hover:text-primary hover:underline transition-colors"
+              >
+                {part}
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Go up button */}
       {parentPath && (
         <button
+          type="button"
           onClick={goUp}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
         >
-          <ArrowUp className="w-3 h-3" />
-          Up one level
+          <ArrowUp className="w-3.5 h-3.5" />
+          Up one directory level
         </button>
       )}
 
       {/* Directory listing */}
       {error ? (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          {error}
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="text-xs">{error}</div>
         </div>
       ) : loading ? (
-        <div className="text-center py-8 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-          Loading...
+        <div className="text-center py-6 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2 text-primary" />
+          Loading directory...
         </div>
       ) : (
-        <>
-          {/* Select current directory button */}
-          {currentPath && (
-            <button
-              onClick={() => onSelect(currentPath)}
-              className="w-full p-2.5 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Select this folder
-            </button>
-          )}
-
-          <div className="max-h-[280px] overflow-y-auto space-y-0.5 border border-border rounded-lg">
+        <div className="space-y-2">
+          <div className="max-h-[220px] overflow-y-auto space-y-0.5 border border-border rounded-lg bg-card">
             {directories.length === 0 ? (
-              <div className="text-center py-6 text-sm text-muted-foreground">No subdirectories</div>
+              <div className="text-center py-6 text-xs text-muted-foreground">No subdirectories in this folder</div>
             ) : (
               directories.map((dir) => (
                 <button
                   key={dir.path}
+                  type="button"
                   onClick={() => navigateTo(dir.path)}
-                  className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center gap-2 border-b border-border/50 last:border-b-0"
+                  className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors flex items-center gap-2 border-b border-border/50 last:border-b-0"
                 >
                   <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span className="text-sm flex-1 truncate">{dir.name}</span>
+                  <span className="text-sm flex-1 truncate font-sans">{dir.name}</span>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {dir.hasGit && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200 font-medium">
@@ -372,7 +485,7 @@ export function FileSystemBrowser({
               ))
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

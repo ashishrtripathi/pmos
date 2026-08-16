@@ -149,7 +149,7 @@ export function AddProjectWizard({
           {/* Step 1: Choose Source Type */}
           {step === 1 && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground mb-4">How is your project's source code located?</p>
+              <p className="text-sm text-muted-foreground mb-4">How is your project&apos;s source code located?</p>
               <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => { setMode("local"); setStep(2); }}

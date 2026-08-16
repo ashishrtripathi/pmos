@@ -130,12 +130,19 @@ function backlogComparator(a: Story, b: Story): number {
   const av = a.estimatedValue ?? 0;
   const bv = b.estimatedValue ?? 0;
   if (av !== bv) return bv - av;
-  if (a.points !== b.points) return b.points - a.points;
+  const ap = a.points ?? (a.estimatedHours ? Math.round(a.estimatedHours / 0.35) : 0);
+  const bp = b.points ?? (b.estimatedHours ? Math.round(b.estimatedHours / 0.35) : 0);
+  if (ap !== bp) return bp - ap;
   return a.id.localeCompare(b.id);
 }
 
 function storyToItem(s: Story): StandupItem {
-  return { id: s.id, title: s.title, points: s.points, status: s.status };
+  return {
+    id: s.id,
+    title: s.title,
+    points: s.points ?? (s.estimatedHours ? Math.round(s.estimatedHours / 0.35) : 1),
+    status: s.status,
+  };
 }
 
 export function generateStandupReport({

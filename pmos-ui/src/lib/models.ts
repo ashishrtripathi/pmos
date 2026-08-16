@@ -1,17 +1,20 @@
 // ── Model Pricing Registry ─────────────────────────────
 // Each model has a known cost per 1K input/output tokens.
-// The AI overhead percentage is derived from this + estimated
-// token usage per story point (20K tokens per point average).
+// Cost calculations are based on estimated hours and token consumption.
 
 export interface ModelPricing {
   id: string;
   name: string;
   provider: string;
-  costPer1KTokens: number; // blended input+output cost per 1K tokens
+  costPer1KTokens: number; // blended input+output cost per 1K tokens ($)
   notes?: string;
 }
 
 export const MODEL_REGISTRY: ModelPricing[] = [
+  // Local / Free Models ($0.00)
+  { id: "local-ollama", name: "Local Ollama / Llama 3 (Free)", provider: "Local", costPer1KTokens: 0.0, notes: "Zero token cost (self-hosted / open source)" },
+  { id: "deepseek-r1-local", name: "DeepSeek R1 (Local / Free)", provider: "Local", costPer1KTokens: 0.0, notes: "Zero token cost (local weights)" },
+
   // Anthropic Claude
   { id: "claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic", costPer1KTokens: 0.003, notes: "Best balance of speed & quality" },
   { id: "claude-haiku-3.5", name: "Claude Haiku 3.5", provider: "Anthropic", costPer1KTokens: 0.001, notes: "Fast & economical" },
@@ -26,45 +29,53 @@ export const MODEL_REGISTRY: ModelPricing[] = [
   { id: "gemini-2-flash", name: "Gemini 2.0 Flash", provider: "Google", costPer1KTokens: 0.0005, notes: "Very low cost" },
   { id: "gemini-2-pro", name: "Gemini 2.0 Pro", provider: "Google", costPer1KTokens: 0.002, notes: "High quality" },
 
-  // Open source / local
-  { id: "local-llama", name: "Llama 3 (local)", provider: "Local", costPer1KTokens: 0.0001, notes: "Free if self-hosted" },
-  { id: "custom", name: "Custom pricing", provider: "Custom", costPer1KTokens: 0.003, notes: "Set your own cost per 1K tokens" },
+  // Custom ($0.00+)
+  { id: "custom", name: "Custom Pricing", provider: "Custom", costPer1KTokens: 0.0, notes: "Set custom rate per 1K tokens ($0.00+)" },
 ];
 
 export function getModelById(id: string): ModelPricing | undefined {
   return MODEL_REGISTRY.find((m) => m.id === id);
 }
 
-// ── AI Overhead Calculation ──────────────────────────
-// Derives the AI overhead percentage from:
-//   estimated tokens per story × model cost ÷ labor cost per story
-//
-// Default assumptions (tunable):
-//   - 20K tokens per story point (prompt + completion, multi-turn)
-//   - 3.5× multiplier for agentic loops (tool calls, retries, context)
-//   - 7× margin for inefficiency, failed runs, re-prompts
-//   - 0.35 hours per point at $150/hr developer rate = $52.50 labor per point
+/**
+ * Calculate actual story cost from estimated hours, hourly rate, and token usage.
+ */
+export function calculateStoryCostDirect({
+  estimatedHours,
+  hourlyRate = 150,
+  estimatedTokens,
+  costPer1KTokens = 0.003,
+}: {
+  estimatedHours: number;
+  hourlyRate?: number;
+  estimatedTokens?: number;
+  costPer1KTokens?: number;
+}): {
+  laborCost: number;
+  tokenCost: number;
+  totalCost: number;
+} {
+  const hours = Math.max(0, estimatedHours || 0);
+  const laborCost = hours * Math.max(0, hourlyRate);
+  const tokens = estimatedTokens !== undefined ? estimatedTokens : Math.max(1000, Math.round(hours * 15000));
+  const tokenCost = (tokens / 1000) * Math.max(0, costPer1KTokens);
 
-const DEFAULT_TOKENS_PER_POINT = 20000;
-const DEFAULT_AGENT_MULTIPLIER = 3.5;
-const DEFAULT_MARGIN = 7;
+  return {
+    laborCost,
+    tokenCost,
+    totalCost: laborCost + tokenCost,
+  };
+}
 
 export function deriveAIOverheadPercent(modelId: string): number {
   const model = getModelById(modelId);
-  if (!model) return 3; // fallback default
+  if (!model || model.costPer1KTokens === 0) return 0;
 
-  // Estimated tokens per story point
-  const tokensPerPoint = DEFAULT_TOKENS_PER_POINT * DEFAULT_AGENT_MULTIPLIER;
+  // Estimated tokens per hour: ~25k tokens per dev hour
+  const tokensPerHour = 25000;
+  const tokenCostPerHour = (tokensPerHour / 1000) * model.costPer1KTokens;
+  const laborPerHour = 150;
 
-  // AI cost per point: (tokens / 1000) * costPer1KTokens * margin
-  const costPerPoint = (tokensPerPoint / 1000) * model.costPer1KTokens * DEFAULT_MARGIN;
-
-  // Labor cost per point: 0.35 hours × $150/hr
-  const laborPerPoint = 0.35 * 150;
-
-  // Overhead percentage
-  const percent = (costPerPoint / laborPerPoint) * 100;
-
-  // Round to 1 decimal place, min 0.5%, max 50%
-  return Math.min(50, Math.max(0.5, Math.round(percent * 10) / 10));
+  const percent = (tokenCostPerHour / laborPerHour) * 100;
+  return Math.min(50, Math.max(0, Math.round(percent * 10) / 10));
 }

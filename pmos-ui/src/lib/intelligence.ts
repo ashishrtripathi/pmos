@@ -618,6 +618,8 @@ ${acBullets}
       title: story.title,
       description: story.description,
       points: story.points,
+      estimatedHours: Math.max(1, Math.round((story.points || 3) * 0.35)),
+      estimatedTokens: (story.points || 3) * 6000,
       status: "backlog",
       useCase: story.useCase,
       businessGoal: story.businessGoal,

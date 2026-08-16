@@ -319,7 +319,7 @@ export function BugsPageClient({ params }: { params: { slug: string } }) {
       ) : bugs.length === 0 ? (
         <div className="text-center py-16 border border-dashed rounded-lg">
           <BugOff className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-          <p className="text-muted-foreground">No bugs yet. Click "Add Bug" to report the first one.</p>
+          <p className="text-muted-foreground">No bugs yet. Click &quot;Add Bug&quot; to report the first one.</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">

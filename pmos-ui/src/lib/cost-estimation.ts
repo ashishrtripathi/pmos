@@ -1,6 +1,6 @@
-// ── Dynamic Token Cost & ROI Estimation ──────────────
-// Reads pricing config from API to calculate costs.
-// When pricing changes, costs/ROI automatically update.
+// ── Direct Hours & Token Cost & ROI Estimation ──────────────
+// Calculates exact cost based on Estimated Hours × Hourly Rate + Tokens × Model Price.
+// Allows zero rates / zero token cost for local / free models.
 
 export interface TokenCost {
   inputTokens: number;
@@ -20,34 +20,58 @@ export interface ROI {
   verdict: "strong" | "moderate" | "weak" | "negative" | "unknown";
 }
 
-// ── Dynamic estimation (accepts pricing config) ──────
-
 export interface PricingParams {
-  aiOverheadPercent: number;
+  aiOverheadPercent?: number;
   developerHourlyRate: number;
-  hoursPerPoint: number;
+  productManagerHourlyRate?: number;
+  qaEngineerHourlyRate?: number;
+  hoursPerPoint?: number;
+  costPerToken?: number;
+  costPer1KTokens?: number;
   model: string;
 }
 
+/**
+ * Estimate story cost directly from hours and tokens.
+ */
 export function estimateTokenCost(
-  points: number,
+  storyOrHours: number | { estimatedHours?: number; points?: number; estimatedTokens?: number; tokensUsed?: number },
   pricing: PricingParams
 ): TokenCost {
-  const baseHours = points * pricing.hoursPerPoint;
-  const devCost = baseHours * pricing.developerHourlyRate;
-  const aiCost = devCost * (pricing.aiOverheadPercent / 100);
+  let hours = 1;
+  let customTokens: number | undefined;
 
-  // Estimated token count (derived from ai cost, for display only)
-  const estimatedTokens = Math.round(aiCost * 500);
+  if (typeof storyOrHours === "number") {
+    // If number passed: check if hoursPerPoint is used
+    hours = storyOrHours > 0 ? storyOrHours * (pricing.hoursPerPoint || 0.5) : 0.5;
+  } else if (storyOrHours) {
+    if (storyOrHours.estimatedHours !== undefined && storyOrHours.estimatedHours !== null) {
+      hours = storyOrHours.estimatedHours;
+    } else if (storyOrHours.points) {
+      hours = storyOrHours.points * (pricing.hoursPerPoint || 0.5);
+    }
+    customTokens = storyOrHours.tokensUsed ?? storyOrHours.estimatedTokens;
+  }
+
+  const devRate = Math.max(0, pricing.developerHourlyRate ?? 150);
+  const reviewCost = hours * devRate;
+
+  // Cost per 1K tokens
+  const costPer1K = pricing.costPer1KTokens !== undefined
+    ? pricing.costPer1KTokens
+    : (pricing.costPerToken !== undefined ? pricing.costPerToken * 1000 : 0.003);
+
+  const estimatedTokens = customTokens !== undefined ? customTokens : Math.max(1000, Math.round(hours * 15000));
+  const aiCost = (estimatedTokens / 1000) * Math.max(0, costPer1K);
 
   return {
     inputTokens: Math.round(estimatedTokens * 0.6),
     outputTokens: Math.round(estimatedTokens * 0.4),
     aiCost,
-    reviewHours: baseHours,
-    reviewCost: devCost,
-    totalCost: devCost + aiCost,
-    modelUsed: pricing.model,
+    reviewHours: hours,
+    reviewCost,
+    totalCost: reviewCost + aiCost,
+    modelUsed: pricing.model || "claude-sonnet-4",
   };
 }
 
@@ -56,10 +80,10 @@ export function estimateTokenCost(
  */
 export function calculateROI(
   estimatedValue: number | undefined,
-  points: number,
+  storyOrHours: number | { estimatedHours?: number; points?: number; estimatedTokens?: number },
   pricing: PricingParams
 ): ROI {
-  const cost = estimateTokenCost(points, pricing);
+  const cost = estimateTokenCost(storyOrHours, pricing);
   const totalCost = cost.totalCost;
   const value = estimatedValue ?? 0;
 
@@ -73,7 +97,7 @@ export function calculateROI(
     };
   }
 
-  const roi = totalCost > 0 ? value / totalCost : 0;
+  const roi = totalCost > 0 ? value / totalCost : value > 0 ? 99 : 0;
 
   let verdict: ROI["verdict"] = "weak";
   if (roi >= 10) verdict = "strong";
@@ -95,18 +119,18 @@ export function calculateROI(
  * Higher score = higher priority.
  */
 export function storyRankScore(
-  story: { points: number; estimatedValue?: number },
+  story: { estimatedHours?: number; points?: number; estimatedValue?: number },
   pricing: PricingParams
 ): number {
-  const cost = estimateTokenCost(story.points, pricing);
+  const cost = estimateTokenCost(story, pricing);
   const value = story.estimatedValue ?? 0;
 
-  if (value === 0 && story.points === 0) return 0;
+  if (value === 0 && (!story.estimatedHours && !story.points)) return 0;
 
   // ROI-based score: value/cost, normalized
   if (cost.totalCost > 0) {
     const roi = value / cost.totalCost;
-    return roi * 10 + (value > 0 ? 100 : 0) + (story.points > 0 ? 50 / story.points : 0);
+    return roi * 10 + (value > 0 ? 100 : 0) + (cost.reviewHours > 0 ? 50 / cost.reviewHours : 0);
   }
 
   return value > 0 ? 50 : 0;
@@ -115,12 +139,14 @@ export function storyRankScore(
 // ── Formatting helpers ──────────────────────────────
 
 export function formatTokens(n: number): string {
+  if (!n || n <= 0) return "0";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return String(n);
 }
 
 export function formatCost(n: number): string {
+  if (n === 0) return "$0.00";
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`;
   if (n >= 1) return `$${n.toFixed(2)}`;
   if (n >= 0.01) return `$${n.toFixed(2)}`;
@@ -131,6 +157,17 @@ export function formatDollars(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
   return `$${n.toFixed(0)}`;
+}
+
+export function formatDuration(ms?: number): string {
+  if (!ms || ms <= 0) return "0s";
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remSec = seconds % 60;
+  if (minutes < 60) return `${minutes}m ${remSec}s`;
+  const hours = (seconds / 3600).toFixed(1);
+  return `${hours}h`;
 }
 
 const VERDICT_COLORS: Record<string, string> = {

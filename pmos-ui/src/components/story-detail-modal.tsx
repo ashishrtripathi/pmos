@@ -45,7 +45,15 @@ export interface StoryDetail {
   id: string;
   title: string;
   description: string;
-  points: number;
+  points?: number;
+  estimatedHours?: number;
+  actualHours?: number;
+  startedAt?: string;
+  completedAt?: string;
+  executionDurationMs?: number;
+  estimatedTokens?: number;
+  tokensUsed?: number;
+  cost?: number;
   status: string;
   useCase?: { asA: string; iWant: string; soThat: string };
   businessGoal?: string;
@@ -130,10 +138,11 @@ export function StoryDetailModal({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ ...story });
 
-  const cost = estimateTokenCost(draft.points, pricing || DEFAULT_PRICING);
+  const hours = draft.estimatedHours ?? (draft.points ? draft.points * 0.35 : 1);
+  const cost = estimateTokenCost(draft, pricing || DEFAULT_PRICING);
   const roi = calculateROI(
     draft.estimatedValue,
-    draft.points,
+    draft,
     pricing || DEFAULT_PRICING
   );
 
@@ -200,38 +209,49 @@ export function StoryDetailModal({
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Status + Points + Persona Row */}
-          <div className="flex flex-wrap gap-2">
+          {/* Status + Hours + Persona Row */}
+          <div className="flex flex-wrap gap-2 items-center">
             <select
               value={draft.status}
               onChange={(e) =>
                 setDraft({ ...draft, status: e.target.value })
               }
               disabled={!editing}
-              className="text-xs px-2 py-1 rounded-lg border border-border bg-background disabled:opacity-70"
+              className="text-xs px-2 py-1 rounded-lg border border-border bg-background disabled:opacity-70 font-medium"
             >
               <option value="backlog">Backlog</option>
               <option value="in-progress">In Progress</option>
               <option value="review">Review</option>
               <option value="done">Done</option>
             </select>
-            <div className="flex items-center gap-1 text-xs bg-primary/10 px-2 py-1 rounded-lg">
+            <div className="flex items-center gap-1 text-xs bg-primary/10 px-2.5 py-1 rounded-lg font-mono">
               <span className="font-bold text-primary">
                 {editing ? (
                   <input
                     type="number"
-                    value={draft.points}
+                    step="0.25"
+                    min="0.1"
+                    value={draft.estimatedHours ?? hours}
                     onChange={(e) =>
-                      setDraft({ ...draft, points: Number(e.target.value) })
+                      setDraft({ ...draft, estimatedHours: Number(e.target.value) })
                     }
-                    className="w-10 bg-transparent text-center font-bold text-primary outline-none"
+                    className="w-14 bg-transparent text-center font-bold text-primary outline-none border-b border-primary"
                   />
                 ) : (
-                  draft.points
-                )}{" "}
-                pts
+                  `${hours}h`
+                )}
               </span>
             </div>
+            {draft.executionDurationMs && (
+              <span className="text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono">
+                ⏱️ {Math.round(draft.executionDurationMs / 1000)}s harness
+              </span>
+            )}
+            {draft.tokensUsed && (
+              <span className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 font-mono">
+                {formatTokens(draft.tokensUsed)} tokens
+              </span>
+            )}
             {draft.persona && (
               <span
                 className={`text-xs px-2 py-1 rounded-full border ${getPersonaColor(draft.persona)}`}

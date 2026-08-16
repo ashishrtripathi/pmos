@@ -11,8 +11,10 @@ import {
   Plus,
   FolderGit2,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { AddProjectWizard } from "@/components/add-project-wizard";
+import { RemoveProjectModal } from "@/components/remove-project-modal";
 
 interface Project {
   slug: string;
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [projects, setProjects] = useState<(Project & { dashboard: Dashboard; storyCount: number })[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [projectToRemove, setProjectToRemove] = useState<{ slug: string; name: string } | null>(null);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -110,87 +113,106 @@ export default function HomePage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <Link
+            <div
               key={project.slug}
-              href={`/projects/${project.slug}`}
-              className="group block p-5 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all"
+              className="group relative p-5 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-md transition-all flex flex-col justify-between"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h2 className="text-lg font-semibold group-hover:text-primary transition-colors">
-                    {project.name}
-                  </h2>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {project.source}
-                    {project.source === "github" ? " · github.com" : ""}
-                    {project.source === "local" ? " · local" : ""}
-                  </span>
-                  {project.version && (
-                    <span className="ml-2 inline-block px-1.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-[10px] font-semibold font-mono">
-                      v{project.version}
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <Link href={`/projects/${project.slug}`} className="flex-1 min-w-0">
+                    <h2 className="text-lg font-semibold group-hover:text-primary transition-colors truncate">
+                      {project.name}
+                    </h2>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {project.source}
+                      {project.source === "github" ? " · github.com" : ""}
+                      {project.source === "local" ? " · local" : ""}
                     </span>
-                  )}
+                    {project.version && (
+                      <span className="ml-2 inline-block px-1.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 text-[10px] font-semibold font-mono">
+                        v{project.version}
+                      </span>
+                    )}
+                  </Link>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setProjectToRemove({ slug: project.slug, name: project.name });
+                      }}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                      title={`Remove ${project.name} from PMOS`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <Link href={`/projects/${project.slug}`} className="p-1 text-muted-foreground group-hover:text-primary transition-colors">
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
-              </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 mt-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                    <Activity className="w-3 h-3" />
-                    <span className="text-xs">Health</span>
+                <Link href={`/projects/${project.slug}`} className="block">
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <Activity className="w-3 h-3" />
+                        <span className="text-xs">Health</span>
+                      </div>
+                      <span className="text-lg font-bold">{project.dashboard?.healthScore ?? 0}%</span>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <BookOpen className="w-3 h-3" />
+                        <span className="text-xs">Stories</span>
+                      </div>
+                      <span className="text-lg font-bold">{project.storyCount ?? 0}</span>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                        <Bot className="w-3 h-3" />
+                        <span className="text-xs">Agents</span>
+                      </div>
+                      <span className="text-lg font-bold">{project.dashboard?.agentWorkload?.length ?? 0}</span>
+                    </div>
                   </div>
-                  <span className="text-lg font-bold">{project.dashboard.healthScore}%</span>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                    <BookOpen className="w-3 h-3" />
-                    <span className="text-xs">Stories</span>
-                  </div>
-                  <span className="text-lg font-bold">{project.storyCount}</span>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                    <Bot className="w-3 h-3" />
-                    <span className="text-xs">Agents</span>
-                  </div>
-                  <span className="text-lg font-bold">{project.dashboard.agentWorkload.length}</span>
-                </div>
-              </div>
 
-              {/* Status bar */}
-              <div className="mt-4 flex gap-1 h-1.5 rounded-full overflow-hidden bg-muted">
-                {project.storyCount > 0 && (
-                  <>
-                    {project.dashboard.storyBreakdown.done > 0 && (
-                      <div
-                        className="bg-green-500"
-                        style={{ width: `${(project.dashboard.storyBreakdown.done / project.storyCount) * 100}%` }}
-                      />
+                  {/* Status bar */}
+                  <div className="mt-4 flex gap-1 h-1.5 rounded-full overflow-hidden bg-muted">
+                    {project.storyCount > 0 && project.dashboard?.storyBreakdown && (
+                      <>
+                        {project.dashboard.storyBreakdown.done > 0 && (
+                          <div
+                            className="bg-green-500"
+                            style={{ width: `${(project.dashboard.storyBreakdown.done / project.storyCount) * 100}%` }}
+                          />
+                        )}
+                        {project.dashboard.storyBreakdown.review > 0 && (
+                          <div
+                            className="bg-yellow-500"
+                            style={{ width: `${(project.dashboard.storyBreakdown.review / project.storyCount) * 100}%` }}
+                          />
+                        )}
+                        {project.dashboard.storyBreakdown.inProgress > 0 && (
+                          <div
+                            className="bg-blue-500"
+                            style={{ width: `${(project.dashboard.storyBreakdown.inProgress / project.storyCount) * 100}%` }}
+                          />
+                        )}
+                        {project.dashboard.storyBreakdown.backlog > 0 && (
+                          <div
+                            className="bg-gray-400"
+                            style={{ width: `${(project.dashboard.storyBreakdown.backlog / project.storyCount) * 100}%` }}
+                          />
+                        )}
+                      </>
                     )}
-                    {project.dashboard.storyBreakdown.review > 0 && (
-                      <div
-                        className="bg-yellow-500"
-                        style={{ width: `${(project.dashboard.storyBreakdown.review / project.storyCount) * 100}%` }}
-                      />
-                    )}
-                    {project.dashboard.storyBreakdown.inProgress > 0 && (
-                      <div
-                        className="bg-blue-500"
-                        style={{ width: `${(project.dashboard.storyBreakdown.inProgress / project.storyCount) * 100}%` }}
-                      />
-                    )}
-                    {project.dashboard.storyBreakdown.backlog > 0 && (
-                      <div
-                        className="bg-gray-400"
-                        style={{ width: `${(project.dashboard.storyBreakdown.backlog / project.storyCount) * 100}%` }}
-                      />
-                    )}
-                  </>
-                )}
+                  </div>
+                </Link>
               </div>
-            </Link>
+            </div>
           ))}
 
           {/* Add Project Card */}
@@ -211,6 +233,20 @@ export default function HomePage() {
       {/* Add Project Wizard */}
       {showAdd && (
         <AddProjectWizard onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+      )}
+
+      {/* Remove Confirmation Modal */}
+      {projectToRemove && (
+        <RemoveProjectModal
+          slug={projectToRemove.slug}
+          projectName={projectToRemove.name}
+          isOpen={true}
+          onClose={() => setProjectToRemove(null)}
+          onRemoved={() => {
+            setProjectToRemove(null);
+            loadProjects();
+          }}
+        />
       )}
     </div>
   );

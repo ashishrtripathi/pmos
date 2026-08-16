@@ -13,6 +13,9 @@ import {
   ArrowRight,
   Bot,
   Plus,
+  Play,
+  Loader2,
+  Clock,
 } from "lucide-react";
 import {
   DndContext,
@@ -40,6 +43,8 @@ import {
   calculateROI,
   formatCost,
   formatDollars,
+  formatTokens,
+  formatDuration,
   getVerdictColor,
   storyRankScore,
   type PricingParams,
@@ -51,7 +56,15 @@ interface KanbanStory {
   id: string;
   title: string;
   description?: string;
-  points: number;
+  points?: number;
+  estimatedHours?: number;
+  actualHours?: number;
+  startedAt?: string;
+  completedAt?: string;
+  executionDurationMs?: number;
+  estimatedTokens?: number;
+  tokensUsed?: number;
+  cost?: number;
   status: string;
   useCase?: { asA: string; iWant: string; soThat: string };
   businessGoal?: string;
@@ -68,6 +81,8 @@ interface KanbanStory {
     startedAt?: string;
     lastHeartbeat?: string;
     completedAt?: string;
+    durationMs?: number;
+    tokensUsed?: number;
     notes?: string;
   };
   filePath?: string;
@@ -100,11 +115,11 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
 function StatusColumnHeader({
   column,
   count,
-  totalPoints,
+  totalHours,
 }: {
   column: typeof STATUS_COLUMNS[0];
   count: number;
-  totalPoints: number;
+  totalHours: number;
 }) {
   const icons: Record<string, string> = {
     backlog: "📋",
@@ -127,8 +142,8 @@ function StatusColumnHeader({
           <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {count} stories
           </span>
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {totalPoints} pts
+          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono">
+            {totalHours.toFixed(1)}h est
           </span>
         </div>
       </div>
@@ -163,10 +178,12 @@ function KanbanColumn({
 function KanbanStoryCard({
   story,
   pricing,
+  slug,
   onClick,
 }: {
   story: KanbanStory;
   pricing: PricingParams;
+  slug?: string;
   onClick: () => void;
 }) {
   const {
@@ -184,10 +201,12 @@ function KanbanStoryCard({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const cost = estimateTokenCost(story.points, pricing);
-  const roi = calculateROI(story.estimatedValue, story.points, pricing);
+  const hours = story.estimatedHours ?? (story.points ? story.points * (pricing.hoursPerPoint || 0.5) : 1);
+  const cost = estimateTokenCost(story, pricing);
+  const roi = calculateROI(story.estimatedValue, story, pricing);
   const isIntelligence = story.source === "intelligence";
   const agentBadge = getAgentBadge(story.assignedAgent);
+  const tokens = story.tokensUsed ?? story.estimatedTokens ?? cost.inputTokens + cost.outputTokens;
 
   return (
     <div
@@ -242,8 +261,8 @@ function KanbanStoryCard({
             <span className="text-[10px] font-mono text-muted-foreground">
               {story.id}
             </span>
-            <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary font-medium">
-              {story.points} pts
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium" title={`${hours} estimated hours`}>
+              {hours}h
             </span>
             {story.persona && (
               <span className="text-[8px] px-1 py-0 rounded bg-gray-100 text-gray-600 border border-gray-200">
@@ -286,14 +305,32 @@ function KanbanStoryCard({
             </div>
           )}
 
-          {/* Cost + ROI + Value */}
+          {/* Execution Time in Harness (if available) */}
+          {(story.executionDurationMs || (story.status === "in-progress" && story.startedAt)) && (
+            <div className="mt-1 flex items-center gap-1 text-[9px] text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded px-1.5 py-0.5 font-mono">
+              <Clock className="w-2.5 h-2.5" />
+              {story.executionDurationMs ? (
+                <span>Harness run: {formatDuration(story.executionDurationMs)}</span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  Running in harness...
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Cost + Tokens + ROI + Value */}
           <div className="mt-1.5 pt-1.5 border-t border-border/50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-0.5" title={`${hours}h labor + ${formatTokens(tokens)} tokens`}>
                   <Zap className="w-2 h-2 text-violet-500" />
-                  <span className="text-[9px] font-mono text-violet-600">
+                  <span className="text-[9px] font-mono text-violet-600 font-semibold">
                     {formatCost(cost.totalCost)}
+                  </span>
+                  <span className="text-[8px] text-muted-foreground font-mono">
+                    ({formatTokens(tokens)} tok)
                   </span>
                 </div>
                 {roi.estimatedValue > 0 && (
@@ -322,7 +359,7 @@ function KanbanStoryCard({
           {isIntelligence && story.sourceFile && (
             <div className="mt-1 pt-1 border-t border-amber-100">
               <a
-                href={`/projects/voxstyle/intelligence`}
+                href={`/projects/${slug || "pmos"}/intelligence`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
@@ -366,6 +403,7 @@ export function KanbanBoard({
   const [intelStories, setIntelStories] = useState<KanbanStory[]>([]);
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
   const [showCreate, setShowCreate] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [pricing, setPricing] = useState<PricingParams>({
     aiOverheadPercent: 3,
     developerHourlyRate: 150,
@@ -414,36 +452,66 @@ export function KanbanBoard({
   const columns = useMemo(() =>
     STATUS_COLUMNS.map((col) => {
       const colStories = stories.filter((s) => s.status === col.id);
-      const totalPoints = colStories.reduce((sum, s) => sum + s.points, 0);
-      return { ...col, stories: colStories, totalPoints };
+      const totalHours = colStories.reduce(
+        (sum, s) => sum + (s.estimatedHours || (s.points ? s.points * (pricing.hoursPerPoint || 0.5) : 1)),
+        0
+      );
+      return { ...col, stories: colStories, totalHours };
     }),
-    [stories]
+    [stories, pricing]
   );
 
   const totals = useMemo(() => {
     const totalStories = stories.length;
-    const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
+    const totalHours = stories.reduce(
+      (sum, s) => sum + (s.estimatedHours || (s.points ? s.points * (pricing.hoursPerPoint || 0.5) : 1)),
+      0
+    );
     const totalCost = stories.reduce(
-      (sum, s) => sum + estimateTokenCost(s.points, pricing).totalCost,
+      (sum, s) => sum + estimateTokenCost(s, pricing).totalCost,
+      0
+    );
+    const totalTokens = stories.reduce(
+      (sum, s) => sum + (s.tokensUsed ?? s.estimatedTokens ?? estimateTokenCost(s, pricing).inputTokens + estimateTokenCost(s, pricing).outputTokens),
       0
     );
     const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
     const totalIntel = stories.filter((s) => s.source === "intelligence").length;
-    return { totalStories, totalPoints, totalCost, totalValue, totalIntel };
+    return { totalStories, totalHours, totalCost, totalTokens, totalValue, totalIntel };
   }, [stories, pricing]);
 
   const {
     totalStories,
-    totalPoints,
+    totalHours,
     totalCost,
+    totalTokens,
     totalValue,
     totalIntel,
   } = totals;
 
-  // Persona options for the detail/create modals — journey personas are the
-  // source of truth (must match the Customer Journey), merged with any
-  // personas already used on stories so existing values stay selectable.
-  // Fall back to the default personas only when no journey personas exist.
+  const handleStartExecution = async () => {
+    setExecuting(true);
+    try {
+      const res = await fetch(`/api/projects/${slug}/stories/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.stories)) {
+        setStories(data.stories);
+        setPickupNotice(
+          `Executed ${data.executedCount} stories in test harness! Duration & tokens updated.`
+        );
+        setTimeout(() => setPickupNotice(null), 6000);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  // Persona options
   const allPersonas = [
     ...new Set([
       ...journeyPersonas,
@@ -485,7 +553,6 @@ export function KanbanBoard({
     const activeStatus = findStoryStatus(activeId);
     if (!activeStatus) return;
 
-    // Find which column the over element is in (card id OR column id)
     let overStatus: string | null = null;
     for (const col of columns) {
       if (overId === col.id || col.stories.some((s) => s.id === overId)) {
@@ -495,7 +562,6 @@ export function KanbanBoard({
     }
     if (!overStatus || overStatus === activeStatus) return;
 
-    // Move story between columns
     setStories((prev) => {
       const updated = prev.map((s) => {
         if (s.id === activeId) {
@@ -504,9 +570,6 @@ export function KanbanBoard({
         return s;
       });
 
-      // Reorder within the target column. Only when dropping over another
-      // card (overId is a story id), and account for the removed item
-      // shifting indices down by one (fixes the card snapping back).
       const activeItem = updated.find((s) => s.id === activeId);
       const activeIndex = updated.findIndex((s) => s.id === activeId);
       const overIndex = updated.findIndex((s) => s.id === overId);
@@ -530,9 +593,6 @@ export function KanbanBoard({
           body: JSON.stringify({ status: newStatus }),
         });
         const data = await res.json();
-        if (!res.ok && !data.ok) {
-          console.error("Failed to persist status change:", data);
-        }
         if (data.pickedUpBy) {
           const story = stories.find((s) => s.id === storyId);
           const agentName = data.pickedUpByName || data.pickedUpBy;
@@ -540,7 +600,6 @@ export function KanbanBoard({
             `"${story?.title || storyId}" picked up by ${agentName}`
           );
           window.setTimeout(() => setPickupNotice(null), 5000);
-          // Reflect the assignment locally so the agent badge appears
           setStories((prev) =>
             prev.map((s) =>
               s.id === storyId ? { ...s, assignedAgent: data.pickedUpBy } : s
@@ -548,7 +607,7 @@ export function KanbanBoard({
           );
         }
       } catch {
-        // Silently fail — the UI already reflects the change
+        // Silently fail
       } finally {
         setSavingStatus((prev) => ({ ...prev, [storyId]: false }));
       }
@@ -570,83 +629,58 @@ export function KanbanBoard({
     const story = stories.find((s) => s.id === activeId);
     if (!story) return;
 
-    // The optimistic reorder in handleDragOver already changed story.status,
-    // so compare against the status captured at drag start instead.
-    const originalStatus = dragStartStatusRef.current ?? story.status;
-    dragStartStatusRef.current = null;
+    const fromStatus = dragStartStatusRef.current;
+    const toStatus = story.status;
 
-    // Find which column the over element is in
-    for (const col of columns) {
-      if (col.stories.some((s) => s.id === overId) || col.id === overId) {
-        if (col.id !== originalStatus) {
-          persistStatusChange(activeId, col.id);
-        }
-        break;
-      }
-    }
-
-    // Reorder only when the drop stayed within the drag-origin column.
-    // Cross-column moves were already reordered in handleDragOver; re-splicing
-    // here (using the optimistic status) snapped the card back to its old
-    // index — the root cause of BUG-001.
-    const overStatus = findStoryStatus(overId);
-    if (originalStatus && overStatus && originalStatus === overStatus) {
-      setStories((prev) => {
-        const updated = [...prev];
-        const activeIndex = updated.findIndex((s) => s.id === activeId);
-        const overIndex = updated.findIndex((s) => s.id === overId);
-        if (activeIndex >= 0 && overIndex >= 0 && activeIndex !== overIndex) {
-          const [moved] = updated.splice(activeIndex, 1);
-          const insertAt = activeIndex < overIndex ? overIndex - 1 : overIndex;
-          updated.splice(insertAt, 0, moved);
-        }
-        return updated;
-      });
+    if (fromStatus && fromStatus !== toStatus) {
+      persistStatusChange(activeId, toStatus);
     }
   };
 
-  // Suppress the click event dnd-kit fires after a drop so the story
-  // detail modal doesn't open right after a drag.
   const suppressClickAfterDrag = () => {
     suppressClickRef.current = true;
-    window.setTimeout(() => {
+    setTimeout(() => {
       suppressClickRef.current = false;
-    }, 0);
+    }, 100);
   };
 
   const handleDragCancel = () => {
     setActiveStory(null);
-    dragStartStatusRef.current = null;
     suppressClickAfterDrag();
   };
 
-  // Also persist when dropping onto an empty column
-  const handleDropOnColumn = useCallback(
-    (columnId: string, storyId: string) => {
-      const story = stories.find((s) => s.id === storyId);
-      if (story && story.status !== columnId) {
-        persistStatusChange(storyId, columnId);
-      }
-    },
-    [stories, persistStatusChange]
-  );
-
-  const handleStoryClick = (story: KanbanStory) => {
-    setDetailStory(story);
+  const handleCreateStory = (input: any) => {
+    const newStory: KanbanStory = {
+      id: input.id,
+      title: input.title,
+      description: input.description,
+      points: input.points,
+      estimatedHours: input.estimatedHours,
+      estimatedTokens: input.estimatedTokens,
+      status: "backlog",
+      useCase: input.useCase,
+      businessGoal: input.businessGoal,
+      estimatedValue: input.estimatedValue,
+      acceptanceCriteria: input.acceptanceCriteria,
+      persona: input.persona,
+      personaRole: input.personaRole,
+      journeyStep: input.journeyStep,
+      source: "manual",
+    };
+    setStories((prev) => [...prev, newStory]);
+    setShowCreate(false);
   };
 
-  const handleStorySave = (updated: KanbanStory) => {
+  const handleUpdateStory = (updatedStory: any) => {
     setStories((prev) =>
-      prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s))
+      prev.map((s) => (s.id === updatedStory.id ? { ...s, ...updatedStory } : s))
     );
     setDetailStory(null);
   };
 
-  const handleStoryCreated = (story: KanbanStory) => {
-    // Persisted via POST /api/projects/[slug]/stories — append to the board
-    setStories((prev) =>
-      prev.some((s) => s.id === story.id) ? prev : [...prev, story]
-    );
+  const handleDeleteStory = (storyId: string) => {
+    setStories((prev) => prev.filter((s) => s.id !== storyId));
+    setDetailStory(null);
   };
 
   return (
@@ -660,19 +694,18 @@ export function KanbanBoard({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Columns3 className="w-5 h-5" />
           <h1 className="text-2xl font-bold">Kanban</h1>
-          <span className="text-sm text-muted-foreground">
-            {totalStories} stories &middot;{" "}
-            {totalPoints} pts
+          <span className="text-sm text-muted-foreground font-mono">
+            {totalStories} stories &middot; {totalHours.toFixed(1)}h est
           </span>
-          <span className="text-sm font-mono text-violet-600 bg-violet-50 px-2 py-0.5 rounded">
-            {formatCost(totalCost)} cost
+          <span className="text-sm font-mono text-violet-600 bg-violet-50 px-2 py-0.5 rounded font-medium">
+            {formatCost(totalCost)} cost ({formatTokens(totalTokens)} tok)
           </span>
           {totalValue > 0 && (
-            <span className="text-sm font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+            <span className="text-sm font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-medium">
               {formatDollars(totalValue)} value
             </span>
           )}
@@ -682,34 +715,49 @@ export function KanbanBoard({
               {totalIntel} from intelligence
             </span>
           )}
-          <span
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border border-green-200 bg-green-50 text-green-700 font-medium"
-            title="Scheduled AionUi task 'PMOS Story Worker' runs every 10 minutes"
-          >
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Agent worker: every 10 min
-          </span>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          New Story
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleStartExecution}
+            disabled={executing}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+            title="Immediately dispatch and run active stories in test harness"
+          >
+            {executing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Running in Harness...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-white" />
+                <span>Start Story Execution</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            New Story
+          </button>
+        </div>
       </div>
 
       {/* Agent dispatch hint */}
-      <div className="mb-5 flex items-center gap-2 px-4 py-2.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-sm">
-        <Bot className="w-4 h-4 shrink-0" />
-        <span>
-          Drag a story to <strong>Doing</strong> — the best-fit agent picks it up
-          instantly, and the background worker implements it (checks every 10
-          min). Card badge shows:{" "}
-          <span className="font-medium text-amber-600">queued</span> →{" "}
-          <span className="font-medium text-emerald-600">working</span> →{" "}
-          <span className="font-medium text-green-600">done</span>.
-        </span>
+      <div className="mb-5 flex items-center justify-between px-4 py-2.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-sm flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Bot className="w-4 h-4 shrink-0" />
+          <span>
+            Click <strong>Start Story Execution</strong> or drag a story to <strong>Doing</strong> to execute in harness. Duration and token consumption are tracked live.
+          </span>
+        </div>
+        <div className="text-xs font-mono text-blue-600 font-medium">
+          Harness Tracking Active
+        </div>
       </div>
 
       {/* Kanban Grid — Status Columns */}
@@ -725,7 +773,6 @@ export function KanbanBoard({
           <div className="flex gap-3 min-w-max">
             {columns.map((col) => (
               <KanbanColumn key={col.id} column={col}>
-                {/* Column Header */}
                 <div className={`p-3 border-b border-border border-t-2 ${col.color} rounded-t-xl`}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">
@@ -740,7 +787,7 @@ export function KanbanBoard({
                       {col.stories.length} stories
                     </span>
                     <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                      {col.totalPoints} pts
+                      {col.totalHours.toFixed(1)}h
                     </span>
                   </div>
                 </div>
@@ -756,10 +803,11 @@ export function KanbanBoard({
                         key={story.id}
                         story={story}
                         pricing={pricing}
+                        slug={slug}
                         onClick={() => {
-                    if (suppressClickRef.current) return;
-                    handleStoryClick(story);
-                  }}
+                          if (suppressClickRef.current) return;
+                          setDetailStory(story);
+                        }}
                       />
                     ))}
                   </SortableContext>
@@ -784,8 +832,8 @@ export function KanbanBoard({
                 <span className="text-xs font-mono text-muted-foreground">
                   {activeStory.id}
                 </span>
-                <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                  {activeStory.points} pts
+                <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium">
+                  {activeStory.estimatedHours ?? (activeStory.points ? activeStory.points * 0.35 : 1)}h
                 </span>
               </div>
               <h4 className="text-xs font-medium">{activeStory.title}</h4>
@@ -795,7 +843,7 @@ export function KanbanBoard({
               <div className="mt-1 flex items-center gap-1">
                 <Zap className="w-2.5 h-2.5 text-violet-500" />
                 <span className="text-[9px] font-mono text-violet-600">
-                  {formatCost(estimateTokenCost(activeStory.points, pricing).totalCost)}
+                  {formatCost(estimateTokenCost(activeStory, pricing).totalCost)}
                 </span>
                 {activeStory.estimatedValue && activeStory.estimatedValue > 0 && (
                   <>
@@ -816,7 +864,7 @@ export function KanbanBoard({
         <StoryDetailModal
           story={{ ...detailStory, description: detailStory.description || "" }}
           onClose={() => setDetailStory(null)}
-          onSave={handleStorySave}
+          onSave={handleUpdateStory}
           pricing={pricing || undefined}
           personas={personaOptions}
         />
@@ -828,7 +876,7 @@ export function KanbanBoard({
           slug={slug}
           pricing={pricing || undefined}
           onClose={() => setShowCreate(false)}
-          onCreated={handleStoryCreated}
+          onCreated={handleCreateStory}
           personas={personaOptions}
         />
       )}

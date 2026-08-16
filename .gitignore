@@ -76,6 +76,8 @@ tmp_*.js
 # IDE/Tool configs
 .aionrs/
 .opencode/
+.agents/
+.gemini/
 
 # Prisma
 prisma/migrations/
@@ -96,3 +98,5 @@ postbase/
 postbase/backend/*.log
 pmos-ui/next-dev*.log
 
+# Workflows (avoid PAT token scope conflicts)
+.github/workflows/

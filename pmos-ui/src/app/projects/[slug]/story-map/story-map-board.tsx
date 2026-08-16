@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
@@ -62,7 +62,15 @@ interface Story {
   id: string;
   title: string;
   description: string;
-  points: number;
+  points?: number;
+  estimatedHours?: number;
+  actualHours?: number;
+  startedAt?: string;
+  completedAt?: string;
+  executionDurationMs?: number;
+  estimatedTokens?: number;
+  tokensUsed?: number;
+  cost?: number;
   status: string;
   useCase?: { asA: string; iWant: string; soThat: string };
   businessGoal?: string;
@@ -148,8 +156,9 @@ function StoryMapCard({
     done: "bg-green-50 border-green-200",
   };
 
-  const cost = estimateTokenCost(story.points, pricing);
-  const roi = calculateROI(story.estimatedValue, story.points, pricing);
+  const hours = story.estimatedHours ?? (story.points ? story.points * 0.35 : 1);
+  const cost = estimateTokenCost(story, pricing);
+  const roi = calculateROI(story.estimatedValue, story, pricing);
 
   if (compact) {
     return (
@@ -171,6 +180,9 @@ function StoryMapCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-0.5 flex-wrap">
               <span className="text-[9px] font-mono text-muted-foreground">{story.id}</span>
+              <span className="text-[8px] font-mono font-semibold px-1 rounded bg-primary/10 text-primary">
+                {hours}h
+              </span>
               {story.persona && (
                 <span className={`text-[8px] px-1 py-0 rounded-full border font-medium ${getPersonaColor(story.persona)}`}>
                   {story.persona}
@@ -179,7 +191,7 @@ function StoryMapCard({
             </div>
             <h4 className="text-[11px] font-medium leading-tight">{story.title}</h4>
             <div className="flex items-center justify-between mt-0.5">
-              <span className="text-[9px] font-mono text-violet-600">{formatCost(cost.totalCost)}</span>
+              <span className="text-[9px] font-mono text-violet-600 font-medium">{formatCost(cost.totalCost)}</span>
               {roi.estimatedValue > 0 && (
                 <span className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}>
                   {roi.roiMultiple}
@@ -211,8 +223,8 @@ function StoryMapCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 mb-0.5 flex-wrap">
             <span className="text-[9px] font-mono text-muted-foreground">{story.id}</span>
-            <span className="text-[9px] px-1 py-0 rounded bg-primary/10 text-primary font-medium">
-              {story.points} pts
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium">
+              {hours}h
             </span>
             {story.persona && (
               <span className={`text-[8px] px-1 py-0 rounded-full border font-medium ${getPersonaColor(story.persona)}`}>
@@ -241,10 +253,14 @@ function StoryMapCard({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <Zap className="w-2 h-2 text-violet-500" />
-                <span className="text-[9px] font-mono text-violet-600">{formatCost(cost.totalCost)}</span>
+                <span className="text-[9px] font-mono text-violet-600 font-medium">
+                  {formatCost(cost.totalCost)}
+                </span>
               </div>
               {roi.estimatedValue > 0 && (
-                <span className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}>
+                <span
+                  className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}
+                >
                   {roi.roiMultiple}
                 </span>
               )}
@@ -298,11 +314,12 @@ function StepColumn({
     const sa = statusOrder[a.status] ?? 2;
     const sb = statusOrder[b.status] ?? 2;
     if (sa !== sb) return sa - sb;
-    return b.points - a.points;
+    return (b.points ?? 1) - (a.points ?? 1);
   });
 
-  const totalPoints = sortedStories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = sortedStories.reduce((sum, s) => sum + estimateTokenCost(s.points, pricing).totalCost, 0);
+  const totalPoints = sortedStories.reduce((sum, s) => sum + (s.points ?? 1), 0);
+  const totalHours = sortedStories.reduce((sum, s) => sum + (s.estimatedHours ?? ((s.points ?? 1) * 0.35)), 0);
+  const totalCost = sortedStories.reduce((sum, s) => sum + estimateTokenCost(s, pricing).totalCost, 0);
   const totalValue = sortedStories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
 
   return (
@@ -737,8 +754,9 @@ export function StoryMapBoard({
   );
 
   const backbone = storyMap.backbone;
-  const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
-  const totalCost = stories.reduce((sum, s) => sum + estimateTokenCost(s.points, pricing || DEFAULT_PRICING).totalCost, 0);
+  const totalPoints = stories.reduce((sum, s) => sum + (s.points ?? 1), 0);
+  const totalHours = stories.reduce((sum, s) => sum + (s.estimatedHours ?? ((s.points ?? 1) * 0.35)), 0);
+  const totalCost = stories.reduce((sum, s) => sum + estimateTokenCost(s, pricing || DEFAULT_PRICING).totalCost, 0);
   const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
 
   const allPersonas = [
@@ -752,12 +770,12 @@ export function StoryMapBoard({
   backbone.forEach((step) => {
     storiesByStep[step.name] = stories
       .filter((s) => s.journeyStep === step.name)
-      .sort((a, b) => b.points - a.points);
+      .sort((a, b) => (b.points ?? 1) - (a.points ?? 1));
   });
 
   const backlogStories = stories
     .filter((s) => !s.journeyStep || !backbone.some((step) => step.name === s.journeyStep))
-    .sort((a, b) => b.points - a.points);
+    .sort((a, b) => (b.points ?? 1) - (a.points ?? 1));
 
   const findStepForStory = useCallback(
     (storyId: string): string | null => {
@@ -878,7 +896,7 @@ export function StoryMapBoard({
                     {backlogStories.length} unassigned
                   </span>
                   <span className="text-[10px] font-mono text-violet-600">
-                    {formatCost(backlogStories.reduce((sum, s) => sum + estimateTokenCost(s.points, pricing || DEFAULT_PRICING).totalCost, 0))}
+                    {formatCost(backlogStories.reduce((sum, s) => sum + estimateTokenCost(s, pricing || DEFAULT_PRICING).totalCost, 0))}
                   </span>
                 </div>
               </div>
@@ -936,8 +954,8 @@ export function StoryMapBoard({
             <div className="p-2.5 rounded-lg border border-primary bg-card shadow-lg opacity-90 w-[240px]">
               <div className="flex items-center gap-1 mb-0.5">
                 <span className="text-[9px] font-mono text-muted-foreground">{activeStory.id}</span>
-                <span className="text-[9px] px-1 py-0 rounded bg-primary/10 text-primary font-medium">
-                  {activeStory.points} pts
+                <span className="text-[9px] px-1 py-0 rounded bg-primary/10 text-primary font-mono font-medium">
+                  {activeStory.estimatedHours ?? ((activeStory.points ?? 1) * 0.35)}h
                 </span>
                 {activeStory.persona && (
                   <span className={`text-[8px] px-1 py-0 rounded-full border font-medium ${getPersonaColor(activeStory.persona)}`}>
@@ -947,9 +965,9 @@ export function StoryMapBoard({
               </div>
               <h4 className="text-[11px] font-medium">{activeStory.title}</h4>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-[9px] font-mono text-violet-600">{formatCost(estimateTokenCost(activeStory.points, pricing || DEFAULT_PRICING).totalCost)}</span>
+                <span className="text-[9px] font-mono text-violet-600">{formatCost(estimateTokenCost(activeStory, pricing || DEFAULT_PRICING).totalCost)}</span>
                 {(() => {
-                  const roi = calculateROI(activeStory.estimatedValue, activeStory.points, pricing || DEFAULT_PRICING);
+                  const roi = calculateROI(activeStory.estimatedValue, activeStory, pricing || DEFAULT_PRICING);
                   return roi.estimatedValue > 0 ? (
                     <span className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}>
                       {roi.roiMultiple}

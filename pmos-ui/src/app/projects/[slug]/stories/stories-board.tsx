@@ -35,7 +35,15 @@ interface Story {
   id: string;
   title: string;
   description: string;
-  points: number;
+  points?: number;
+  estimatedHours?: number;
+  actualHours?: number;
+  startedAt?: string;
+  completedAt?: string;
+  executionDurationMs?: number;
+  estimatedTokens?: number;
+  tokensUsed?: number;
+  cost?: number;
   status: string;
   useCase: {
     asA: string;
@@ -199,7 +207,7 @@ function StoryColumn({
   stories: Story[];
   onRemoveStory: (id: string) => void;
 }) {
-  const totalPoints = stories.reduce((sum, s) => sum + s.points, 0);
+  const totalPoints = stories.reduce((sum, s) => sum + (s.points ?? 1), 0);
 
   return (
     <div className={`flex flex-col border-t-2 ${column.color} rounded-xl bg-muted/30`}>
@@ -622,7 +630,7 @@ export function StoriesBoard({
 
   const totalPoints = Object.values(columns)
     .flat()
-    .reduce((sum, s) => sum + s.points, 0);
+    .reduce((sum, s) => sum + (s.points ?? 1), 0);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">

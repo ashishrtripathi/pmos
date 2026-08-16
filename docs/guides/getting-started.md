@@ -24,7 +24,7 @@ The easiest way to get started is with Docker Compose:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/pmos.git
+git clone https://github.com/ashishrtripathi/pmos.git
 cd pmos
 
 # Start all services
@@ -46,7 +46,7 @@ open http://localhost:3000
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/pmos.git
+git clone https://github.com/ashishrtripathi/pmos.git
 cd pmos
 
 # Install dependencies
@@ -283,7 +283,7 @@ npm start
 
 ### Reporting Issues
 
-Found a bug? Please [open an issue](https://github.com/your-username/pmos/issues/new?template=bug_report.md) with:
+Found a bug? Please [open an issue](https://github.com/ashishrtripathi/pmos/issues/new?template=bug_report.md) with:
 
 - Steps to reproduce
 - Expected behavior

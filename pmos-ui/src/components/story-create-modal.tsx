@@ -18,7 +18,9 @@ export interface CreateStoryInput {
   id: string;
   title: string;
   description: string;
-  points: number;
+  points?: number;
+  estimatedHours: number;
+  estimatedTokens?: number;
   status: string;
   persona?: string;
   personaRole?: string;
@@ -38,7 +40,7 @@ export const DEFAULT_PRICING: PricingParams = {
   aiOverheadPercent: 14,
   developerHourlyRate: 150,
   hoursPerPoint: 0.35,
-  model: "opus-4",
+  model: "claude-sonnet-4",
 };
 
 export function StoryCreateModal({
@@ -58,7 +60,8 @@ export function StoryCreateModal({
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [points, setPoints] = useState(5);
+  const [estimatedHours, setEstimatedHours] = useState(2);
+  const [estimatedTokens, setEstimatedTokens] = useState(30000);
   const [persona, setPersona] = useState("");
   const [personaRole, setPersonaRole] = useState("");
   const [asA, setAsA] = useState("");
@@ -73,8 +76,8 @@ export function StoryCreateModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cost = estimateTokenCost(points, pricing);
-  const roi = calculateROI(estimatedValue, points, pricing);
+  const cost = estimateTokenCost({ estimatedHours, estimatedTokens }, pricing);
+  const roi = calculateROI(estimatedValue, { estimatedHours, estimatedTokens }, pricing);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +86,9 @@ export function StoryCreateModal({
     const story = {
       title: title.trim(),
       description: description.trim(),
-      points,
+      estimatedHours,
+      estimatedTokens,
+      points: Math.max(1, Math.round(estimatedHours / 0.35)),
       status: "backlog",
       useCase: {
         asA: asA.trim() || personaRole || "a user",
@@ -279,67 +284,108 @@ export function StoryCreateModal({
             />
           </div>
 
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Points: <span className="font-bold">{points}</span>
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={21}
-              value={points}
-              onChange={(e) => setPoints(Number(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>1</span>
-              <span>3</span>
-              <span>5</span>
-              <span>8</span>
-              <span>13</span>
-              <span>21</span>
-            </div>
-            <div className="mt-2 p-2 rounded-lg bg-violet-50 border border-violet-200">
-              <div className="flex items-center gap-1 text-[10px] text-violet-700 font-medium mb-1">
-                <Zap className="w-3 h-3" />
-                Live Estimate
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="text-sm font-bold text-violet-600">
-                    {formatCost(cost.aiCost)}
-                  </div>
-                  <div className="text-[9px] text-violet-500">7 Agents</div>
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-blue-600">
-                    {formatCost(cost.reviewCost)}
-                  </div>
-                  <div className="text-[9px] text-blue-500">
-                    Dev ({cost.reviewHours.toFixed(1)}h)
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-green-600">
-                    {formatCost(cost.totalCost)}
-                  </div>
-                  <div className="text-[9px] text-green-500">Total Cost</div>
-                </div>
-              </div>
-              {roi.estimatedValue > 0 && (
-                <div className="mt-2 pt-2 border-t border-violet-200 text-center">
-                  <span
-                    className={`text-sm font-bold px-2 py-0.5 rounded border ${getVerdictColor(roi.verdict)}`}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Estimated Hours: <span className="font-bold font-mono">{estimatedHours}h</span>
+              </label>
+              <input
+                type="number"
+                min="0.25"
+                step="0.25"
+                value={estimatedHours}
+                onChange={(e) => setEstimatedHours(Math.max(0.1, parseFloat(e.target.value) || 1))}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <div className="flex gap-1 mt-1.5 flex-wrap">
+                {[0.5, 1, 2, 4, 8, 16].map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => setEstimatedHours(h)}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                      estimatedHours === h
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
                   >
-                    ROI: {roi.roiMultiple}
-                  </span>
-                  <span className="text-[9px] text-emerald-600 ml-2">
-                    Value {formatDollars(roi.estimatedValue)} / Cost{" "}
-                    {formatCost(roi.totalCost)}
-                  </span>
-                </div>
-              )}
+                    {h}h
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Estimated Tokens: <span className="font-bold font-mono">{(estimatedTokens / 1000).toFixed(0)}k</span>
+              </label>
+              <input
+                type="number"
+                min="1000"
+                step="5000"
+                value={estimatedTokens}
+                onChange={(e) => setEstimatedTokens(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <div className="flex gap-1 mt-1.5 flex-wrap">
+                {[15000, 30000, 60000, 120000].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setEstimatedTokens(t)}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                      estimatedTokens === t
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {t / 1000}k
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-violet-50 border border-violet-200">
+            <div className="flex items-center gap-1 text-[10px] text-violet-700 font-medium mb-1">
+              <Zap className="w-3 h-3" />
+              Direct Cost &amp; Execution Estimate
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <div className="text-sm font-bold text-violet-600 font-mono">
+                  {formatCost(cost.aiCost)}
+                </div>
+                <div className="text-[9px] text-violet-500">AI Tokens ({(estimatedTokens / 1000).toFixed(0)}k)</div>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-blue-600 font-mono">
+                  {formatCost(cost.reviewCost)}
+                </div>
+                <div className="text-[9px] text-blue-500">
+                  Labor ({cost.reviewHours.toFixed(1)}h @ ${pricing.developerHourlyRate ?? 150}/hr)
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-emerald-600 font-mono">
+                  {formatCost(cost.totalCost)}
+                </div>
+                <div className="text-[9px] text-emerald-600 font-semibold">Total Cost</div>
+              </div>
+            </div>
+            {roi.estimatedValue > 0 && (
+              <div className="mt-2 pt-2 border-t border-violet-200 text-center">
+                <span
+                  className={`text-sm font-bold px-2 py-0.5 rounded border ${getVerdictColor(roi.verdict)}`}
+                >
+                  ROI: {roi.roiMultiple}
+                </span>
+                <span className="text-[9px] text-emerald-600 ml-2">
+                  Value {formatDollars(roi.estimatedValue)} / Cost{" "}
+                  {formatCost(roi.totalCost)}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="p-3 rounded-lg border border-border bg-muted/30">

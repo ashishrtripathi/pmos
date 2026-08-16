@@ -10,6 +10,13 @@ export interface RegistryProject {
   projectType: string;
   /** Release version of this project, e.g. "0.1.0" */
   version: string;
+  teams?: string[];
+  stories?: {
+    done?: number;
+    review?: number;
+    backlog?: number;
+    inProgress?: number;
+  };
 }
 
 export interface Registry {
@@ -60,7 +67,15 @@ export interface Story {
   id: string;
   title: string;
   description: string;
-  points: number;
+  points?: number; // legacy points fallback
+  estimatedHours: number; // Primary time estimation in hours (e.g. 2.5)
+  actualHours?: number; // Actual hours recorded
+  startedAt?: string; // When story execution started in harness
+  completedAt?: string; // When story completed
+  executionDurationMs?: number; // Duration in harness in milliseconds
+  estimatedTokens?: number; // Estimated tokens
+  tokensUsed?: number; // Actual tokens consumed by AI agents
+  cost?: number; // Calculated total cost ($)
   status: StoryStatus;
   persona?: string;
   personaRole?: string;
@@ -86,9 +101,7 @@ export interface Story {
   objectiveId?: string; // links to Objective.id
   assignedAgent?: string;
   /**
-   * Background agent-work tracking. The kanban pickup sets this to
-   * `queued`; the scheduled AionUi story worker flips it to `working`
-   * (with heartbeats) and finally `done` when the implementation is complete.
+   * Background agent-work tracking.
    */
   agentWork?: {
     status: "queued" | "working" | "done";
@@ -97,6 +110,8 @@ export interface Story {
     startedAt?: string;
     lastHeartbeat?: string;
     completedAt?: string;
+    durationMs?: number;
+    tokensUsed?: number;
     notes?: string;
   };
 }
@@ -135,8 +150,13 @@ export interface Persona {
   id: string;
   name: string;
   role: string;
+  image?: string; // base64 encoded or URL
+  blurb: string; // persona description
+  quote?: string; // memorable quote
   goals: string[];
   frustrations: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardData {

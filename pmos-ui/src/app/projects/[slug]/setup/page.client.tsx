@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { Settings, Folder, Globe, Check, DollarSign, ChevronDown, ChevronRight, Search, Loader2, HardDrive, FolderGit2, X } from "lucide-react";
+import { Settings, Folder, Globe, Check, DollarSign, ChevronDown, ChevronRight, Search, Loader2, HardDrive, FolderGit2, X, Trash2, AlertTriangle, Save } from "lucide-react";
 import { MODEL_REGISTRY } from "@/lib/models";
 import { GitHubRepo, GitHubSearch, FileSystemBrowser } from "@/components/project-source-browser";
+import { RemoveProjectModal } from "@/components/remove-project-modal";
 
 const MODELS = MODEL_REGISTRY.map((m) => ({
   id: m.id,
@@ -61,6 +62,7 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
   const [pricingSaving, startPricingSave] = useTransition();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -116,11 +118,8 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
 
   const handlePricingChange = (key: string, value: string) => {
     const num = parseFloat(value);
-    if (!isNaN(num)) {
-      const isHeadcount = ["numDevelopers", "numProductManagers", "numQA"].includes(key);
-      if (isHeadcount ? num >= 0 : num > 0) {
-        setPricing((prev) => ({ ...prev, [key]: num }));
-      }
+    if (!isNaN(num) && num >= 0) {
+      setPricing((prev) => ({ ...prev, [key]: num }));
     }
   };
 
@@ -131,7 +130,7 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
       ...prev,
       model: modelId,
       // Auto-derive overhead. If custom, keep existing costPerToken; otherwise use model's known cost
-      costPerToken: model.id !== "custom" ? model.costPer1KTokens / 1000 : (prev.costPerToken ?? 0.003),
+      costPerToken: model.id !== "custom" ? model.costPer1KTokens / 1000 : (prev.costPerToken ?? 0),
     }));
   };
 
@@ -177,9 +176,9 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
           Tell PMOS where your code lives. PMOS never clones &mdash; it reads from wherever you point it.
         </p>
 
-        <div className="mb-4">
-          <label className="text-sm font-medium mb-2 block">Source Mode</label>
-          <div className="flex gap-3">
+        <div className="mb-6">
+          <label className="text-sm font-semibold mb-2 block">Source Mode</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { value: "local", icon: Folder, label: "Local Directory", desc: "Code on this machine" },
               { value: "github", icon: Globe, label: "GitHub + Local", desc: "Local clone + GitHub sync" },
@@ -187,18 +186,21 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
             ].map((opt) => (
               <button
                 key={opt.value}
+                type="button"
                 onClick={() => setMode(opt.value)}
-                className={`flex-1 p-4 rounded-xl border text-left transition-all ${
+                className={`p-4 rounded-xl border text-left transition-all relative ${
                   mode === opt.value
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border hover:border-primary/30"
+                    ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
+                    : "border-border hover:border-primary/40 hover:bg-muted/40"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <opt.icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{opt.label}</span>
+                  <opt.icon className={`w-4 h-4 ${mode === opt.value ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`text-sm font-semibold ${mode === opt.value ? "text-primary" : "text-foreground"}`}>
+                    {opt.label}
+                  </span>
                 </div>
-                <span>desc</span>
+                <p className="text-xs text-muted-foreground">{opt.desc}</p>
               </button>
             ))}
           </div>
@@ -255,63 +257,45 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? (
-              <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...</span>
-            ) : (
-              "Save Source Configuration"
-            )}
-          </button>
-          {saved && (
-            <span className="flex items-center gap-1 text-sm text-green-600">
-              <Check className="w-4 h-4" /> Saved
-            </span>
-          )}
-        </div>
-
-        {source && (
-          <div className="mt-4 p-4 rounded-xl border border-border bg-muted/50">
-            <h3 className="text-sm font-semibold mb-2">Current Source Config</h3>
-            <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap">
-              {JSON.stringify(source, null, 2)}
-            </pre>
-          </div>
-        )}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? "Saving..." : saved ? "Saved!" : "Save Source Configuration"}
+        </button>
       </div>
 
-      {/* ═══════════ Pricing Configuration ═══════════ */}
-      <div className="mb-10 pt-8 border-t border-border">
-        <div className="flex items-center gap-3 mb-1">
-          <DollarSign className="w-5 h-5" />
-          <h2 className="text-lg font-semibold">Pricing Configuration</h2>
-        </div>
+      {/* ═══════════ Pricing & Cost Estimation ═══════════ */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold mb-1">Pricing &amp; Cost Estimation</h2>
         <p className="text-muted-foreground text-sm mb-4">
-          Configure your team rates, headcount, and AI model. Costs are auto-calculated for intelligence stories.
+          Direct calculation based on estimated hours and token consumption. Supports $0.00 for local models.
         </p>
 
-        {/* Model Picker */}
+        {/* Model Selection */}
         <div className="mb-4">
-          <label className="text-sm font-medium mb-2 block">AI Model</label>
-          <div className="relative">
+          <label className="text-sm font-medium mb-1 block">AI Model</label>
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={modelSearch}
               onChange={(e) => setModelSearch(e.target.value)}
-              placeholder="Search models..."
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary mb-2"
+              placeholder="Filter models..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-border rounded-lg p-2">
+          </div>
+          <div className="max-h-48 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 p-1">
               {filteredModels.map((m) => (
                 <button
                   key={m.id}
+                  type="button"
                   onClick={() => handleModelChange(m.id)}
-                  className={`text-left p-2 rounded-lg text-sm transition-all ${
-                    pricing.model === m.id
+                  className={`p-2.5 rounded-md text-left text-sm transition-colors ${
+                    (pricing.model || "claude-sonnet-4") === m.id
                       ? "bg-primary/10 ring-1 ring-primary"
                       : "hover:bg-muted"
                   }`}
@@ -326,16 +310,9 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
             <div className="mt-2 text-xs text-muted-foreground">
               Selected: <span className="font-medium text-foreground">{selectedModel.name}</span>
               {selectedModel.id !== "custom" && (
-                <> &mdash; AI overhead: <span className="font-medium text-foreground">
-                  {computeAIOverhead(
-                    selectedModel.id,
-                    pricing.costPerToken ?? 0.003,
-                    pricing.tokensPerPoint ?? 20000,
-                    pricing.tokenMultiplier ?? 3.5,
-                    pricing.tokensPerK ?? 1000,
-                    pricing.marginMultiplier ?? 7
-                  )}%
-                </span> of labor cost</>
+                <> &mdash; AI cost: <span className="font-medium text-foreground font-mono">
+                  ${(selectedModel.costPer1KTokens || 0).toFixed(4)}/1K tokens
+                </span></>
               )}
             </div>
           )}
@@ -348,6 +325,7 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
               <label className="text-sm font-medium mb-1 block">{field.label}</label>
               <input
                 type="number"
+                min="0"
                 step={field.step}
                 value={pricing[field.key] ?? field.default}
                 onChange={(e) => handlePricingChange(field.key, e.target.value)}
@@ -382,65 +360,59 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
 
         {/* Live cost preview */}
         <div className="p-4 rounded-xl border border-border bg-muted/50 mb-4">
-          <h3 className="text-sm font-semibold mb-2">Cost Preview (per 5-point story)</h3>
-          <div className="text-xs text-muted-foreground space-y-1">
+          <h3 className="text-sm font-semibold mb-2">Cost &amp; Execution Preview (per 2-hour story · ~30K tokens)</h3>
+          <div className="text-xs text-muted-foreground space-y-1.5">
             {(() => {
               const dr = pricing.developerHourlyRate ?? 150;
               const pmr = pricing.productManagerHourlyRate ?? 150;
               const qar = pricing.qaEngineerHourlyRate ?? 90;
-              const hpp = pricing.hoursPerPoint ?? 0.35;
               const nd = pricing.numDevelopers ?? 1;
               const npm = pricing.numProductManagers ?? 0;
               const nqa = pricing.numQA ?? 0;
 
-              const baseHours = 5 * hpp;
-              const per5PointDev = baseHours * dr * nd;
-              const per5PointPM = baseHours * pmr * npm;
-              const per5PointQA = baseHours * qar * nqa;
-              const per5PointHuman = per5PointDev + per5PointPM + per5PointQA;
+              const sampleHours = 2;
+              const sampleTokens = 30000;
 
-              const aiPct = computeAIOverhead(
-                pricing.model ?? "claude-sonnet-4",
-                pricing.costPerToken ?? 0.003,
-                pricing.tokensPerPoint ?? 20000,
-                pricing.tokenMultiplier ?? 3.5,
-                pricing.tokensPerK ?? 1000,
-                pricing.marginMultiplier ?? 7
-              );
-              const per5PointAI = per5PointHuman * (aiPct / 100);
-              const per5PointTotal = per5PointHuman + per5PointAI;
+              const devLabor = sampleHours * dr * nd;
+              const pmLabor = (sampleHours * 0.2) * pmr * npm;
+              const qaLabor = (sampleHours * 0.3) * qar * nqa;
+              const totalHumanLabor = devLabor + pmLabor + qaLabor;
+
+              const costPer1K = selectedModel.costPer1KTokens ?? (pricing.costPerToken ?? 0.003) * 1000;
+              const tokenCost = (sampleTokens / 1000) * costPer1K;
+              const totalStoryCost = totalHumanLabor + tokenCost;
 
               return (
                 <>
                   {nd > 0 && (
                     <div className="flex justify-between">
-                      <span>Developer cost ({nd}× {dr}/hr):</span>
-                      <span className="font-mono">${per5PointDev.toFixed(2)}</span>
+                      <span>Developer labor (2h @ ${dr}/hr):</span>
+                      <span className="font-mono">${devLabor.toFixed(2)}</span>
                     </div>
                   )}
                   {npm > 0 && (
                     <div className="flex justify-between">
-                      <span>PM cost ({npm}× {pmr}/hr):</span>
-                      <span className="font-mono">${per5PointPM.toFixed(2)}</span>
+                      <span>PM review (0.4h @ ${pmr}/hr):</span>
+                      <span className="font-mono">${pmLabor.toFixed(2)}</span>
                     </div>
                   )}
                   {nqa > 0 && (
                     <div className="flex justify-between">
-                      <span>QA cost ({nqa}× {qar}/hr):</span>
-                      <span className="font-mono">${per5PointQA.toFixed(2)}</span>
+                      <span>QA validation (0.6h @ ${qar}/hr):</span>
+                      <span className="font-mono">${qaLabor.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span>AI overhead ({aiPct}% of labor):</span>
-                    <span className="font-mono">${per5PointAI.toFixed(2)}</span>
+                    <span>AI Model tokens (30K tokens @ ${costPer1K.toFixed(4)}/1K):</span>
+                    <span className="font-mono font-medium text-foreground">${tokenCost.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-foreground pt-1 border-t border-border mt-1">
-                    <span>Total (5-point story):</span>
-                    <span className="font-mono">${per5PointTotal.toFixed(2)}</span>
+                    <span>Total Story Cost:</span>
+                    <span className="font-mono">${totalStoryCost.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground pt-1">
-                    <span>Team size:</span>
-                    <span className="font-mono">{nd + npm + nqa} people</span>
+                    <span>Estimated Harness Execution Time:</span>
+                    <span className="font-mono">~45s – 2m per story</span>
                   </div>
                 </>
               );
@@ -495,6 +467,42 @@ export function SetupPageClient({ params }: { params: { slug: string } }) {
           )}
         </div>
       </div>
+
+      {/* ═══════════ Danger Zone: Remove Project ═══════════ */}
+      <div className="pt-8 border-t border-border">
+        <h2 className="text-lg font-semibold text-destructive mb-1 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5" /> Danger Zone
+        </h2>
+        <p className="text-muted-foreground text-sm mb-4">
+          Actions that affect the project registration in PMOS.
+        </p>
+
+        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-sm text-foreground">Remove this project from PMOS</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Detach &ldquo;{slug}&rdquo; from PMOS and clean up its metadata. Your actual code on disk or GitHub is not deleted.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowRemoveModal(true)}
+            className="px-4 py-2 rounded-lg border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground text-sm font-medium transition-all shrink-0 flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Trash2 className="w-4 h-4" />
+            Remove Project
+          </button>
+        </div>
+      </div>
+
+      {/* Remove Confirmation Modal */}
+      <RemoveProjectModal
+        slug={slug}
+        projectName={slug}
+        isOpen={showRemoveModal}
+        onClose={() => setShowRemoveModal(false)}
+        redirectToHome={true}
+      />
     </div>
   );
 }

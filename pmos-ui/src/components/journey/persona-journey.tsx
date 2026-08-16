@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -234,7 +234,7 @@ export function PersonaJourneyBoard({
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               {editing.mode === "add" ? (
-                <><Plus className="w-4 h-4" /> Add Step to {journey.personaName}'s journey</>
+                <><Plus className="w-4 h-4" /> Add Step to {journey.personaName}&apos;s journey</>
               ) : (
                 <>Edit Step {editing.stepNumber}: {journey.steps.find((s) => s.stepNumber === editing.stepNumber)?.name}</>
               )}
