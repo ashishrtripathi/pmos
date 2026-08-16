@@ -213,16 +213,25 @@ export function StoryDetailModal({
           <div className="flex flex-wrap gap-2 items-center">
             <select
               value={draft.status}
-              onChange={(e) =>
-                setDraft({ ...draft, status: e.target.value })
-              }
-              disabled={!editing}
-              className="text-xs px-2 py-1 rounded-lg border border-border bg-background disabled:opacity-70 font-medium"
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                const updated = {
+                  ...draft,
+                  status: newStatus,
+                  startedAt: newStatus === "in-progress" && !draft.startedAt ? new Date().toISOString() : draft.startedAt,
+                  completedAt: newStatus === "done" && !draft.completedAt ? new Date().toISOString() : draft.completedAt,
+                };
+                setDraft(updated);
+                if (!editing) {
+                  onSave(updated);
+                }
+              }}
+              className="text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground cursor-pointer hover:border-primary transition-colors shadow-2xs"
             >
-              <option value="backlog">Backlog</option>
-              <option value="in-progress">In Progress</option>
-              <option value="review">Review</option>
-              <option value="done">Done</option>
+              <option value="backlog">📋 Backlog</option>
+              <option value="in-progress">🔄 Doing (In Progress)</option>
+              <option value="review">👀 In Review</option>
+              <option value="done">✅ Done</option>
             </select>
             <div className="flex items-center gap-1 text-xs bg-primary/10 px-2.5 py-1 rounded-lg font-mono">
               <span className="font-bold text-primary">

@@ -16,11 +16,16 @@ import {
   Play,
   Loader2,
   Clock,
+  CheckCircle2,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
   closestCorners,
+  pointerWithin,
+  rectIntersection,
   PointerSensor,
   useSensor,
   useSensors,
@@ -110,62 +115,27 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
   "High Priority Issue": "bg-orange-100 text-orange-700 border-orange-300",
 };
 
-// ── Status Column Header ──────────────────────────
-
-function StatusColumnHeader({
-  column,
-  count,
-  totalHours,
-}: {
-  column: typeof STATUS_COLUMNS[0];
-  count: number;
-  totalHours: number;
-}) {
-  const icons: Record<string, string> = {
-    backlog: "📋",
-    "in-progress": "🔄",
-    review: "👀",
-    done: "✅",
-  };
-
-  return (
-    <div className={`flex flex-col border-t-2 ${column.color} rounded-xl bg-card min-w-[260px] w-[260px] shrink-0`}>
-      {/* Column Header */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg">{icons[column.id] || "📌"}</span>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold">{column.label}</h3>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {count} stories
-          </span>
-          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono">
-            {totalHours.toFixed(1)}h est
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Kanban Column (Droppable) ─────────────────────
 
 function KanbanColumn({
   column,
+  isDraggingAny,
   children,
 }: {
-  column: { id: string };
+  column: { id: string; label: string; color: string };
+  isDraggingAny?: boolean;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-xl bg-card min-w-[260px] w-[260px] shrink-0 transition-shadow ${
-        isOver ? "ring-2 ring-primary/60" : ""
+      className={`flex flex-col rounded-2xl bg-card border border-border min-w-[280px] w-[280px] shrink-0 transition-all duration-200 ${
+        isOver
+          ? "ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-950/20 shadow-lg scale-[1.01]"
+          : isDraggingAny
+          ? "border-dashed border-primary/40 bg-muted/10"
+          : ""
       }`}
     >
       {children}
@@ -173,18 +143,20 @@ function KanbanColumn({
   );
 }
 
-// ── Kanban Story Card (Sortable + Clickable) ────────
+// ── Kanban Story Card (Sortable + Clickable + Quick Actions) ────────
 
 function KanbanStoryCard({
   story,
   pricing,
   slug,
   onClick,
+  onMoveStatus,
 }: {
   story: KanbanStory;
   pricing: PricingParams;
   slug?: string;
   onClick: () => void;
+  onMoveStatus?: (storyId: string, newStatus: string) => void;
 }) {
   const {
     attributes,
@@ -198,7 +170,7 @@ function KanbanStoryCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.3 : 1,
   };
 
   const hours = story.estimatedHours ?? (story.points ? story.points * (pricing.hoursPerPoint || 0.5) : 1);
@@ -212,23 +184,24 @@ function KanbanStoryCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-2.5 rounded-lg border bg-background shadow-sm hover:shadow-md hover:border-primary/30 transition-all group cursor-grab active:cursor-grabbing ${
+      className={`p-3 rounded-xl border bg-background shadow-xs hover:shadow-md hover:border-primary/40 transition-all group select-none ${
         isIntelligence ? "border-l-[3px] border-l-amber-400" : "border-border"
       }`}
-      onClick={onClick}
-      {...attributes}
-      {...listeners}
     >
       <div className="flex items-start gap-2">
+        {/* Grip Handle for Dragging */}
         <span
-          className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
-          aria-hidden
+          {...attributes}
+          {...listeners}
+          className="mt-0.5 p-1 -ml-1 cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-foreground hover:bg-muted rounded transition-colors"
+          title="Drag to reorder or move across columns"
         >
-          <GripVertical className="w-3.5 h-3.5" />
+          <GripVertical className="w-4 h-4" />
         </span>
-        <div className="flex-1 min-w-0">
+
+        <div className="flex-1 min-w-0" onClick={onClick}>
           {/* Badges row */}
-          <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+          <div className="flex items-center gap-1 mb-1 flex-wrap cursor-pointer">
             {isIntelligence && (
               <span className="text-[8px] px-1 py-0 rounded bg-amber-50 text-amber-600 border border-amber-200 font-bold flex items-center gap-0.5">
                 <Brain className="w-2 h-2" />
@@ -238,24 +211,23 @@ function KanbanStoryCard({
             {story.assignedAgent ? (
               <span
                 className={`flex items-center gap-1 text-[8px] px-1.5 py-0.5 rounded-md border font-semibold ${agentBadge?.color ?? ""}`}
-                title={`Being worked on by ${agentBadge?.name ?? story.assignedAgent}`}
+                title={`Assigned to ${agentBadge?.name ?? story.assignedAgent}`}
               >
                 <Bot className="w-2.5 h-2.5" />
                 {agentBadge?.name ?? story.assignedAgent}
-                {story.agentWork?.status === "working" ? (
-                  <span className="ml-0.5 flex items-center gap-1 text-emerald-600">
-                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                    working
+                {story.status === "in-progress" ? (
+                  <span className="ml-0.5 flex items-center gap-1 text-blue-600">
+                    <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+                    doing
                   </span>
-                ) : story.agentWork?.status === "done" ? (
-                  <span className="ml-0.5 text-green-600">✓ done</span>
-                ) : (
-                  <span className="ml-0.5 text-amber-600">queued</span>
-                )}
+                ) : story.status === "done" ? (
+                  <span className="ml-0.5 text-emerald-600">✓ done</span>
+                ) : null}
               </span>
             ) : story.status === "in-progress" ? (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-md border border-dashed border-blue-300 bg-blue-50/60 text-blue-500 font-medium">
-                Working · unassigned
+              <span className="text-[8px] px-1.5 py-0.5 rounded-md border border-dashed border-blue-300 bg-blue-50/60 text-blue-600 font-medium flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+                Doing · in harness
               </span>
             ) : null}
             <span className="text-[10px] font-mono text-muted-foreground">
@@ -281,46 +253,33 @@ function KanbanStoryCard({
           </div>
 
           {/* Title */}
-          <h4 className="text-[11px] font-semibold leading-tight">{story.title}</h4>
+          <h4 className="text-xs font-semibold leading-tight cursor-pointer hover:text-primary transition-colors">
+            {story.title}
+          </h4>
 
           {/* Description */}
           {story.description && (
-            <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+            <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed cursor-pointer">
               {story.description}
             </p>
           )}
 
-          {/* Use Case preview */}
-          {story.useCase?.soThat && (
-            <div className="mt-1 text-[9px] text-emerald-700 bg-emerald-50/50 rounded px-1.5 py-0.5 border border-emerald-100">
-              <span className="font-medium">Outcome:</span> {story.useCase.soThat}
-            </div>
-          )}
-
-          {/* Business Goal */}
-          {story.businessGoal && (
-            <div className="mt-1 flex items-start gap-0.5">
-              <Target className="w-2 h-2 text-amber-500 shrink-0 mt-0.5" />
-              <span className="text-[8px] text-muted-foreground line-clamp-2">{story.businessGoal}</span>
-            </div>
-          )}
-
-          {/* Execution Time in Harness (if available) */}
+          {/* Harness Duration & Execution Timer */}
           {(story.executionDurationMs || (story.status === "in-progress" && story.startedAt)) && (
-            <div className="mt-1 flex items-center gap-1 text-[9px] text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded px-1.5 py-0.5 font-mono">
+            <div className="mt-1.5 flex items-center gap-1 text-[9px] text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded px-1.5 py-0.5 font-mono">
               <Clock className="w-2.5 h-2.5" />
               {story.executionDurationMs ? (
-                <span>Harness run: {formatDuration(story.executionDurationMs)}</span>
+                <span>⏱️ {formatDuration(story.executionDurationMs)} in harness</span>
               ) : (
                 <span className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                  Running in harness...
+                  Running in test harness...
                 </span>
               )}
             </div>
           )}
 
-          {/* Cost + Tokens + ROI + Value */}
+          {/* Cost + Tokens + ROI */}
           <div className="mt-1.5 pt-1.5 border-t border-border/50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -354,25 +313,75 @@ function KanbanStoryCard({
               )}
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Intelligence Reference */}
-          {isIntelligence && story.sourceFile && (
-            <div className="mt-1 pt-1 border-t border-amber-100">
-              <a
-                href={`/projects/${slug || "pmos"}/intelligence`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-0.5 text-[8px] text-amber-600 hover:text-amber-800 hover:underline"
+      {/* Quick Move Action Buttons */}
+      <div className="mt-2.5 pt-1.5 border-t border-border/60 flex items-center justify-between gap-1">
+        <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wider">Move:</span>
+        <div className="flex items-center gap-1">
+          {story.status !== "in-progress" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveStatus?.(story.id, "in-progress");
+              }}
+              className="px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[9px] font-semibold flex items-center gap-0.5 transition-all hover:scale-105 shadow-2xs"
+              title="Move to Doing (Execute in test harness)"
+            >
+              <Play className="w-2 h-2 fill-blue-700" />
+              <span>Doing</span>
+            </button>
+          )}
+          {story.status === "in-progress" && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveStatus?.(story.id, "review");
+                }}
+                className="px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[9px] font-semibold transition-all hover:scale-105"
               >
-                <Brain className="w-2 h-2" />
-                <span>{story.sourceFile.replace("intelligence/", "")}</span>
-                {story.sourceSection && (
-                  <span className="text-muted-foreground"> / {story.sourceSection}</span>
-                )}
-                <ExternalLink className="w-1.5 h-1.5" />
-              </a>
-            </div>
+                Review →
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveStatus?.(story.id, "done");
+                }}
+                className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-semibold transition-all hover:scale-105"
+              >
+                ✓ Done
+              </button>
+            </>
+          )}
+          {story.status === "review" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveStatus?.(story.id, "done");
+              }}
+              className="px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-semibold transition-all hover:scale-105"
+            >
+              ✓ Done
+            </button>
+          )}
+          {story.status !== "backlog" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveStatus?.(story.id, "backlog");
+              }}
+              className="px-1.5 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[9px] font-medium transition-colors"
+              title="Move back to Backlog"
+            >
+              ← Backlog
+            </button>
           )}
         </div>
       </div>
@@ -395,8 +404,6 @@ export function KanbanBoard({
   const [stories, setStories] = useState<KanbanStory[]>(allStories);
   const [activeStory, setActiveStory] = useState<KanbanStory | null>(null);
   const dragStartStatusRef = useRef<string | null>(null);
-  // dnd-kit fires a click event on the dragged element after a drop;
-  // suppress it so the story detail modal doesn't pop open mid-drag.
   const suppressClickRef = useRef(false);
   const [detailStory, setDetailStory] = useState<KanbanStory | null>(null);
   const [pickupNotice, setPickupNotice] = useState<string | null>(null);
@@ -421,7 +428,7 @@ export function KanbanBoard({
       .catch(() => {});
   }, [slug]);
 
-  // Fetch pricing config — when this changes, costs/ROI/rankings auto-recalculate
+  // Fetch pricing config
   useEffect(() => {
     fetch(`/api/projects/${slug}/pricing`)
       .then((r) => r.json())
@@ -448,7 +455,7 @@ export function KanbanBoard({
     });
   }, [intelStories]);
 
-  // Recalculate everything when stories or pricing changes
+  // Recalculate columns
   const columns = useMemo(() =>
     STATUS_COLUMNS.map((col) => {
       const colStories = stories.filter((s) => s.status === col.id);
@@ -546,6 +553,71 @@ export function KanbanBoard({
     [stories]
   );
 
+  // Multi-tier collision detection for instant drop responsiveness
+  const collisionDetectionStrategy = useCallback((args: any) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) {
+      return rectCollisions;
+    }
+    return closestCorners(args);
+  }, []);
+
+  const persistStatusChange = useCallback(
+    async (storyId: string, newStatus: string) => {
+      setSavingStatus((prev) => ({ ...prev, [storyId]: true }));
+      try {
+        const res = await fetch(`/api/projects/${slug}/stories/${storyId}/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        const data = await res.json();
+        if (data.pickedUpBy) {
+          const story = stories.find((s) => s.id === storyId);
+          const agentName = data.pickedUpByName || data.pickedUpBy;
+          setPickupNotice(
+            `"${story?.title || storyId}" moved to ${newStatus.toUpperCase()} & assigned to ${agentName}`
+          );
+          window.setTimeout(() => setPickupNotice(null), 5000);
+          setStories((prev) =>
+            prev.map((s) =>
+              s.id === storyId ? { ...s, assignedAgent: data.pickedUpBy } : s
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Failed to persist status change", err);
+      } finally {
+        setSavingStatus((prev) => ({ ...prev, [storyId]: false }));
+      }
+    },
+    [slug, stories]
+  );
+
+  const handleManualMoveStatus = useCallback(
+    (storyId: string, newStatus: string) => {
+      setStories((prev) =>
+        prev.map((s) => {
+          if (s.id === storyId) {
+            return {
+              ...s,
+              status: newStatus,
+              startedAt: newStatus === "in-progress" && !s.startedAt ? new Date().toISOString() : s.startedAt,
+              completedAt: newStatus === "done" && !s.completedAt ? new Date().toISOString() : s.completedAt,
+            };
+          }
+          return s;
+        })
+      );
+      persistStatusChange(storyId, newStatus);
+    },
+    [persistStatusChange]
+  );
+
   const handleDragStart = (event: DragStartEvent) => {
     const story = event.active.data.current?.story as KanbanStory;
     if (story) {
@@ -583,38 +655,6 @@ export function KanbanBoard({
     });
   };
 
-  const persistStatusChange = useCallback(
-    async (storyId: string, newStatus: string) => {
-      setSavingStatus((prev) => ({ ...prev, [storyId]: true }));
-      try {
-        const res = await fetch(`/api/projects/${slug}/stories/${storyId}/status`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        });
-        const data = await res.json();
-        if (data.pickedUpBy) {
-          const story = stories.find((s) => s.id === storyId);
-          const agentName = data.pickedUpByName || data.pickedUpBy;
-          setPickupNotice(
-            `"${story?.title || storyId}" moved to ${newStatus} & assigned to ${agentName}`
-          );
-          window.setTimeout(() => setPickupNotice(null), 5000);
-          setStories((prev) =>
-            prev.map((s) =>
-              s.id === storyId ? { ...s, assignedAgent: data.pickedUpBy } : s
-            )
-          );
-        }
-      } catch (err) {
-        console.error("Failed to persist status change", err);
-      } finally {
-        setSavingStatus((prev) => ({ ...prev, [storyId]: false }));
-      }
-    },
-    [slug, stories]
-  );
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveStory(null);
@@ -636,7 +676,17 @@ export function KanbanBoard({
 
     if (targetStatus) {
       setStories((prev) =>
-        prev.map((s) => (s.id === activeId ? { ...s, status: targetStatus! } : s))
+        prev.map((s) => {
+          if (s.id === activeId) {
+            return {
+              ...s,
+              status: targetStatus!,
+              startedAt: targetStatus === "in-progress" && !s.startedAt ? new Date().toISOString() : s.startedAt,
+              completedAt: targetStatus === "done" && !s.completedAt ? new Date().toISOString() : s.completedAt,
+            };
+          }
+          return s;
+        })
       );
 
       if (fromStatus && fromStatus !== targetStatus) {
@@ -683,6 +733,9 @@ export function KanbanBoard({
     setStories((prev) =>
       prev.map((s) => (s.id === updatedStory.id ? { ...s, ...updatedStory } : s))
     );
+    if (updatedStory.status) {
+      persistStatusChange(updatedStory.id, updatedStory.status);
+    }
     setDetailStory(null);
   };
 
@@ -692,50 +745,58 @@ export function KanbanBoard({
   };
 
   return (
-    <div className="p-8 max-w-full mx-auto">
+    <div className="p-8 max-w-full mx-auto space-y-5">
       {/* Agent pickup notice */}
       {pickupNotice && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-md bg-violet-50 border border-violet-200 text-violet-700 text-sm">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-sm animate-in fade-in">
           <Bot className="w-4 h-4" />
           <span>{pickupNotice}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <Columns3 className="w-5 h-5" />
-          <h1 className="text-2xl font-bold">Kanban</h1>
-          <span className="text-sm text-muted-foreground font-mono">
-            {totalStories} stories &middot; {totalHours.toFixed(1)}h est
-          </span>
-          <span className="text-sm font-mono text-violet-600 bg-violet-50 px-2 py-0.5 rounded font-medium">
-            {formatCost(totalCost)} cost ({formatTokens(totalTokens)} tok)
-          </span>
-          {totalValue > 0 && (
-            <span className="text-sm font-mono text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-medium">
-              {formatDollars(totalValue)} value
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Columns3 className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Kanban Work Execution Board</h1>
+            <p className="text-sm text-muted-foreground">
+              {totalStories} stories &middot; {totalHours.toFixed(1)}h estimated &middot; Drag across columns or use quick-action buttons
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 ml-2">
+            <span className="text-xs font-mono text-violet-700 bg-violet-50 border border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 px-2.5 py-1 rounded-full font-medium">
+              {formatCost(totalCost)} total ({formatTokens(totalTokens)} tok)
             </span>
-          )}
-          {totalIntel > 0 && (
-            <span className="text-sm text-amber-600 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1 font-medium">
-              <Brain className="w-3.5 h-3.5" />
-              {totalIntel} from intelligence
-            </span>
-          )}
+            {totalValue > 0 && (
+              <span className="text-xs font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 px-2.5 py-1 rounded-full font-medium">
+                {formatDollars(totalValue)} ROI value
+              </span>
+            )}
+            {totalIntel > 0 && (
+              <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
+                <Brain className="w-3 h-3" />
+                {totalIntel} AI intelligence
+              </span>
+            )}
+          </div>
         </div>
+
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleStartExecution}
             disabled={executing}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
             title="Immediately dispatch and run active stories in test harness"
           >
             {executing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Running in Harness...</span>
+                <span>Executing in Harness...</span>
               </>
             ) : (
               <>
@@ -747,61 +808,67 @@ export function KanbanBoard({
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            New Story
+            <span>New Story</span>
           </button>
         </div>
       </div>
 
-      {/* Agent dispatch hint */}
-      <div className="mb-5 flex items-center justify-between px-4 py-2.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-sm flex-wrap gap-2">
+      {/* Info Dispatch Banner */}
+      <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 shrink-0" />
           <span>
-            Click <strong>Start Story Execution</strong> or drag a story to <strong>Doing</strong> to execute in harness. Duration and token consumption are tracked live.
+            <strong>Drag-and-Drop or Quick Move</strong>: Drag stories between columns or click <strong>▶ Doing</strong> on any story card to immediately start execution in the test harness.
           </span>
         </div>
-        <div className="text-xs font-mono text-blue-600 font-medium">
-          Harness Tracking Active
+        <div className="font-mono text-blue-600 font-semibold flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+          Test Harness Active
         </div>
       </div>
 
       {/* Kanban Grid — Status Columns */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetectionStrategy}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
         <div className="overflow-x-auto pb-4">
-          <div className="flex gap-3 min-w-max">
+          <div className="flex gap-4 min-w-max">
             {columns.map((col) => (
-              <KanbanColumn key={col.id} column={col}>
-                <div className={`p-3 border-b border-border border-t-2 ${col.color} rounded-t-xl`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">
-                      {col.id === "backlog" ? "📋" : col.id === "in-progress" ? "🔄" : col.id === "review" ? "👀" : "✅"}
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-semibold">{col.label}</h3>
+              <KanbanColumn
+                key={col.id}
+                column={col}
+                isDraggingAny={Boolean(activeStory)}
+              >
+                {/* Column Header */}
+                <div className={`p-4 border-b border-border border-t-4 ${col.color} rounded-t-2xl bg-card`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {col.id === "backlog" ? "📋" : col.id === "in-progress" ? "🔄" : col.id === "review" ? "👀" : "✅"}
+                      </span>
+                      <h3 className="text-sm font-bold text-foreground">{col.label}</h3>
                     </div>
+                    <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground">
+                      {col.stories.length}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                      {col.stories.length} stories
-                    </span>
-                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                      {col.totalHours.toFixed(1)}h
-                    </span>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                    <span>{col.totalHours.toFixed(1)}h est</span>
+                    <span>&middot;</span>
+                    <span>{formatCost(col.stories.reduce((acc, s) => acc + estimateTokenCost(s, pricing).totalCost, 0))}</span>
                   </div>
                 </div>
 
-                {/* Story List */}
-                <div className="flex-1 p-2 space-y-1.5 min-h-[260px]">
+                {/* Story List Droppable Zone */}
+                <div className="flex-1 p-2.5 space-y-2.5 min-h-[320px] flex flex-col">
                   <SortableContext
                     items={col.stories.map((s) => s.id)}
                     strategy={verticalListSortingStrategy}
@@ -816,12 +883,21 @@ export function KanbanBoard({
                           if (suppressClickRef.current) return;
                           setDetailStory(story);
                         }}
+                        onMoveStatus={handleManualMoveStatus}
                       />
                     ))}
                   </SortableContext>
+
                   {col.stories.length === 0 && (
-                    <div className="h-24 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center text-xs font-medium text-muted-foreground bg-muted/20">
-                      Drop stories here
+                    <div className="flex-1 min-h-[160px] rounded-xl border-2 border-dashed border-border/80 flex flex-col items-center justify-center p-4 text-center bg-muted/20">
+                      <span className="text-xs font-semibold text-muted-foreground mb-1">
+                        {col.id === "in-progress" ? "Drop stories to start Doing" : `Drop stories here`}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/70">
+                        {col.id === "in-progress"
+                          ? "Stories will immediately enter the test harness"
+                          : "Drag from other columns or use quick buttons"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -830,37 +906,27 @@ export function KanbanBoard({
           </div>
         </div>
 
+        {/* Drag Overlay for smooth cursor trailing */}
         <DragOverlay>
           {activeStory ? (
-            <div className="p-2.5 rounded-lg border border-primary bg-card shadow-lg opacity-90 min-w-[200px] max-w-[240px]">
-              <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="p-3 rounded-xl border-2 border-blue-500 bg-card shadow-2xl opacity-95 min-w-[240px] max-w-[280px] rotate-1">
+              <div className="flex items-center gap-1.5 mb-1">
                 {activeStory.source === "intelligence" && (
                   <Brain className="w-3 h-3 text-amber-500" />
                 )}
-                <span className="text-xs font-mono text-muted-foreground">
+                <span className="text-xs font-mono font-bold text-muted-foreground">
                   {activeStory.id}
                 </span>
-                <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-semibold">
                   {activeStory.estimatedHours ?? (activeStory.points ? activeStory.points * 0.35 : 1)}h
                 </span>
               </div>
-              <h4 className="text-xs font-medium">{activeStory.title}</h4>
-              {activeStory.description && (
-                <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">{activeStory.description}</p>
-              )}
+              <h4 className="text-xs font-bold text-foreground">{activeStory.title}</h4>
               <div className="mt-1 flex items-center gap-1">
-                <Zap className="w-2.5 h-2.5 text-violet-500" />
-                <span className="text-[9px] font-mono text-violet-600">
+                <Zap className="w-3 h-3 text-violet-500" />
+                <span className="text-[10px] font-mono text-violet-600 font-semibold">
                   {formatCost(estimateTokenCost(activeStory, pricing).totalCost)}
                 </span>
-                {activeStory.estimatedValue && activeStory.estimatedValue > 0 && (
-                  <>
-                    <span className="text-[8px] text-muted-foreground">→</span>
-                    <span className="text-[9px] font-mono text-emerald-600">
-                      {formatDollars(activeStory.estimatedValue)}
-                    </span>
-                  </>
-                )}
               </div>
             </div>
           ) : null}
