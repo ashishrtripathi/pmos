@@ -19,6 +19,11 @@ import {
   CheckCircle2,
   ChevronRight,
   RotateCcw,
+  Copy,
+  Check,
+  Sparkles,
+  Terminal,
+  X,
 } from "lucide-react";
 import {
   DndContext,
@@ -143,7 +148,7 @@ function KanbanColumn({
   );
 }
 
-// ── Kanban Story Card (Sortable + Clickable + Quick Actions) ────────
+// ── Kanban Story Card (Sortable + Clickable + Quick Actions + AionUi Prompt) ────────
 
 function KanbanStoryCard({
   story,
@@ -158,6 +163,7 @@ function KanbanStoryCard({
   onClick: () => void;
   onMoveStatus?: (storyId: string, newStatus: string) => void;
 }) {
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
   const {
     attributes,
     listeners,
@@ -179,6 +185,31 @@ function KanbanStoryCard({
   const isIntelligence = story.source === "intelligence";
   const agentBadge = getAgentBadge(story.assignedAgent);
   const tokens = story.tokensUsed ?? story.estimatedTokens ?? cost.inputTokens + cost.outputTokens;
+
+  const handleCopyAionPrompt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const criteriaText = Array.isArray(story.acceptanceCriteria) && story.acceptanceCriteria.length > 0
+      ? story.acceptanceCriteria.map((ac) => {
+          if (typeof ac === "string") return `- ${ac}`;
+          return `- Scenario: ${ac.scenario || "Default"}\n  Given: ${Array.isArray(ac.given) ? ac.given.join(", ") : ac.given || "clean state"}\n  When: ${ac.when || "executed"}\n  Then: ${ac.then || "succeeds"}`;
+        }).join("\n")
+      : story.description || story.title;
+
+    const fullPrompt = `PMOS: implement story ${story.id} for ${slug || "pmos"}
+
+Project: ${slug || "pmos"}
+Story: ${story.title}
+Assigned Persona: ${agentBadge?.name || story.assignedAgent || "Software Engineer"}
+Target User: ${story.persona || "User"}
+Estimated Labor: ${hours}h
+
+Acceptance Criteria:
+${criteriaText}`;
+
+    navigator.clipboard.writeText(fullPrompt);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2500);
+  };
 
   return (
     <div
@@ -216,7 +247,7 @@ function KanbanStoryCard({
                 <Bot className="w-2.5 h-2.5" />
                 {agentBadge?.name ?? story.assignedAgent}
                 {story.status === "in-progress" ? (
-                  <span className="ml-0.5 flex items-center gap-1 text-blue-600">
+                  <span className="ml-0.5 flex items-center gap-1 text-blue-600 font-bold">
                     <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
                     doing
                   </span>
@@ -316,6 +347,28 @@ function KanbanStoryCard({
         </div>
       </div>
 
+      {/* Copy AionUi Prompt Action for In-Progress stories */}
+      {story.status === "in-progress" && (
+        <button
+          type="button"
+          onClick={handleCopyAionPrompt}
+          className="w-full mt-2.5 py-1 px-2 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+          title="Copy ready-to-run prompt for AionUi agent"
+        >
+          {copiedPrompt ? (
+            <>
+              <Check className="w-3 h-3 text-emerald-600" />
+              <span className="text-emerald-700">Copied AionUi Prompt!</span>
+            </>
+          ) : (
+            <>
+              <Terminal className="w-3 h-3 text-violet-600" />
+              <span>Copy AionUi Command</span>
+            </>
+          )}
+        </button>
+      )}
+
       {/* Quick Move Action Buttons */}
       <div className="mt-2.5 pt-1.5 border-t border-border/60 flex items-center justify-between gap-1">
         <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wider">Move:</span>
@@ -365,7 +418,7 @@ function KanbanStoryCard({
                 e.stopPropagation();
                 onMoveStatus?.(story.id, "done");
               }}
-              className="px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-semibold transition-all hover:scale-105"
+              className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-semibold transition-all hover:scale-105"
             >
               ✓ Done
             </button>
@@ -411,6 +464,12 @@ export function KanbanBoard({
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [executionSummary, setExecutionSummary] = useState<{
+    executedCount: number;
+    logs: string[];
+    dispatchCommands: string[];
+  } | null>(null);
   const [pricing, setPricing] = useState<PricingParams>({
     aiOverheadPercent: 3,
     developerHourlyRate: 150,
@@ -506,8 +565,13 @@ export function KanbanBoard({
       const data = await res.json();
       if (data.success && Array.isArray(data.stories)) {
         setStories(data.stories);
+        setExecutionSummary({
+          executedCount: data.executedCount,
+          logs: data.logs || [],
+          dispatchCommands: data.dispatchCommands || [],
+        });
         setPickupNotice(
-          `Executed ${data.executedCount} stories in test harness! Duration & tokens updated.`
+          `Dispatched ${data.executedCount} stories to PMOS Agents in Doing column!`
         );
         setTimeout(() => setPickupNotice(null), 6000);
       }
@@ -739,18 +803,21 @@ export function KanbanBoard({
     setDetailStory(null);
   };
 
-  const handleDeleteStory = (storyId: string) => {
-    setStories((prev) => prev.filter((s) => s.id !== storyId));
-    setDetailStory(null);
+  const copyAllDispatchCommands = () => {
+    if (!executionSummary) return;
+    const text = executionSummary.dispatchCommands.join("\n");
+    navigator.clipboard.writeText(text);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2500);
   };
 
   return (
     <div className="p-8 max-w-full mx-auto space-y-5">
       {/* Agent pickup notice */}
       {pickupNotice && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-sm animate-in fade-in">
-          <Bot className="w-4 h-4" />
-          <span>{pickupNotice}</span>
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-sm animate-in fade-in shadow-xs">
+          <Bot className="w-4 h-4 text-violet-600" />
+          <span className="font-medium">{pickupNotice}</span>
         </div>
       )}
 
@@ -763,7 +830,7 @@ export function KanbanBoard({
           <div>
             <h1 className="text-2xl font-bold">Kanban Work Execution Board</h1>
             <p className="text-sm text-muted-foreground">
-              {totalStories} stories &middot; {totalHours.toFixed(1)}h estimated &middot; Drag across columns or use quick-action buttons
+              {totalStories} stories &middot; {totalHours.toFixed(1)}h estimated &middot; Stories in Doing are ready for AionUi agent implementation
             </p>
           </div>
 
@@ -791,12 +858,12 @@ export function KanbanBoard({
             onClick={handleStartExecution}
             disabled={executing}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
-            title="Immediately dispatch and run active stories in test harness"
+            title="Dispatch pending stories to PMOS Agents in Doing column"
           >
             {executing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Executing in Harness...</span>
+                <span>Dispatching Agents...</span>
               </>
             ) : (
               <>
@@ -821,12 +888,12 @@ export function KanbanBoard({
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 shrink-0" />
           <span>
-            <strong>Drag-and-Drop or Quick Move</strong>: Drag stories between columns or click <strong>▶ Doing</strong> on any story card to immediately start execution in the test harness.
+            <strong>PMOS Agent Execution Flow</strong>: Move stories to <strong>Doing</strong> or hit <strong>Start Story Execution</strong>. Stories in Doing receive assigned agent personas and one-click <strong>Copy AionUi Command</strong> buttons.
           </span>
         </div>
         <div className="font-mono text-blue-600 font-semibold flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-          Test Harness Active
+          AionUi Dispatch Ready
         </div>
       </div>
 
@@ -895,7 +962,7 @@ export function KanbanBoard({
                       </span>
                       <span className="text-[10px] text-muted-foreground/70">
                         {col.id === "in-progress"
-                          ? "Stories will immediately enter the test harness"
+                          ? "Stories will be assigned to AI agents and ready for AionUi"
                           : "Drag from other columns or use quick buttons"}
                       </span>
                     </div>
@@ -932,6 +999,102 @@ export function KanbanBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Execution Summary / AionUi Dispatch Modal */}
+      {executionSummary && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setExecutionSummary(null)}
+        >
+          <div
+            className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                  <Play className="w-4 h-4 fill-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Dispatched Stories to PMOS Agents</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {executionSummary.executedCount} stories moved to <strong>Doing</strong> and assigned to agents
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExecutionSummary(null)}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                <span>AionUi Dispatch Commands:</span>
+                <button
+                  type="button"
+                  onClick={copyAllDispatchCommands}
+                  className="flex items-center gap-1 text-primary hover:underline text-xs font-medium"
+                >
+                  {copiedAll ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span className="text-emerald-600 font-semibold">Copied all commands!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copy All Commands</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {executionSummary.dispatchCommands.map((cmd, i) => (
+                  <div
+                    key={i}
+                    className="p-2.5 rounded-lg bg-muted/40 border border-border font-mono text-xs flex items-center justify-between gap-2 hover:bg-muted/70 transition-colors"
+                  >
+                    <span className="text-foreground truncate">{cmd}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(cmd);
+                        setPickupNotice(`Copied: ${cmd}`);
+                        setTimeout(() => setPickupNotice(null), 3000);
+                      }}
+                      className="px-2 py-1 rounded bg-card hover:bg-muted border border-border text-[10px] text-muted-foreground shrink-0 font-sans"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-border flex items-center justify-between">
+              <a
+                href={`/projects/${slug}/agents`}
+                className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>Open PMOS Agent Dispatch Console</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setExecutionSummary(null)}
+                className="px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Story Detail Modal */}
       {detailStory && (

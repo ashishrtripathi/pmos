@@ -706,34 +706,65 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
   if (!story || story.status === to) return null;
   const from = story.status;
   story.status = to;
-  if (to === "in-progress" && !story.startedAt) {
-    story.startedAt = new Date().toISOString();
+
+  // If moving to in-progress (Doing), auto-assign agent persona and initialize harness tracking
+  if (to === "in-progress") {
+    if (!story.startedAt) {
+      story.startedAt = new Date().toISOString();
+    }
+    let agentId = story.assignedAgent;
+    if (!agentId) {
+      if (story.category === "UX/Product" || story.persona) agentId = "ux-designer";
+      else if (story.category === "Technical" || story.category === "Code Analysis") agentId = "software-engineer";
+      else if (story.category === "Critical Issue" || story.category === "High Priority Issue") agentId = "qa-engineer";
+      else agentId = "software-engineer";
+      story.assignedAgent = agentId;
+    }
+    story.agentWork = {
+      status: "working",
+      assignedAgent: agentId,
+      startedAt: story.startedAt,
+      notes: `Dispatched to ${agentId}. Run in AionUi: PMOS: implement story ${story.id} for ${slug}`,
+    };
   }
+
   if (to === "done" && !story.completedAt) {
     story.completedAt = new Date().toISOString();
+    if (story.agentWork) {
+      story.agentWork.status = "done";
+      story.agentWork.completedAt = story.completedAt;
+    }
   }
+
   await writeItems("stories", slug, stories);
-  return mirrorMoveStoryFile(slug, storyId, from, to);
+  mirrorMoveStoryFile(slug, storyId, from, to);
+  return story.assignedAgent || "software-engineer";
 }
 
 /**
  * Executes pending stories in the test harness directly on user trigger.
- * Calculates duration in harness, tokens consumed, actual cost, and updates state.
+ * Moves stories to Doing (in-progress), assigns agent personas, and generates AionUi dispatch commands.
  */
 export async function executeStoriesInHarness(
   slug: string,
   storyIds?: string[]
-): Promise<{ executedCount: number; stories: Story[]; logs: string[] }> {
+): Promise<{ executedCount: number; stories: Story[]; logs: string[]; dispatchCommands: string[] }> {
   const stories = await getAllStories(slug);
   const pricing = (await getPricingConfig(slug)) || DEFAULT_PRICING;
   const logs: string[] = [];
+  const dispatchCommands: string[] = [];
 
   const targets = storyIds && storyIds.length > 0
     ? stories.filter((s) => storyIds.includes(s.id))
-    : stories.filter((s) => s.status === "in-progress" || s.status === "backlog");
+    : stories.filter((s) => s.status === "backlog" || s.status === "in-progress");
 
   if (targets.length === 0) {
-    return { executedCount: 0, stories, logs: ["No pending stories in backlog or in-progress to execute."] };
+    return {
+      executedCount: 0,
+      stories,
+      logs: ["No pending stories in backlog or in-progress to execute."],
+      dispatchCommands: [],
+    };
   }
 
   const now = new Date();
@@ -752,46 +783,37 @@ export async function executeStoriesInHarness(
       story.assignedAgent = agentId;
     }
 
-    const durationMs = Math.round((45 + Math.random() * 45) * 1000); // 45s-90s execution in harness
+    const durationMs = Math.round((45 + Math.random() * 45) * 1000);
     const tokens = story.tokensUsed || Math.round(hours * 15000 + Math.random() * 3000);
     const costPer1K = (pricing.costPerToken ?? 0.003) * 1000;
     const laborCost = hours * (pricing.developerHourlyRate ?? 150);
     const tokenCost = (tokens / 1000) * costPer1K;
     const totalCost = laborCost + tokenCost;
 
-    story.startedAt = story.startedAt || new Date(now.getTime() - durationMs).toISOString();
-    story.completedAt = new Date().toISOString();
+    story.startedAt = story.startedAt || now.toISOString();
     story.executionDurationMs = durationMs;
     story.tokensUsed = tokens;
     story.actualHours = hours;
     story.cost = totalCost;
 
-    if (prevStatus === "backlog") {
-      story.status = "in-progress";
-      story.agentWork = {
-        status: "working",
-        assignedAgent: agentId,
-        startedAt: story.startedAt,
-        durationMs,
-        tokensUsed: tokens,
-        notes: `Dispatched to ${agentId} in harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
-      };
-      logs.push(`Dispatched ${story.id} (${story.title}) to ${agentId} in harness (In Progress)`);
-    } else {
-      story.status = "done";
-      story.agentWork = {
-        status: "done",
-        assignedAgent: agentId,
-        startedAt: story.startedAt,
-        completedAt: story.completedAt,
-        durationMs,
-        tokensUsed: tokens,
-        notes: `Completed in test harness by ${agentId} in ${Math.round(durationMs / 1000)}s (${tokens.toLocaleString()} tokens)`,
-      };
-      logs.push(`Completed ${story.id} in test harness with ${tokens.toLocaleString()} tokens ($${totalCost.toFixed(2)})`);
-    }
+    // Keep active stories in Doing (in-progress) while being executed by agents
+    story.status = "in-progress";
+    story.agentWork = {
+      status: "working",
+      assignedAgent: agentId,
+      startedAt: story.startedAt,
+      durationMs,
+      tokensUsed: tokens,
+      notes: `Dispatched to ${agentId} in harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
+    };
 
-    mirrorMoveStoryFile(slug, story.id, prevStatus, story.status);
+    const cmd = `PMOS: implement story ${story.id} for ${slug}`;
+    dispatchCommands.push(cmd);
+    logs.push(`Dispatched ${story.id} (${story.title}) to ${agentId} in harness (In Progress). AionUi Command: ${cmd}`);
+
+    if (prevStatus !== story.status) {
+      mirrorMoveStoryFile(slug, story.id, prevStatus, story.status);
+    }
   }
 
   await writeItems("stories", slug, stories);
@@ -800,6 +822,7 @@ export async function executeStoriesInHarness(
     executedCount: targets.length,
     stories,
     logs,
+    dispatchCommands,
   };
 }
 

@@ -2,7 +2,7 @@
 id: INT-300
 title: "Fix: -------"
 points: 5
-status: backlog
+status: in-progress
 assigned-agent: qa-engineer
 estimated-value: 75000
 category: Critical Issue

@@ -2,7 +2,7 @@
 id: INT-103
 title: "Add Global Search Across Boards"
 points: 5
-status: done
+status: backlog
 completed: true
 completed-at: 2026-08-05
 assigned-agent: software-engineer

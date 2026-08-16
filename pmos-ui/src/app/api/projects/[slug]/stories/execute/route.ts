@@ -22,6 +22,7 @@ export async function POST(
       executedCount: result.executedCount,
       stories: result.stories,
       logs: result.logs,
+      dispatchCommands: result.dispatchCommands,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

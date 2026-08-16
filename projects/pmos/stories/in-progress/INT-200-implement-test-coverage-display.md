@@ -2,7 +2,7 @@
 id: INT-200
 title: "Implement: Test Coverage Display"
 points: 8
-status: backlog
+status: in-progress
 assigned-agent: software-engineer
 estimated-value: 40000
 category: Missing Feature

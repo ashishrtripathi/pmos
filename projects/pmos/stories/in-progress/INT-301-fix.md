@@ -2,7 +2,7 @@
 id: INT-301
 title: "Fix: -------"
 points: 3
-status: backlog
+status: in-progress
 assigned-agent: qa-engineer
 estimated-value: 10000
 category: High Priority Issue
