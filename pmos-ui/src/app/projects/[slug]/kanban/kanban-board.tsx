@@ -527,6 +527,17 @@ export function KanbanBoard({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  const getColumnForId = useCallback(
+    (id: string, currentStories: KanbanStory[]): string | null => {
+      if (STATUS_COLUMNS.some((col) => col.id === id)) {
+        return id;
+      }
+      const target = currentStories.find((s) => s.id === id);
+      return target ? target.status : null;
+    },
+    []
+  );
+
   const findStoryStatus = useCallback(
     (storyId: string): string | null => {
       const story = stories.find((s) => s.id === storyId);
@@ -547,39 +558,28 @@ export function KanbanBoard({
     const { active, over } = event;
     if (!over) return;
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
     const activeStatus = findStoryStatus(activeId);
-    if (!activeStatus) return;
+    const overStatus = getColumnForId(overId, stories);
 
-    let overStatus: string | null = null;
-    for (const col of columns) {
-      if (overId === col.id || col.stories.some((s) => s.id === overId)) {
-        overStatus = col.id;
-        break;
-      }
-    }
-    if (!overStatus || overStatus === activeStatus) return;
+    if (!activeStatus || !overStatus || activeStatus === overStatus) return;
 
     setStories((prev) => {
-      const updated = prev.map((s) => {
-        if (s.id === activeId) {
-          return { ...s, status: overStatus };
-        }
-        return s;
-      });
+      const activeItem = prev.find((s) => s.id === activeId);
+      if (!activeItem) return prev;
 
-      const activeItem = updated.find((s) => s.id === activeId);
-      const activeIndex = updated.findIndex((s) => s.id === activeId);
-      const overIndex = updated.findIndex((s) => s.id === overId);
-      if (activeItem && activeIndex >= 0 && overIndex >= 0) {
-        updated.splice(activeIndex, 1);
-        const insertAt = activeIndex < overIndex ? overIndex - 1 : overIndex;
-        updated.splice(insertAt, 0, activeItem);
+      const withoutActive = prev.filter((s) => s.id !== activeId);
+      const updatedItem = { ...activeItem, status: overStatus };
+
+      const overIndex = withoutActive.findIndex((s) => s.id === overId);
+      if (overIndex >= 0) {
+        withoutActive.splice(overIndex, 0, updatedItem);
+        return withoutActive;
+      } else {
+        return [...withoutActive, updatedItem];
       }
-
-      return updated;
     });
   };
 
@@ -588,7 +588,7 @@ export function KanbanBoard({
       setSavingStatus((prev) => ({ ...prev, [storyId]: true }));
       try {
         const res = await fetch(`/api/projects/${slug}/stories/${storyId}/status`, {
-          method: "PUT",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: newStatus }),
         });
@@ -597,7 +597,7 @@ export function KanbanBoard({
           const story = stories.find((s) => s.id === storyId);
           const agentName = data.pickedUpByName || data.pickedUpBy;
           setPickupNotice(
-            `"${story?.title || storyId}" picked up by ${agentName}`
+            `"${story?.title || storyId}" moved to ${newStatus} & assigned to ${agentName}`
           );
           window.setTimeout(() => setPickupNotice(null), 5000);
           setStories((prev) =>
@@ -606,8 +606,8 @@ export function KanbanBoard({
             )
           );
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error("Failed to persist status change", err);
       } finally {
         setSavingStatus((prev) => ({ ...prev, [storyId]: false }));
       }
@@ -619,21 +619,29 @@ export function KanbanBoard({
     const { active, over } = event;
     setActiveStory(null);
     suppressClickAfterDrag();
-    if (!over) return;
 
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    if (activeId === overId) return;
-
-    const story = stories.find((s) => s.id === activeId);
-    if (!story) return;
-
+    const activeId = String(active.id);
     const fromStatus = dragStartStatusRef.current;
-    const toStatus = story.status;
 
-    if (fromStatus && fromStatus !== toStatus) {
-      persistStatusChange(activeId, toStatus);
+    let targetStatus: string | null = null;
+    if (over) {
+      const overId = String(over.id);
+      targetStatus = getColumnForId(overId, stories);
+    }
+
+    if (!targetStatus) {
+      const currentStory = stories.find((s) => s.id === activeId);
+      targetStatus = currentStory?.status || fromStatus || null;
+    }
+
+    if (targetStatus) {
+      setStories((prev) =>
+        prev.map((s) => (s.id === activeId ? { ...s, status: targetStatus! } : s))
+      );
+
+      if (fromStatus && fromStatus !== targetStatus) {
+        persistStatusChange(activeId, targetStatus);
+      }
     }
   };
 
@@ -793,7 +801,7 @@ export function KanbanBoard({
                 </div>
 
                 {/* Story List */}
-                <div className="flex-1 p-2 space-y-1.5 min-h-[120px]">
+                <div className="flex-1 p-2 space-y-1.5 min-h-[260px]">
                   <SortableContext
                     items={col.stories.map((s) => s.id)}
                     strategy={verticalListSortingStrategy}
@@ -812,7 +820,7 @@ export function KanbanBoard({
                     ))}
                   </SortableContext>
                   {col.stories.length === 0 && (
-                    <div className="h-16 rounded-lg border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
+                    <div className="h-24 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center text-xs font-medium text-muted-foreground bg-muted/20">
                       Drop stories here
                     </div>
                   )}
