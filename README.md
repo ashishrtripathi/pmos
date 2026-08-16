@@ -16,9 +16,11 @@
 
 This is the **home directory** for PMOS — the AI-Native Product Operating System.
 
-Every AI agent in AionUi (or Claude Code, Cursor, Windsurf, etc.) can read and write to this directory to manage the entire product lifecycle.
+PMOS uses a high-performance **dual-layer data architecture**:
+1. **PostBase Database Layer**: A PostgreSQL-backed, Firebase-compatible JSON document store running locally (`http://localhost:8081/api/db`) for real-time ACID persistence, full CRUD operations across all UI screens, and zero-latency reactive state.
+2. **Filesystem Mirroring Layer**: All documents, stories, OKRs, customer journeys, and pipeline definitions are transparently mirrored to human-readable JSON/Markdown files in `~/.pmos/projects/{slug}/`, allowing AI coding agents (Claude Code, Cursor, Windsurf, AionUi) to inspect, edit, and commit state with native Git versioning.
 
-**PMOS never clones your code.** It stores metadata about your projects — analysis, stories, journeys, agent definitions — while your source code stays wherever you want it.
+**PMOS never clones your code.** It stores product metadata — analysis, journeys, user story maps, cost calculations, test-harness execution metrics, agent queues — while your source code stays wherever you want it.
 
 ---
 
@@ -121,17 +123,65 @@ Each project has a `source-location.json` that tells PMOS where to find the code
 
 **Dependencies:** `next ^14.2` · `react ^18.3` · `react-dom ^18.3` · `@dnd-kit/core ^6.1` · `@dnd-kit/sortable ^8.0` · `@dnd-kit/utilities ^3.2` · `@postbase/client ^0.1` · `class-variance-authority ^0.7` · `clsx ^2.1` · `gray-matter ^4.0` · `lucide-react ^0.400` · `marked ^12.0` · `playwright ^1.61` · `tailwind-merge ^2.3` · `zod ^3.23`
 
-**Dev dependencies:** `typescript ^5.4` · `tailwindcss ^3.4` · `eslint ^8.57` · `eslint-config-next ^14.2` · `autoprefixer ^10.4` · `postcss ^8.4` · `@types/node ^20.14` · `@types/react ^18.3` · `@types/react-dom ^18.3`
-
 ### PostBase backend
 
-`@postbase/backend@0.1.1` — a Postgres-backed JSON document store. Schema: `npm run migrate:up` (uses `node-pg-migrate`). Serve on port 8081: `npm run start:local`.
+`@postbase/backend@0.1.1` — a lightweight, PostgreSQL-backed JSON document store providing a Firebase-compatible REST API. 
+
+- **Local Port:** `8081` (`http://localhost:8081/api/db`)
+- **Database Engine:** PostgreSQL 14+ (`localhost:5432`)
+- **Collections:** `projects`, `source_location`, `pricing`, `pipeline`, `journeys`, `stories`, `okrs`, `bugs`, `standup`, `intelligence`
+- **Schema Migration:** `npm run migrate:up` (uses `node-pg-migrate`)
+- **Start Command:** `cd postbase/backend && npm run start:local`
 
 ---
 
 ## 🛠 Tool Setup Guide
 
-### 1. OmniRoute — the free AI gateway
+### 1. PostBase — The Backend Database & Document Store
+
+PostBase powers the persistent data layer for all PMOS dashboard interactions, guaranteeing ACID transactions, instant updates, and full CRUD operations.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                       PMOS Dashboard                        │
+│                   Next.js App (Port 3100)                   │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │ 19 CRUD API Routes            │ Mirroring
+               ▼                               ▼
+┌──────────────────────────────┐ ┌────────────────────────────┐
+│      PostBase Backend        │ │     Local Filesystem       │
+│  Fast Document DB (Port 8081)│ │  Human-Readable JSON / MD  │
+│  Backed by PostgreSQL :5432  │ │  ~/.pmos/projects/{slug}/  │
+└──────────────────────────────┘ └────────────────────────────┘
+                                               ▲
+                                               │ Reads / Writes
+                                 ┌─────────────┴──────────────┐
+                                 │     AI Coding Agents       │
+                                 │ (Claude Code, Cursor, etc) │
+                                 └────────────────────────────┘
+```
+
+#### Starting PostBase
+```bash
+# 1. Navigate to the PostBase backend directory
+cd ~/.pmos/postbase/backend
+
+# 2. Run initial database migrations
+npm run migrate:up
+
+# 3. Start the local server
+npm run start:local
+# Server is live at http://localhost:8081/api/db
+```
+
+#### Dual-Layer Persistence Architecture
+Every UI action in PMOS (moving stories on the Kanban board, creating OKRs, logging bugs, adjusting pricing models, modifying persona journeys) performs an atomic write to PostBase and concurrently mirrors the update to local files in `~/.pmos/projects/{slug}/`:
+- **PostBase collections**: Store structured JSON documents with fast indexing and atomic queries.
+- **Local files**: Enable Git tracking and allow AI agents without network access to read and update project metadata directly.
+
+---
+
+### 2. OmniRoute — the free AI gateway
 
 OmniRoute aggregates the **free tiers of 271+ AI providers** behind a single OpenAI-compatible endpoint, with automatic failover, model routing, and per-provider usage accounting. PMOS and the agent team use it as the default model pool.
 
@@ -147,7 +197,7 @@ npm run dev               # dev server  → http://localhost:20128
 - **Electron app:** `npm run electron:dev` for the desktop UI
 - Verify: `curl http://localhost:20128` or the provider/usage dashboard in the web UI
 
-### 2. OpenCode — AI coding agent (CLI)
+### 3. OpenCode — AI coding agent (CLI)
 
 OpenCode is the terminal-first coding agent used for implementation work.
 
@@ -165,9 +215,7 @@ cd <your-project> && opencode
   - OmniRoute: `http://localhost:20128` (cloud-pooled, zero cost)
   - LM Studio: `http://localhost:1234/v1` (fully local/offline)
 
-
-
-### 3. Running locally with LM Studio (offline)
+### 4. Running locally with LM Studio (offline)
 
 Fully local option — no cloud keys needed.
 
@@ -190,10 +238,10 @@ This is **not** another project management tool like Jira or Linear. Instead, PM
 ### How It Works
 
 ```
-You → Tell AI Agent → Agent reads ~/.pmos → Agent acts on projects
+You → PMOS UI / AI Agent → PostBase & ~/.pmos → Coordinated Agent Execution
 ```
 
-No servers. No databases. No login. Just files that any AI can understand.
+PostBase handles reactive UI persistence while human-readable files keep AI coding agents fully informed.
 
 ---
 
@@ -309,24 +357,20 @@ Build an AI-native Product Management platform where Product Managers can:
 
 ## 🎨 PMOS Dashboard UI
 
-The PMOS Dashboard (`pmos-ui/`) provides a visual interface for product managers:
+The PMOS Dashboard (`pmos-ui/`) provides a rich, interactive visual interface for product managers:
 
 | Page | What it does |
 |------|-------------|
-| **Dashboard** | Overview of all projects with health, stories, agent status |
-| **Setup** | Configure source location (local/GitHub modes) |
-| **Pipeline** | 9-step pipeline with progress tracking |
-| **Journey** | Per-persona customer journey boards (horizontal, left-to-right) |
-| **Story Map** | Jeff Patton-style story map with drag-and-drop |
-| **Kanban** | 7 agent columns with drag-and-drop story assignment |
-| **Intelligence** | Architecture, tech stack, features, quality analysis |
-
-```bash
-cd ~/.pmos/pmos-ui
-npm install
-npm run dev
-# Open http://localhost:3000
-```
+| **Dashboard** | Overview of all projects with health metrics, stories, and agent status |
+| **Setup** | Configure source mode (`local`, `github`, `github-only`), runtime port, and custom developer/AI token rates (including $0.00 zero-cost models) |
+| **Pipeline** | 9-step pipeline with progress tracking and live status detection |
+| **Journey** | Per-persona customer journey boards with screenshot capture and emotional mapping |
+| **Story Map** | Jeff Patton-style story map matrix with hours and token estimation |
+| **Kanban** | Agent-assigned work board with direct **"Start Story Execution"** test-harness button and live cycle-time tracking |
+| **OKRs** | Strategic Objectives and Key Results with live progress sliders |
+| **Bugs** | Bug triage matrix with severity ratings and quick-fix dispatch |
+| **Standup** | Automated daily standup report generator and snapshot archive |
+| **Intelligence** | Architecture, tech stack, code quality, and gap analysis |
 
 ---
 
@@ -334,21 +378,49 @@ npm run dev
 
 ### Prerequisites
 
-- Node.js 18+
-- Any AI agent (AionUi, Claude Code, Cursor, Windsurf)
+- **Node.js 18+** / npm 9+
+- **PostgreSQL 14+** (running on `localhost:5432`)
+- Any AI agent (Claude Code, Cursor, Windsurf, AionUi)
 
 ### Quick Start
 
+#### Step 1: Clone Repository
 ```bash
-# Clone the repository
 git clone https://github.com/ashishrtripathi/pmos.git ~/.pmos
+```
 
-# Install PMOS UI
+#### Step 2: Start PostBase Database
+```bash
+cd ~/.pmos/postbase/backend
+npm install
+npm run migrate:up
+npm run start:local
+# PostBase runs at http://localhost:8081/api/db
+```
+
+#### Step 3: Start PMOS Dashboard
+```bash
 cd ~/.pmos/pmos-ui
 npm install
-
-# Start the dashboard
 npm run dev
+# Open http://localhost:3100
+```
+
+#### Optional: Desktop One-Click Launcher (`start-pmos.bat`)
+A Windows batch launcher can verify ports `8081` (PostBase) and `3100` (Next.js) and start any unstarted instances in background terminal windows:
+```cmd
+@echo off
+echo Starting PMOS Stack...
+:: Check PostBase on port 8081
+netstat -ano | findstr /R /C:":8081 " >nul
+if %errorlevel% neq 0 (
+    start "PostBase Backend" cmd /k "cd /d C:\Users\ashis\.pmos\postbase\backend && npm run start:local"
+)
+:: Check PMOS UI on port 3100
+netstat -ano | findstr /R /C:":3100 " >nul
+if %errorlevel% neq 0 (
+    start "PMOS Dashboard" cmd /k "cd /d C:\Users\ashis\.pmos\pmos-ui && npx next dev --port 3100 --hostname 0.0.0.0"
+)
 ```
 
 ### Three Product Creation Modes
