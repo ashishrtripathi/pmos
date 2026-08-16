@@ -146,17 +146,34 @@ export interface JourneyStep {
   stories: string[];
 }
 
+export interface PersonaDemographics {
+  age?: number | string;
+  location?: string;
+  job?: string;
+  education?: string;
+}
+
+export interface PersonaUsageMetric {
+  label: string;
+  score: number; // 0-100
+}
+
 export interface Persona {
   id: string;
   name: string;
   role: string;
-  image?: string; // base64 encoded or URL
-  blurb: string; // persona description
-  quote?: string; // memorable quote
+  avatarUrl?: string;
+  avatarId?: string;
+  image?: string; // base64 or URL
+  blurb?: string;
+  quote?: string;
+  demographics?: PersonaDemographics;
   goals: string[];
+  habits?: string[];
   frustrations: string[];
-  createdAt: string;
-  updatedAt: string;
+  metrics?: PersonaUsageMetric[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DashboardData {

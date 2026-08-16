@@ -1279,35 +1279,132 @@ export interface PersonaJourneyStep {
   mockup?: ScreenMockup;
 }
 
+export interface PersonaDemographics {
+  age?: number | string;
+  location?: string;
+  job?: string;
+  education?: string;
+}
+
+export interface PersonaUsageMetric {
+  label: string;
+  score: number; // 0-100
+}
+
 export interface PersonaJourney {
   personaId: string;
   personaName: string;
   role: string;
   personaBlurb: string;
   quote: string;
+  avatarUrl?: string;
+  avatarId?: string;
+  demographics?: PersonaDemographics;
+  goals?: string[];
+  habits?: string[];
+  frustrations?: string[];
+  metrics?: PersonaUsageMetric[];
   steps: PersonaJourneyStep[];
   rawMarkdown: string;
 }
 
+const DEFAULT_AVATARS: Record<string, string> = {
+  henry: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=600&auto=format&fit=crop&q=80",
+  sarah: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80",
+  marcus: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80",
+  elena: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80",
+  priya: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=600&auto=format&fit=crop&q=80",
+  david: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80",
+  maya: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80",
+  alex: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&auto=format&fit=crop&q=80",
+  mike: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&auto=format&fit=crop&q=80",
+  emma: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=600&auto=format&fit=crop&q=80",
+  agent: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=600&auto=format&fit=crop&q=80",
+  dev: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=600&auto=format&fit=crop&q=80",
+};
+
+function resolvePersonaAvatar(name: string, id: string, customUrl?: string): string {
+  if (customUrl && (customUrl.startsWith("http") || customUrl.startsWith("data:") || customUrl.startsWith("/"))) {
+    return customUrl;
+  }
+  const key = id.toLowerCase();
+  for (const [k, url] of Object.entries(DEFAULT_AVATARS)) {
+    if (key.includes(k)) return url;
+  }
+  return DEFAULT_AVATARS.henry;
+}
+
 function parsePersonaJourney(md: string): PersonaJourney {
-  const lines = md.split("\n");
+  let data: any = {};
+  let content = md;
+
+  try {
+    const parsed = matter(md);
+    data = parsed.data || {};
+    content = parsed.content || md;
+  } catch {
+    content = md;
+  }
 
   // Extract header info
-  const nameMatch = md.match(/#\s*Customer Journey\s*[—–-]\s*(.+?)\s*\((.+?)\)/);
-  const personaName = nameMatch?.[1] || "Unknown";
-  const role = nameMatch?.[2] || "Unknown";
-  const quoteMatch = md.match(/\*\*Quote\*\*:\s*"(.+?)"/);
-  const quote = quoteMatch?.[1] || "";
-  const personaMatch = md.match(/\*\*Persona\*\*:\s*(.+)/);
-  const personaBlurb = personaMatch?.[1]?.trim() || "";
-  const personaId = personaName.toLowerCase().replace(/\s+/g, "-");
+  const nameMatch = content.match(/#\s*Customer Journey\s*[—–-]\s*(.+?)\s*\((.+?)\)/);
+  const personaName = data.personaName || data.name || nameMatch?.[1] || "Unknown";
+  const role = data.role || nameMatch?.[2] || "Product User";
+  const quoteMatch = content.match(/\*\*Quote\*\*:\s*"(.+?)"/);
+  const quote = data.quote || quoteMatch?.[1] || "";
+  const personaMatch = content.match(/\*\*Persona\*\*:\s*(.+)/);
+  const personaBlurb = data.personaBlurb || data.blurb || personaMatch?.[1]?.trim() || "";
+  const personaId =
+    data.personaId ||
+    data.id ||
+    personaName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ||
+    "persona";
+
+  const avatarUrl = data.avatarUrl || data.image || resolvePersonaAvatar(personaName, personaId, data.avatarId);
+  const avatarId = data.avatarId;
+
+  const demographics: PersonaDemographics = {
+    age: data.demographics?.age ?? data.age ?? 30,
+    location: data.demographics?.location ?? data.location ?? "Austin, TX",
+    job: data.demographics?.job ?? data.job ?? role,
+    education: data.demographics?.education ?? data.education,
+  };
+
+  const goals: string[] = Array.isArray(data.goals) && data.goals.length > 0
+    ? data.goals
+    : [
+        `Achieve seamless workflow results as a ${role}`,
+        `Save time and eliminate friction in product operations`,
+      ];
+
+  const habits: string[] = Array.isArray(data.habits) && data.habits.length > 0
+    ? data.habits
+    : [
+        "Prefers fast, visual navigation with clear next steps",
+        "Uses mobile-first and desktop workflows interchangeably",
+      ];
+
+  const frustrations: string[] = Array.isArray(data.frustrations) && data.frustrations.length > 0
+    ? data.frustrations
+    : [
+        "Disconnected tools that require manual duplicate entry",
+        "Lack of real-time visibility into process bottlenecks",
+      ];
+
+  const metrics: PersonaUsageMetric[] = Array.isArray(data.metrics) && data.metrics.length > 0
+    ? data.metrics
+    : [
+        { label: "Product Usage", score: 85 },
+        { label: "Messaging", score: 70 },
+        { label: "Learning", score: 65 },
+      ];
 
   // Parse the journey steps table
   const steps: PersonaJourneyStep[] = [];
   const tableRegex = /\|\s*\*\*(\d+)\.\s*(.+?)\*\*\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|/g;
   let match;
 
-  while ((match = tableRegex.exec(md)) !== null) {
+  while ((match = tableRegex.exec(content)) !== null) {
     const stepNumber = parseInt(match[1]);
     const name = match[2];
     const activity = match[3];
@@ -1320,7 +1417,7 @@ function parsePersonaJourney(md: string): PersonaJourney {
 
   // Parse stories table
   const storyRegex = /\|\s*(STORY-\d+):\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(\d+)\s*\|\s*(.+?)\s*\|/g;
-  while ((match = storyRegex.exec(md)) !== null) {
+  while ((match = storyRegex.exec(content)) !== null) {
     const storyId = match[1];
     const title = match[2];
     const stepName = match[3];
@@ -1334,7 +1431,22 @@ function parsePersonaJourney(md: string): PersonaJourney {
     }
   }
 
-  return { personaId, personaName, role, personaBlurb, quote, steps, rawMarkdown: md };
+  return {
+    personaId,
+    personaName,
+    role,
+    personaBlurb,
+    quote,
+    avatarUrl,
+    avatarId,
+    demographics,
+    goals,
+    habits,
+    frustrations,
+    metrics,
+    steps,
+    rawMarkdown: md,
+  };
 }
 
 const personaJourneyDocId = (slug: string, personaId: string) => `${slug}::${personaId}`;
@@ -1386,6 +1498,19 @@ export async function getPersonaJourneys(slug: string): Promise<PersonaJourney[]
 
 /** Reverse of parsePersonaJourney — builds the markdown source from a journey. */
 export function serializePersonaJourney(j: PersonaJourney): string {
+  const frontmatterData: Record<string, any> = {
+    personaId: j.personaId,
+    personaName: j.personaName,
+    role: j.role,
+    avatarUrl: j.avatarUrl,
+    avatarId: j.avatarId,
+    demographics: j.demographics,
+    goals: j.goals,
+    habits: j.habits,
+    frustrations: j.frustrations,
+    metrics: j.metrics,
+  };
+
   const lines: string[] = [];
   lines.push(`# Customer Journey — ${j.personaName} (${j.role})`);
   lines.push("");
@@ -1414,7 +1539,9 @@ export function serializePersonaJourney(j: PersonaJourney): string {
       }
     }
   }
-  return lines.join("\n") + "\n";
+
+  const content = lines.join("\n") + "\n";
+  return matter.stringify(content, frontmatterData);
 }
 
 /**
@@ -1435,6 +1562,105 @@ export async function savePersonaJourney(
     md
   );
   return parsePersonaJourney(md);
+}
+
+export async function createPersona(
+  slug: string,
+  input: {
+    name: string;
+    role: string;
+    quote?: string;
+    avatarUrl?: string;
+    avatarId?: string;
+    demographics?: PersonaDemographics;
+    goals?: string[];
+    habits?: string[];
+    frustrations?: string[];
+    metrics?: PersonaUsageMetric[];
+    initialSteps?: PersonaJourneyStep[];
+  }
+): Promise<PersonaJourney> {
+  const personaId =
+    input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ||
+    `persona-${Date.now()}`;
+
+  const defaultSteps: PersonaJourneyStep[] = input.initialSteps || [
+    {
+      stepNumber: 1,
+      name: "Discovery",
+      activity: `Discover problem solution for ${input.role}`,
+      tasks: ["Search for solutions", "Review product overview"],
+      painPoints: ["Unclear feature set", "Evaluation time"],
+      screen: "Landing Page",
+      stories: [],
+    },
+    {
+      stepNumber: 2,
+      name: "Onboarding",
+      activity: "Set up and configure workspace",
+      tasks: ["Create account", "Configure preferences"],
+      painPoints: ["Complex setup friction"],
+      screen: "Setup Form",
+      stories: [],
+    },
+    {
+      stepNumber: 3,
+      name: "Core Workflow",
+      activity: `Perform core ${input.role} task`,
+      tasks: ["Input parameters", "Generate output", "Review results"],
+      painPoints: ["Manual verification delays"],
+      screen: "Main Workspace",
+      stories: [],
+    },
+    {
+      stepNumber: 4,
+      name: "Completion & Delivery",
+      activity: "Finalize, export, and deliver value",
+      tasks: ["Export deliverables", "Share with stakeholders"],
+      painPoints: ["Format incompatibilities"],
+      screen: "Export Panel",
+      stories: [],
+    },
+  ];
+
+  const newJourney: PersonaJourney = {
+    personaId,
+    personaName: input.name,
+    role: input.role,
+    personaBlurb: `${input.role}, ${input.demographics?.age || 30}`,
+    quote: input.quote || `I want to achieve great outcomes as a ${input.role}.`,
+    avatarUrl: input.avatarUrl || resolvePersonaAvatar(input.name, personaId, input.avatarId),
+    avatarId: input.avatarId,
+    demographics: input.demographics || {
+      age: 30,
+      location: "Austin, TX",
+      job: input.role,
+    },
+    goals: input.goals || [`Succeed as a ${input.role}`],
+    habits: input.habits || ["Values fast and seamless workflows"],
+    frustrations: input.frustrations || ["Manual friction and delays"],
+    metrics: input.metrics || [
+      { label: "Product Usage", score: 85 },
+      { label: "Messaging", score: 70 },
+      { label: "Learning", score: 60 },
+    ],
+    steps: defaultSteps,
+    rawMarkdown: "",
+  };
+
+  return await savePersonaJourney(slug, newJourney);
+}
+
+export async function deletePersona(slug: string, personaId: string): Promise<void> {
+  try {
+    await db.collection("persona_journeys").doc(personaJourneyDocId(slug, personaId)).delete();
+  } catch {
+    // ignore
+  }
+  const filePath = pmosPath("projects", slug, "journey", `persona-${personaId}.md`);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
 }
 
 async function mutatePersonaJourney(
