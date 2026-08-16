@@ -490,12 +490,6 @@ export function KanbanBoard({
   const [savingStatus, setSavingStatus] = useState<Record<string, boolean>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [copiedAll, setCopiedAll] = useState(false);
-  const [executionSummary, setExecutionSummary] = useState<{
-    executedCount: number;
-    logs: string[];
-    dispatchCommands: string[];
-  } | null>(null);
   const [pricing, setPricing] = useState<PricingParams>({
     aiOverheadPercent: 3,
     developerHourlyRate: 150,
@@ -591,15 +585,10 @@ export function KanbanBoard({
       const data = await res.json();
       if (data.success && Array.isArray(data.stories)) {
         setStories(data.stories);
-        setExecutionSummary({
-          executedCount: data.executedCount,
-          logs: data.logs || [],
-          dispatchCommands: data.dispatchCommands || [],
-        });
         setPickupNotice(
-          `Dispatched ${data.executedCount} stories to PMOS Agents in Doing column!`
+          `⚡ Automatically dispatched ${data.executedCount} stories directly to PMOS Agents in AionUi!`
         );
-        setTimeout(() => setPickupNotice(null), 6000);
+        setTimeout(() => setPickupNotice(null), 7000);
       }
     } catch {
       // ignore
@@ -829,14 +818,6 @@ export function KanbanBoard({
     setDetailStory(null);
   };
 
-  const copyAllDispatchCommands = () => {
-    if (!executionSummary) return;
-    const text = executionSummary.dispatchCommands.join("\n");
-    navigator.clipboard.writeText(text);
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2500);
-  };
-
   return (
     <div className="p-8 max-w-full mx-auto space-y-5">
       {/* Agent pickup notice */}
@@ -1025,102 +1006,6 @@ export function KanbanBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Execution Summary / AionUi Dispatch Modal */}
-      {executionSummary && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={() => setExecutionSummary(null)}
-        >
-          <div
-            className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto animate-in zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
-                  <Play className="w-4 h-4 fill-emerald-600" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold">Dispatched Stories to PMOS Agents</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {executionSummary.executedCount} stories moved to <strong>Doing</strong> and assigned to agents
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setExecutionSummary(null)}
-                className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-                <span>AionUi Dispatch Commands:</span>
-                <button
-                  type="button"
-                  onClick={copyAllDispatchCommands}
-                  className="flex items-center gap-1 text-primary hover:underline text-xs font-medium"
-                >
-                  {copiedAll ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-600" />
-                      <span className="text-emerald-600 font-semibold">Copied all commands!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      <span>Copy All Commands</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                {executionSummary.dispatchCommands.map((cmd, i) => (
-                  <div
-                    key={i}
-                    className="p-2.5 rounded-lg bg-muted/40 border border-border font-mono text-xs flex items-center justify-between gap-2 hover:bg-muted/70 transition-colors"
-                  >
-                    <span className="text-foreground truncate">{cmd}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(cmd);
-                        setPickupNotice(`Copied: ${cmd}`);
-                        setTimeout(() => setPickupNotice(null), 3000);
-                      }}
-                      className="px-2 py-1 rounded bg-card hover:bg-muted border border-border text-[10px] text-muted-foreground shrink-0 font-sans"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-border flex items-center justify-between">
-              <a
-                href={`/projects/${slug}/agents`}
-                className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
-              >
-                <Bot className="w-3.5 h-3.5" />
-                <span>Open PMOS Agent Dispatch Console</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setExecutionSummary(null)}
-                className="px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Story Detail Modal */}
       {detailStory && (

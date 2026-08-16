@@ -1,17 +1,32 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
+import crypto from "crypto";
 import type { Story } from "@/types/pmos";
 
 export interface AionDispatchResult {
   success: boolean;
   dispatchedTo: "aionui-db" | "aionui-queue" | "filesystem";
   conversationId?: string;
+  assistantId?: string;
+  assistantName?: string;
   taskId?: string;
   command: string;
   agentId: string;
   notes?: string;
 }
+
+export const PMOS_ASSISTANTS: Record<string, { id: string; name: string }> = {
+  "software-engineer": { id: "custom-1786033360254-e2b5", name: "PMOS Software Engineer" },
+  "ux-designer": { id: "custom-1786033361044-3b45", name: "PMOS UX Designer" },
+  "qa-engineer": { id: "custom-1786033360483-699d", name: "PMOS QA Engineer" },
+  "debugger": { id: "custom-1786033360661-25b1", name: "PMOS Debugger" },
+  "code-reviewer": { id: "custom-1786033360849-db95", name: "PMOS Code Reviewer" },
+  "devops": { id: "custom-1786033361272-b8c9", name: "PMOS DevOps Engineer" },
+  "release-engineer": { id: "custom-1786033361513-5dcd", name: "PMOS Release Engineer" },
+  "security": { id: "custom-1786033361702-6ce9", name: "PMOS Security Officer" },
+  "tech-writer": { id: "custom-1786033361944-b819", name: "PMOS Tech Writer" },
+};
 
 export function getAionUiDbPath(): string | null {
   const appData = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
@@ -20,8 +35,8 @@ export function getAionUiDbPath(): string | null {
 }
 
 /**
- * Automatically dispatches a PMOS story directly into AionUi.
- * Writes to AionUi SQLite database (team_tasks, mailbox) and PMOS shared queue.
+ * Automatically dispatches a PMOS story directly into the assigned AionUi agent.
+ * Writes directly to AionUi SQLite database (team_tasks, mailbox, messages) and agent profile files.
  */
 export async function dispatchStoryToAionUi(
   slug: string,
@@ -29,16 +44,18 @@ export async function dispatchStoryToAionUi(
   sourcePath?: string
 ): Promise<AionDispatchResult> {
   const command = `PMOS: implement story ${story.id} for ${slug}`;
-  let agentId = story.assignedAgent;
-  if (!agentId) {
-    if (story.category === "UX/Product" || story.persona) agentId = "ux-designer";
-    else if (story.category === "Technical" || story.category === "Code Analysis") agentId = "software-engineer";
-    else if (story.category === "Critical Issue" || story.category === "High Priority Issue") agentId = "qa-engineer";
-    else agentId = "software-engineer";
+  let agentKey = story.assignedAgent || "software-engineer";
+  if (!agentKey || agentKey === "unassigned") {
+    if (story.category === "UX/Product" || story.persona) agentKey = "ux-designer";
+    else if (story.category === "Technical" || story.category === "Code Analysis") agentKey = "software-engineer";
+    else if (story.category === "Critical Issue" || story.category === "High Priority Issue") agentKey = "qa-engineer";
+    else agentKey = "software-engineer";
   }
 
+  const assistantInfo = PMOS_ASSISTANTS[agentKey] || PMOS_ASSISTANTS["software-engineer"];
   const now = Date.now();
   const taskId = `pmos-${slug}-${story.id}-${now}`;
+  const msgId = crypto.randomBytes(4).toString("hex");
 
   const criteriaText = Array.isArray(story.acceptanceCriteria) && story.acceptanceCriteria.length > 0
     ? story.acceptanceCriteria.map((ac) => {
@@ -53,15 +70,33 @@ Target Project: ${slug}
 Codebase Location: ${sourcePath || path.join(os.homedir(), ".pmos", "projects", slug)}
 Story ID: ${story.id}
 Title: ${story.title}
-Assigned Persona: ${agentId}
+Assigned Persona: ${assistantInfo.name} (${agentKey})
 Target Persona: ${story.persona || "User"}
 Estimated Labor: ${story.estimatedHours || (story.points ? story.points * 0.35 : 1)}h
 
 Acceptance Criteria:
 ${criteriaText}`;
 
-  // 1. Write to PMOS shared filesystem queue
+  // 1. Update local agent markdown profile in ~/.pmos/projects/{slug}/agents/{agentKey}.md
   const pmosDir = path.join(os.homedir(), ".pmos");
+  const agentMdPath = path.join(pmosDir, "projects", slug, "agents", `${agentKey}.md`);
+  try {
+    if (fs.existsSync(agentMdPath)) {
+      let raw = fs.readFileSync(agentMdPath, "utf8");
+      if (!raw.includes(story.id)) {
+        raw = raw.replace(/activeStories:\s*\[([^\]]*)\]/, (match, p1) => {
+          const existing = p1.split(",").map((s: string) => s.trim().replace(/['"]/g, "")).filter(Boolean);
+          if (!existing.includes(story.id)) existing.push(story.id);
+          return `activeStories: [${existing.map((s: string) => `"${s}"`).join(", ")}]`;
+        });
+        fs.writeFileSync(agentMdPath, raw, "utf8");
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to update agent markdown profile", err);
+  }
+
+  // 2. Write to PMOS shared filesystem queue
   const queueFile = path.join(pmosDir, "agent-dispatch-queue.json");
   const projectQueueFile = path.join(pmosDir, "projects", slug, "agent-dispatch-queue.json");
 
@@ -77,7 +112,9 @@ ${criteriaText}`;
       slug,
       storyId: story.id,
       title: story.title,
-      agentId,
+      agentId: agentKey,
+      assistantId: assistantInfo.id,
+      assistantName: assistantInfo.name,
       command,
       prompt: promptContent,
       dispatchedAt: new Date().toISOString(),
@@ -92,7 +129,7 @@ ${criteriaText}`;
     console.error("Failed to write filesystem queue", err);
   }
 
-  // 2. Write directly to AionUi SQLite Database (team_tasks & mailbox)
+  // 3. Write directly to AionUi SQLite Database (team_tasks, mailbox, messages)
   const dbPath = getAionUiDbPath();
   if (dbPath) {
     try {
@@ -110,10 +147,10 @@ ${criteriaText}`;
         `PMOS [${story.id}]: ${story.title}`,
         promptContent,
         "in-progress",
-        agentId,
+        assistantInfo.name,
         "[]",
         "[]",
-        JSON.stringify({ slug, storyId: story.id, category: story.category }),
+        JSON.stringify({ slug, storyId: story.id, category: story.category, assistantId: assistantInfo.id }),
         now,
         now
       );
@@ -126,8 +163,8 @@ ${criteriaText}`;
       mailboxStmt.run(
         `msg-${now}`,
         "pmos",
-        agentId,
-        "pmos-ui",
+        assistantInfo.id,
+        "pmos-orchestrator",
         "task_assignment",
         promptContent,
         `Implement ${story.id}: ${story.title}`,
@@ -136,18 +173,41 @@ ${criteriaText}`;
         now
       );
 
-      // Find most recent active conversation in AionUi
+      // Find the active conversation in AionUi
       const convRow = db.prepare("SELECT id FROM conversations ORDER BY updated_at DESC LIMIT 1").get() as { id: string } | undefined;
       const activeConvId = convRow?.id;
+
+      if (activeConvId) {
+        // Insert message directly into the active AionUi conversation
+        try {
+          const msgStmt = db.prepare(`
+            INSERT INTO messages (id, conversation_id, msg_id, type, content, status, hidden, created_at)
+            VALUES (?, ?, ?, 'text', ?, 'finish', 0, ?)
+          `);
+          msgStmt.run(
+            msgId,
+            activeConvId,
+            msgId,
+            JSON.stringify({
+              content: `[PMOS Auto-Dispatch] Assigned ${story.id} ("${story.title}") to ${assistantInfo.name}.\n\nAcceptance Criteria:\n${criteriaText}`,
+            }),
+            now
+          );
+        } catch (msgErr) {
+          console.warn("Could not insert message into conversation", msgErr);
+        }
+      }
 
       return {
         success: true,
         dispatchedTo: "aionui-db",
         conversationId: activeConvId,
+        assistantId: assistantInfo.id,
+        assistantName: assistantInfo.name,
         taskId,
         command,
-        agentId,
-        notes: `Automatically routed to AionUi (${agentId}) in task queue & mailbox`,
+        agentId: agentKey,
+        notes: `Dispatched to ${assistantInfo.name} in AionUi`,
       };
     } catch (err) {
       console.warn("Direct SQLite insert to AionUi failed, fallback to queue", err);
@@ -159,7 +219,8 @@ ${criteriaText}`;
     dispatchedTo: "aionui-queue",
     taskId,
     command,
-    agentId,
-    notes: `Queued in PMOS agent registry for AionUi`,
+    agentId: agentKey,
+    assistantName: assistantInfo.name,
+    notes: `Queued in PMOS agent registry for ${assistantInfo.name}`,
   };
 }
