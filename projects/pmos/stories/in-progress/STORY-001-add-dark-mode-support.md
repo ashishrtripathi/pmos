@@ -2,7 +2,7 @@
 id: STORY-001
 title: "Add dark mode support"
 points: 3
-status: backlog
+status: in-progress
 ---
 
 # Add dark mode support

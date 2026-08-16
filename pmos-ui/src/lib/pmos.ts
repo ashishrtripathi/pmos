@@ -14,6 +14,7 @@ import type {
   PipelineStep,
 } from "@/types/pmos";
 import { db, readDoc, writeDoc, readItems, writeItems, deleteDoc } from "./postbase";
+import { dispatchStoryToAionUi } from "./aionui-bridge";
 
 const PMOS_HOME = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -707,7 +708,7 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
   const from = story.status;
   story.status = to;
 
-  // If moving to in-progress (Doing), auto-assign agent persona and initialize harness tracking
+  // If moving to in-progress (Doing), auto-assign agent persona, initialize harness tracking, and auto-dispatch to AionUi
   if (to === "in-progress") {
     if (!story.startedAt) {
       story.startedAt = new Date().toISOString();
@@ -724,8 +725,16 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
       status: "working",
       assignedAgent: agentId,
       startedAt: story.startedAt,
-      notes: `Dispatched to ${agentId}. Run in AionUi: PMOS: implement story ${story.id} for ${slug}`,
+      notes: `Auto-dispatched to AionUi agent (${agentId}). Command: PMOS: implement story ${story.id} for ${slug}`,
     };
+
+    // Auto-dispatch directly to AionUi
+    try {
+      const sourceLoc = await getSourceLocation(slug);
+      await dispatchStoryToAionUi(slug, story, sourceLoc?.localPath);
+    } catch (err) {
+      console.warn("Auto-dispatch to AionUi warning:", err);
+    }
   }
 
   if (to === "done" && !story.completedAt) {
@@ -743,7 +752,7 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
 
 /**
  * Executes pending stories in the test harness directly on user trigger.
- * Moves stories to Doing (in-progress), assigns agent personas, and generates AionUi dispatch commands.
+ * Automatically dispatches stories directly into AionUi agent queue and SQLite database.
  */
 export async function executeStoriesInHarness(
   slug: string,
@@ -751,6 +760,7 @@ export async function executeStoriesInHarness(
 ): Promise<{ executedCount: number; stories: Story[]; logs: string[]; dispatchCommands: string[] }> {
   const stories = await getAllStories(slug);
   const pricing = (await getPricingConfig(slug)) || DEFAULT_PRICING;
+  const sourceLoc = await getSourceLocation(slug);
   const logs: string[] = [];
   const dispatchCommands: string[] = [];
 
@@ -804,12 +814,19 @@ export async function executeStoriesInHarness(
       startedAt: story.startedAt,
       durationMs,
       tokensUsed: tokens,
-      notes: `Dispatched to ${agentId} in harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
+      notes: `Dispatched to ${agentId} in AionUi harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
     };
 
     const cmd = `PMOS: implement story ${story.id} for ${slug}`;
     dispatchCommands.push(cmd);
-    logs.push(`Dispatched ${story.id} (${story.title}) to ${agentId} in harness (In Progress). AionUi Command: ${cmd}`);
+
+    // Automatically send to AionUi directly
+    try {
+      const dispatchResult = await dispatchStoryToAionUi(slug, story, sourceLoc?.localPath);
+      logs.push(`✓ Auto-dispatched ${story.id} ("${story.title}") directly to AionUi (${agentId}): ${dispatchResult.notes || "Queued"}`);
+    } catch (err: any) {
+      logs.push(`Dispatched ${story.id} to ${agentId} (in-progress). AionUi Command: ${cmd}`);
+    }
 
     if (prevStatus !== story.status) {
       mirrorMoveStoryFile(slug, story.id, prevStatus, story.status);

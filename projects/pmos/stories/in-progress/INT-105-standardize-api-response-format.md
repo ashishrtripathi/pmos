@@ -2,7 +2,7 @@
 id: INT-105
 title: "Standardize API Response Format"
 points: 3
-status: backlog
+status: in-progress
 assigned-agent: software-engineer
 estimated-value: 15000
 category: Technical

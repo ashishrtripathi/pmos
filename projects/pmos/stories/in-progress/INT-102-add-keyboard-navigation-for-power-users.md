@@ -1,11 +1,9 @@
 ---
-id: INT-103
-title: "Add Global Search Across Boards"
+id: INT-102
+title: "Add Keyboard Navigation for Power Users"
 points: 5
-status: backlog
-completed: true
-completed-at: 2026-08-05
-assigned-agent: software-engineer
+status: in-progress
+assigned-agent: ux-designer
 estimated-value: 25000
 category: UX/Product
 priority: medium
@@ -17,17 +15,17 @@ persona: Dev
 persona-role: Developer
 ---
 
-# Add Global Search Across Boards
+# Add Keyboard Navigation for Power Users
 
 ## Use Case
 
 - **As a** Developer
-- **I want to** to add global search across boards
+- **I want to** to add keyboard navigation for power users
 - **so that** my experience is significantly improved, reducing friction and increasing satisfaction with the product
 
 ## Description
 
-UX/Product improvement for Dev persona (Developer): Add Global Search Across Boards. Impact: Medium. Estimated value: $25,000 in customer retention.
+UX/Product improvement for Dev persona (Developer): Add Keyboard Navigation for Power Users. Impact: Medium. Estimated value: $25,000 in customer retention.
 
 ## Business Goal
 
@@ -35,7 +33,7 @@ Improves customer experience for Dev persona, reducing churn. Estimated $25,000 
 
 ## Acceptance Criteria
 
-- **Scenario:** Add Global Search Across Boards
+- **Scenario:** Add Keyboard Navigation for Power Users
   - **Given:** I am using the application as Dev
   - **When:** I interact with this part of the product
   - **Then:** my experience is measurably improved through reduced friction, better usability, or added capability

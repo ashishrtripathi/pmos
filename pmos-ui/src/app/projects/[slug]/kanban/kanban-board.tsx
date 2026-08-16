@@ -164,6 +164,9 @@ function KanbanStoryCard({
   onMoveStatus?: (storyId: string, newStatus: string) => void;
 }) {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatchedSuccess, setDispatchedSuccess] = useState(false);
+
   const {
     attributes,
     listeners,
@@ -185,6 +188,25 @@ function KanbanStoryCard({
   const isIntelligence = story.source === "intelligence";
   const agentBadge = getAgentBadge(story.assignedAgent);
   const tokens = story.tokensUsed ?? story.estimatedTokens ?? cost.inputTokens + cost.outputTokens;
+
+  const handleDirectDispatch = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDispatching(true);
+    try {
+      const res = await fetch(`/api/projects/${slug || "pmos"}/stories/${story.id}/dispatch`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDispatchedSuccess(true);
+        setTimeout(() => setDispatchedSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error("Direct dispatch failed", err);
+    } finally {
+      setDispatching(false);
+    }
+  };
 
   const handleCopyAionPrompt = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -347,26 +369,30 @@ ${criteriaText}`;
         </div>
       </div>
 
-      {/* Copy AionUi Prompt Action for In-Progress stories */}
+      {/* Auto-Dispatched to AionUi status for In-Progress stories */}
       {story.status === "in-progress" && (
-        <button
-          type="button"
-          onClick={handleCopyAionPrompt}
-          className="w-full mt-2.5 py-1 px-2 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-all shadow-2xs"
-          title="Copy ready-to-run prompt for AionUi agent"
-        >
-          {copiedPrompt ? (
-            <>
-              <Check className="w-3 h-3 text-emerald-600" />
-              <span className="text-emerald-700">Copied AionUi Prompt!</span>
-            </>
-          ) : (
-            <>
-              <Terminal className="w-3 h-3 text-violet-600" />
-              <span>Copy AionUi Command</span>
-            </>
-          )}
-        </button>
+        <div className="mt-2.5 pt-2 border-t border-violet-100 dark:border-violet-950/50 flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5 text-[9px] text-violet-700 dark:text-violet-300 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Auto-Sent to AionUi</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleDirectDispatch}
+            disabled={dispatching}
+            className="px-2 py-0.5 rounded bg-violet-100 hover:bg-violet-200 text-violet-800 text-[9px] font-bold flex items-center gap-1 transition-all shadow-2xs"
+            title="Re-send task directly to AionUi agent queue"
+          >
+            {dispatching ? (
+              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+            ) : dispatchedSuccess ? (
+              <Check className="w-2.5 h-2.5 text-emerald-600" />
+            ) : (
+              <Zap className="w-2.5 h-2.5 fill-violet-600" />
+            )}
+            <span>{dispatchedSuccess ? "Dispatched!" : "Sync AionUi"}</span>
+          </button>
+        </div>
       )}
 
       {/* Quick Move Action Buttons */}
