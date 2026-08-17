@@ -74,6 +74,7 @@ const STATUS_COLUMNS = [
   { id: "in-progress", label: "Doing", color: "border-t-blue-500", bg: "bg-blue-50/50" },
   { id: "review", label: "Review", color: "border-t-amber-500", bg: "bg-amber-50/50" },
   { id: "done", label: "Done", color: "border-t-emerald-500", bg: "bg-emerald-50/50" },
+  { id: "log", label: "Change Log", color: "border-t-purple-500", bg: "bg-purple-50/50" },
 ];
 
 const CATEGORY_BADGE_COLORS: Record<string, string> = {
@@ -389,11 +390,28 @@ ${criteriaText}`;
         </div>
       )}
 
+      {/* PostBase Change Log Badge for Logged Stories */}
+      {story.status === "log" && (
+        <div className="mt-2.5 pt-2 border-t border-purple-100 dark:border-purple-950/50">
+          <div className="flex items-center justify-between gap-1 p-2 rounded-lg bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50">
+            <div className="flex items-center gap-1.5 text-[10px] text-purple-800 dark:text-purple-300 font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+              <span>Tracked in PostBase Log</span>
+            </div>
+            {story.loggedAt && (
+              <span className="font-mono text-[9px] text-purple-700 dark:text-purple-300 opacity-80">
+                {new Date(story.loggedAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Quick Move Action Buttons */}
       <div className="mt-2.5 pt-1.5 border-t border-border/60 flex items-center justify-between gap-1">
         <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wider">Move:</span>
         <div className="flex items-center gap-1">
-          {story.status !== "in-progress" && (
+          {story.status !== "in-progress" && story.status !== "log" && (
             <button
               type="button"
               onClick={(e) => {
@@ -401,7 +419,7 @@ ${criteriaText}`;
                 onMoveStatus?.(story.id, "in-progress");
               }}
               className="px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[9px] font-semibold flex items-center gap-0.5 transition-all hover:scale-105 shadow-2xs"
-              title="Move to Doing (Execute in test harness)"
+              title="Move to Doing (Stage for execution)"
             >
               <Play className="w-2 h-2 fill-blue-700" />
               <span>Doing</span>
@@ -440,10 +458,36 @@ ${criteriaText}`;
               }}
               className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-semibold transition-all hover:scale-105"
             >
-              ✓ Done
+              ✓ Done →
             </button>
           )}
-          {story.status !== "backlog" && (
+          {story.status === "done" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveStatus?.(story.id, "log");
+              }}
+              className="px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[9px] font-bold transition-all hover:scale-105 flex items-center gap-1 shadow-2xs"
+              title="Record in permanent PostBase Change Log"
+            >
+              <span>📜 Move to Log →</span>
+            </button>
+          )}
+          {story.status === "log" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveStatus?.(story.id, "done");
+              }}
+              className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-semibold transition-all hover:scale-105"
+              title="Reopen to Done"
+            >
+              ← Reopen
+            </button>
+          )}
+          {story.status !== "backlog" && story.status !== "log" && (
             <button
               type="button"
               onClick={(e) => {
@@ -955,7 +999,15 @@ export function KanbanBoard({
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">
-                        {col.id === "backlog" ? "📋" : col.id === "in-progress" ? "🔄" : col.id === "review" ? "👀" : "✅"}
+                        {col.id === "backlog"
+                          ? "📋"
+                          : col.id === "in-progress"
+                          ? "🔄"
+                          : col.id === "review"
+                          ? "👀"
+                          : col.id === "done"
+                          ? "✅"
+                          : "📜"}
                       </span>
                       <h3 className="text-sm font-bold text-foreground">{col.label}</h3>
                     </div>
@@ -980,7 +1032,7 @@ export function KanbanBoard({
                       {executing ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        <Play className="w-3 h-3 fill-white" />
+                        <Play className="w-3.5 h-3.5 fill-white" />
                       )}
                       <span>Start Execution ({waitingDoingStories.length} Waiting)</span>
                     </button>
@@ -1011,11 +1063,17 @@ export function KanbanBoard({
                   {col.stories.length === 0 && (
                     <div className="flex-1 min-h-[160px] rounded-xl border-2 border-dashed border-border/80 flex flex-col items-center justify-center p-4 text-center bg-muted/20">
                       <span className="text-xs font-semibold text-muted-foreground mb-1">
-                        {col.id === "in-progress" ? "Drop stories to start Doing" : `Drop stories here`}
+                        {col.id === "in-progress"
+                          ? "Drop stories to start Doing"
+                          : col.id === "log"
+                          ? "Drop completed stories to record in Change Log"
+                          : `Drop stories here`}
                       </span>
                       <span className="text-[10px] text-muted-foreground/70">
                         {col.id === "in-progress"
                           ? "Stories will be assigned to AI agents and ready for AionUi"
+                          : col.id === "log"
+                          ? "Permanent history of shipped changes in PostBase"
                           : "Drag from other columns or use quick buttons"}
                       </span>
                     </div>

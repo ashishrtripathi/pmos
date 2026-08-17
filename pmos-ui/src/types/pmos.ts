@@ -119,6 +119,7 @@ export interface Story {
     then: string;
   }[];
   filePath: string;
+  loggedAt?: string; // When moved to final Log / PostBase Change Log
   source?: "manual" | "intelligence";
   sourceFile?: string;
   sourceSection?: string;
@@ -142,7 +143,7 @@ export interface Story {
   };
 }
 
-export type StoryStatus = "backlog" | "in-progress" | "review" | "done";
+export type StoryStatus = "backlog" | "in-progress" | "review" | "done" | "log";
 
 export interface Agent {
   id: string;

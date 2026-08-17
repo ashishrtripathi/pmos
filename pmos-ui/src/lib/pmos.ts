@@ -397,6 +397,7 @@ const STORY_DIRS: Record<StoryStatus, string> = {
   "in-progress": "stories/in-progress",
   review: "stories/review",
   done: "stories/done",
+  log: "stories/log",
 };
 
 function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
@@ -610,9 +611,12 @@ export async function getStoriesByStatus(slug: string): Promise<Record<StoryStat
     "in-progress": [],
     review: [],
     done: [],
+    log: [],
   };
   for (const s of stories) {
-    grouped[s.status].push(s);
+    if (grouped[s.status]) {
+      grouped[s.status].push(s);
+    }
   }
   return grouped;
 }
@@ -677,24 +681,20 @@ export async function createStory(
 ${frontmatter.join("\n")}
 ---
 
-# ${story.title}
+## User Story
 
-${story.description}
-
-## Use Case
-
-- **As a** ${uc.asA}
-- **I want to** ${uc.iWant}
-- **so that** ${uc.soThat}
+**As a** ${uc.asA || "user"}
+**I want to** ${uc.iWant || story.title}
+**so that** ${uc.soThat || "I achieve business value"}
 ${businessGoalSection}
 ## Acceptance Criteria
 
-${acLines || "- **Scenario:** To be defined\n- **Given:** TBD\n- **When:** TBD\n- **Then:** TBD"}
+${acLines || "- **Scenario:** Default\n  - **Given:** the feature is enabled\n  - **When:** user interacts\n  - **Then:** system responds"}
 `;
 
   const filePath = pmosPath("projects", slug, "stories", "backlog", fileName);
 
-  const newStory: Story = {
+  existing.push({
     id: nextId,
     title: story.title,
     description: story.description,
@@ -704,19 +704,15 @@ ${acLines || "- **Scenario:** To be defined\n- **Given:** TBD\n- **When:** TBD\n
     status: "backlog",
     useCase: uc,
     businessGoal: story.businessGoal,
-    acceptanceCriteria:
-      story.acceptanceCriteria && story.acceptanceCriteria.length > 0
-        ? story.acceptanceCriteria
-        : [{ scenario: "To be defined", given: [], when: "", then: "" }],
+    estimatedValue: story.estimatedValue,
+    acceptanceCriteria: story.acceptanceCriteria || [],
     persona: story.persona,
     personaRole: story.personaRole,
     journeyStep: story.journeyStep,
-    estimatedValue: story.estimatedValue,
-    source: "manual",
     filePath,
-  };
+    source: "manual",
+  });
 
-  existing.push(newStory);
   await writeItems("stories", slug, existing);
   writeFile(filePath, content); // mirror
 
@@ -727,6 +723,9 @@ ${acLines || "- **Scenario:** To be defined\n- **Given:** TBD\n- **When:** TBD\n
 function mirrorMoveStoryFile(slug: string, storyId: string, from: StoryStatus, to: StoryStatus): string | null {
   const fromDir = pmosPath("projects", slug, STORY_DIRS[from]);
   const toDir = pmosPath("projects", slug, STORY_DIRS[to]);
+  if (!fs.existsSync(toDir)) {
+    fs.mkdirSync(toDir, { recursive: true });
+  }
   if (!fs.existsSync(fromDir)) return null;
 
   const files = fs.readdirSync(fromDir).filter((f) => f.includes(storyId));
@@ -789,6 +788,18 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
     if (story.agentWork) {
       story.agentWork.status = "done";
       story.agentWork.completedAt = story.completedAt;
+    }
+  }
+
+  if (to === "log") {
+    if (!story.completedAt) {
+      story.completedAt = new Date().toISOString();
+    }
+    story.loggedAt = new Date().toISOString();
+    if (story.agentWork) {
+      story.agentWork.status = "done";
+      story.agentWork.completedAt = story.completedAt;
+      story.agentWork.notes = `Logged & Shipped in PostBase at ${story.loggedAt}`;
     }
   }
 
