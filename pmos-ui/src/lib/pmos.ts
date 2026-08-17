@@ -722,10 +722,10 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
       story.assignedAgent = agentId;
     }
     story.agentWork = {
-      status: "working",
+      status: "queued",
       assignedAgent: agentId,
       startedAt: story.startedAt,
-      notes: `Auto-dispatched to AionUi agent (${agentId}). Command: PMOS: implement story ${story.id} for ${slug}`,
+      notes: `Queued for ${agentId} in AionUi. Task: PMOS: implement story ${story.id} for ${slug}`,
     };
 
     // Auto-dispatch directly to AionUi
@@ -806,15 +806,15 @@ export async function executeStoriesInHarness(
     story.actualHours = hours;
     story.cost = totalCost;
 
-    // Keep active stories in Doing (in-progress) while being executed by agents
+    // Keep active stories in Doing (in-progress) and mark as queued for AionUi agent pickup
     story.status = "in-progress";
     story.agentWork = {
-      status: "working",
+      status: "queued",
       assignedAgent: agentId,
       startedAt: story.startedAt,
       durationMs,
       tokensUsed: tokens,
-      notes: `Dispatched to ${agentId} in AionUi harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
+      notes: `Queued for ${agentId} in AionUi harness (${Math.round(durationMs / 1000)}s, ${tokens.toLocaleString()} tokens)`,
     };
 
     const cmd = `PMOS: implement story ${story.id} for ${slug}`;

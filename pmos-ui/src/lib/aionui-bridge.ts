@@ -198,6 +198,18 @@ ${criteriaText}`;
         }
       }
 
+      // 4. Trigger AionUi PMOS Story Worker Cron Job immediately
+      try {
+        const cronStmt = db.prepare(`
+          UPDATE cron_jobs
+          SET enabled = 1, next_run_at = ?, schedule_value = '* * * * *', updated_at = ?
+          WHERE id = 'cron_019fd7e3-35e6-7e12-882d-cd1e4e08b3b8'
+        `);
+        cronStmt.run(now, now);
+      } catch (cronErr) {
+        console.warn("Could not trigger AionUi cron job", cronErr);
+      }
+
       return {
         success: true,
         dispatchedTo: "aionui-db",
@@ -207,7 +219,7 @@ ${criteriaText}`;
         taskId,
         command,
         agentId: agentKey,
-        notes: `Dispatched to ${assistantInfo.name} in AionUi`,
+        notes: `Dispatched to ${assistantInfo.name} in AionUi (Worker Triggered)`,
       };
     } catch (err) {
       console.warn("Direct SQLite insert to AionUi failed, fallback to queue", err);
