@@ -63,49 +63,9 @@ import {
 
 // ── Types ──────────────────────────────────────────
 
-import type { ValueDimensions } from "@/types/pmos";
+import type { Story, StoryStatus, ValueDimensions } from "@/types/pmos";
 
-interface KanbanStory {
-  id: string;
-  title: string;
-  description?: string;
-  points?: number;
-  estimatedHours?: number;
-  actualHours?: number;
-  startedAt?: string;
-  completedAt?: string;
-  executionDurationMs?: number;
-  estimatedTokens?: number;
-  tokensUsed?: number;
-  cost?: number;
-  status: string;
-  objectiveId?: string;
-  dimensions?: ValueDimensions;
-  useCase?: { asA: string; iWant: string; soThat: string };
-  businessGoal?: string;
-  estimatedValue?: number;
-  acceptanceCriteria?: any[];
-  persona?: string;
-  personaRole?: string;
-  journeyStep?: string;
-  assignedAgent?: string;
-  agentWork?: {
-    status: "waiting" | "queued" | "working" | "done";
-    assignedAgent?: string;
-    assignedAt?: string;
-    startedAt?: string;
-    lastHeartbeat?: string;
-    completedAt?: string;
-    durationMs?: number;
-    tokensUsed?: number;
-    notes?: string;
-  };
-  filePath?: string;
-  source?: "manual" | "intelligence";
-  sourceFile?: string;
-  sourceSection?: string;
-  category?: string;
-}
+export type KanbanStory = Story;
 
 // ── Constants ──────────────────────────────────────
 
@@ -727,14 +687,18 @@ export function KanbanBoard({
 
   const handleManualMoveStatus = useCallback(
     (storyId: string, newStatus: string) => {
+      const typedStatus = newStatus as StoryStatus;
       setStories((prev) =>
         prev.map((s) => {
           if (s.id === storyId) {
             return {
               ...s,
-              status: newStatus,
-              startedAt: newStatus === "in-progress" && !s.startedAt ? new Date().toISOString() : s.startedAt,
-              completedAt: newStatus === "done" && !s.completedAt ? new Date().toISOString() : s.completedAt,
+              status: typedStatus,
+              agentWork:
+                typedStatus === "in-progress"
+                  ? { status: "waiting", assignedAgent: s.assignedAgent || "software-engineer" }
+                  : s.agentWork,
+              completedAt: typedStatus === "done" && !s.completedAt ? new Date().toISOString() : s.completedAt,
             };
           }
           return s;
@@ -761,7 +725,7 @@ export function KanbanBoard({
     const overId = String(over.id);
 
     const activeStatus = findStoryStatus(activeId);
-    const overStatus = getColumnForId(overId, stories);
+    const overStatus = getColumnForId(overId, stories) as StoryStatus | null;
 
     if (!activeStatus || !overStatus || activeStatus === overStatus) return;
 
@@ -770,7 +734,14 @@ export function KanbanBoard({
       if (!activeItem) return prev;
 
       const withoutActive = prev.filter((s) => s.id !== activeId);
-      const updatedItem = { ...activeItem, status: overStatus };
+      const updatedItem: Story = {
+        ...activeItem,
+        status: overStatus,
+        agentWork:
+          overStatus === "in-progress"
+            ? { status: "waiting", assignedAgent: activeItem.assignedAgent || "software-engineer" }
+            : activeItem.agentWork,
+      };
 
       const overIndex = withoutActive.findIndex((s) => s.id === overId);
       if (overIndex >= 0) {
@@ -790,15 +761,15 @@ export function KanbanBoard({
     const activeId = String(active.id);
     const fromStatus = dragStartStatusRef.current;
 
-    let targetStatus: string | null = null;
+    let targetStatus: StoryStatus | null = null;
     if (over) {
       const overId = String(over.id);
-      targetStatus = getColumnForId(overId, stories);
+      targetStatus = getColumnForId(overId, stories) as StoryStatus | null;
     }
 
     if (!targetStatus) {
       const currentStory = stories.find((s) => s.id === activeId);
-      targetStatus = currentStory?.status || fromStatus || null;
+      targetStatus = (currentStory?.status || fromStatus || null) as StoryStatus | null;
     }
 
     if (targetStatus) {
@@ -808,7 +779,10 @@ export function KanbanBoard({
             return {
               ...s,
               status: targetStatus!,
-              startedAt: targetStatus === "in-progress" && !s.startedAt ? new Date().toISOString() : s.startedAt,
+              agentWork:
+                targetStatus === "in-progress"
+                  ? { status: "waiting", assignedAgent: s.assignedAgent || "software-engineer" }
+                  : s.agentWork,
               completedAt: targetStatus === "done" && !s.completedAt ? new Date().toISOString() : s.completedAt,
             };
           }
@@ -843,10 +817,11 @@ export function KanbanBoard({
       estimatedHours: input.estimatedHours,
       estimatedTokens: input.estimatedTokens,
       status: "backlog",
+      filePath: input.filePath || "",
+      acceptanceCriteria: input.acceptanceCriteria || [],
       useCase: input.useCase,
       businessGoal: input.businessGoal,
       estimatedValue: input.estimatedValue,
-      acceptanceCriteria: input.acceptanceCriteria,
       persona: input.persona,
       personaRole: input.personaRole,
       journeyStep: input.journeyStep,

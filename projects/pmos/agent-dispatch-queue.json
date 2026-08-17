@@ -1,6 +1,6 @@
 [
   {
-    "taskId": "pmos-pmos-STORY-001-1786986591637",
+    "taskId": "pmos-pmos-STORY-001-1786989832781",
     "slug": "pmos",
     "storyId": "STORY-001",
     "title": "Add dark mode support",
@@ -9,7 +9,7 @@
     "assistantName": "PMOS Software Engineer",
     "command": "PMOS: implement story STORY-001 for pmos",
     "prompt": "PMOS: implement story STORY-001 for pmos\n\nTarget Project: pmos\nCodebase Location: C:\\Users\\ashis\\.pmos\nStory ID: STORY-001\nTitle: Add dark mode support\nAssigned Persona: PMOS Software Engineer (software-engineer)\nTarget Persona: User\nEstimated Labor: 1h\n\nAcceptance Criteria:\nAdd dark mode support",
-    "dispatchedAt": "2026-08-17T17:09:51.639Z",
+    "dispatchedAt": "2026-08-17T18:03:52.783Z",
     "status": "in-progress"
   },
   {

@@ -521,11 +521,13 @@ function parseStoryFile(filePath: string, status: StoryStatus): Story | null {
     journeyStep: data["journey-step"],
     estimatedValue: data["estimated-value"] || data.estimatedValue || undefined,
     assignedAgent: data["assigned-agent"] || data.assignedAgent || undefined,
+    objectiveId: data["objective-id"] || data.objectiveId || undefined,
+    dimensions: data.dimensions || undefined,
     filePath,
   };
 }
 
-/** Legacy disk reader — used as a one-time bootstrap when PostBase is empty. */
+/** Legacy disk reader — used as a one-time bootstrap when PostBase is empty or when disk files are authoritative. */
 function readStoriesFromFiles(slug: string): Story[] {
   const stories: Story[] = [];
   for (const [status, dir] of Object.entries(STORY_DIRS)) {
@@ -541,11 +543,64 @@ function readStoriesFromFiles(slug: string): Story[] {
 }
 
 export async function getAllStories(slug: string): Promise<Story[]> {
-  const items = await readItems<Story>("stories", slug);
-  if (items.length > 0) return items;
-  const fromFiles = readStoriesFromFiles(slug);
-  if (fromFiles.length > 0) await writeItems("stories", slug, fromFiles);
-  return fromFiles;
+  const diskStories = readStoriesFromFiles(slug);
+  const dbStories = await readItems<Story>("stories", slug);
+
+  if (diskStories.length > 0) {
+    const dbMap = new Map(dbStories.map((s) => [s.id, s]));
+    const merged: Story[] = diskStories.map((diskStory) => {
+      const dbStory = dbMap.get(diskStory.id);
+      if (dbStory) {
+        return {
+          ...dbStory,
+          ...diskStory,
+          status: diskStory.status, // The actual folder on disk (backlog, in-progress, done) is authoritative!
+          objectiveId: dbStory.objectiveId || diskStory.objectiveId,
+          dimensions: dbStory.dimensions || diskStory.dimensions,
+          agentWork:
+            diskStory.status === "in-progress"
+              ? dbStory.agentWork && dbStory.agentWork.status !== "waiting"
+                ? dbStory.agentWork
+                : {
+                    status: "waiting",
+                    assignedAgent: diskStory.assignedAgent || "software-engineer",
+                    notes: "Placed in Doing by Product Manager. Waiting for execution trigger.",
+                  }
+              : {
+                  status: "waiting",
+                },
+        };
+      }
+      return {
+        ...diskStory,
+        agentWork:
+          diskStory.status === "in-progress"
+            ? {
+                status: "waiting",
+                assignedAgent: diskStory.assignedAgent || "software-engineer",
+                notes: "Placed in Doing by Product Manager. Waiting for execution trigger.",
+              }
+            : {
+                status: "waiting",
+              },
+      };
+    });
+
+    // Also include any stories in DB that are not files on disk
+    const diskIds = new Set(diskStories.map((s) => s.id));
+    for (const dbStory of dbStories) {
+      if (!diskIds.has(dbStory.id)) {
+        merged.push(dbStory);
+      }
+    }
+
+    // Persist synchronized state to PostBase
+    await writeItems("stories", slug, merged);
+    return merged;
+  }
+
+  if (dbStories.length > 0) return dbStories;
+  return [];
 }
 
 export async function getStoriesByStatus(slug: string): Promise<Record<StoryStatus, Story[]>> {
