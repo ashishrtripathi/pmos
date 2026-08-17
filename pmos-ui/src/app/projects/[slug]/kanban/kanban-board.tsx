@@ -511,6 +511,38 @@ export function KanbanBoard({
     model: "claude-sonnet-4",
   });
 
+  // Live sync stories from PostBase API every 3s and on window focus
+  useEffect(() => {
+    let mounted = true;
+    const fetchStories = async () => {
+      try {
+        const res = await fetch(`/api/projects/${slug}/stories`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted && Array.isArray(data) && data.length > 0) {
+          setStories(data);
+        }
+      } catch {}
+    };
+
+    fetchStories();
+    const interval = setInterval(fetchStories, 3000);
+    window.addEventListener("focus", fetchStories);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", fetchStories);
+    };
+  }, [slug]);
+
+  // Update when allStories prop changes
+  useEffect(() => {
+    if (Array.isArray(allStories) && allStories.length > 0) {
+      setStories(allStories);
+    }
+  }, [allStories]);
+
   // Fetch intelligence stories
   useEffect(() => {
     fetch(`/api/projects/${slug}/intelligence-stories`)

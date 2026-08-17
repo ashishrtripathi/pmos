@@ -3,7 +3,8 @@ import { KanbanBoard } from "./kanban-board";
 import { generateProjectStaticParams } from "@/lib/static-params";
 
 export { generateProjectStaticParams as generateStaticParams };
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function KanbanPage({
   params,
