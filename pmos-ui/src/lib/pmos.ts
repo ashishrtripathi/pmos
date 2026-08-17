@@ -750,6 +750,23 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
   return story.assignedAgent || "software-engineer";
 }
 
+export async function updateStory(
+  slug: string,
+  storyId: string,
+  updates: Partial<Story>
+): Promise<Story | null> {
+  const stories = await getAllStories(slug);
+  const idx = stories.findIndex((s) => s.id === storyId);
+  if (idx < 0) return null;
+  const prevStatus = stories[idx].status;
+  stories[idx] = { ...stories[idx], ...updates };
+  if (updates.status && updates.status !== prevStatus) {
+    mirrorMoveStoryFile(slug, storyId, prevStatus, updates.status);
+  }
+  await writeItems("stories", slug, stories);
+  return stories[idx];
+}
+
 /**
  * Executes pending stories in the test harness directly on user trigger.
  * Automatically dispatches stories directly into AionUi agent queue and SQLite database.

@@ -3,8 +3,8 @@
 // Shared "Create User Story" modal used by both the Kanban board and the
 // User Story Map board. Persists via POST /api/projects/[slug]/stories.
 
-import { useState } from "react";
-import { Target, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Target, Zap, Calculator, TrendingUp, Link as LinkIcon, DollarSign } from "lucide-react";
 import {
   estimateTokenCost,
   calculateROI,
@@ -13,6 +13,9 @@ import {
   getVerdictColor,
   type PricingParams,
 } from "@/lib/cost-estimation";
+import type { ValueDimensions } from "@/types/pmos";
+import { DollarCalculatorModal } from "@/components/dollar-calculator-modal";
+import { formatUSD, formatROI } from "@/lib/roi-calculator";
 
 export interface CreateStoryInput {
   id: string;
@@ -25,6 +28,8 @@ export interface CreateStoryInput {
   persona?: string;
   personaRole?: string;
   journeyStep?: string;
+  objectiveId?: string;
+  dimensions?: ValueDimensions;
   useCase?: { asA: string; iWant: string; soThat: string };
   businessGoal?: string;
   estimatedValue?: number;
@@ -69,6 +74,10 @@ export function StoryCreateModal({
   const [soThat, setSoThat] = useState("");
   const [businessGoal, setBusinessGoal] = useState("");
   const [estimatedValue, setEstimatedValue] = useState<number | undefined>();
+  const [objectiveId, setObjectiveId] = useState<string>("");
+  const [dimensions, setDimensions] = useState<ValueDimensions | undefined>();
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [okrs, setOkrs] = useState<{ id: string; title: string }[]>([]);
   const [acScenario, setAcScenario] = useState("");
   const [acGiven, setAcGiven] = useState("");
   const [acWhen, setAcWhen] = useState("");
@@ -76,8 +85,21 @@ export function StoryCreateModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch available OKRs for linking
+  useEffect(() => {
+    fetch(`/api/projects/${slug}/okrs`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setOkrs(data.map((o) => ({ id: o.id, title: o.title })));
+        }
+      })
+      .catch(() => {});
+  }, [slug]);
+
   const cost = estimateTokenCost({ estimatedHours, estimatedTokens }, pricing);
-  const roi = calculateROI(estimatedValue, { estimatedHours, estimatedTokens }, pricing);
+  const totalValue = dimensions?.totalValue || estimatedValue || 0;
+  const roi = calculateROI(totalValue, { estimatedHours, estimatedTokens }, pricing);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,13 +112,15 @@ export function StoryCreateModal({
       estimatedTokens,
       points: Math.max(1, Math.round(estimatedHours / 0.35)),
       status: "backlog",
+      objectiveId: objectiveId || undefined,
+      dimensions: dimensions || undefined,
       useCase: {
         asA: asA.trim() || personaRole || "a user",
         iWant: iWant.trim(),
         soThat: soThat.trim(),
       },
       businessGoal: businessGoal.trim() || undefined,
-      estimatedValue: estimatedValue || undefined,
+      estimatedValue: totalValue || undefined,
       acceptanceCriteria: acScenario.trim()
         ? [
             {
@@ -268,20 +292,89 @@ export function StoryCreateModal({
             />
           </div>
 
+          {/* OKR Objective Linking */}
           <div>
             <label className="text-sm font-medium mb-1 block flex items-center gap-1">
-              <Target className="w-3.5 h-3.5 text-emerald-500" />
-              Estimated Business Value ($)
+              <LinkIcon className="w-3.5 h-3.5 text-primary" />
+              Link to Strategic OKR Objective
             </label>
-            <input
-              type="number"
-              value={estimatedValue || ""}
-              onChange={(e) =>
-                setEstimatedValue(Number(e.target.value) || undefined)
-              }
-              placeholder="e.g. 50000"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            <select
+              value={objectiveId}
+              onChange={(e) => setObjectiveId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">(None / Standalone Backlog Story)</option>
+              {okrs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  🎯 {o.id}: {o.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 5-Dimension Financial Scoring Breakdown */}
+          <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <span>5-Dimension Financial Value &amp; ROI ($)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCalculator(true)}
+                className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-bold flex items-center gap-1 shadow-2xs transition-all"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>⚡ Dollar Calculator</span>
+              </button>
+            </div>
+
+            {/* 5 Dimension Badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+              <div className="p-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+                <div className="text-[9px] font-bold text-blue-700 dark:text-blue-300">1. Strategic</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(dimensions?.strategicAlignment?.value || 0)}
+                </div>
+              </div>
+              <div className="p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
+                <div className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">2. New Rev</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(dimensions?.newRevenueImpact?.value || 0)}
+                </div>
+              </div>
+              <div className="p-2 rounded-lg bg-violet-50/50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900">
+                <div className="text-[9px] font-bold text-violet-700 dark:text-violet-300">3. Renewal</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(dimensions?.renewalRevenueImpact?.value || 0)}
+                </div>
+              </div>
+              <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
+                <div className="text-[9px] font-bold text-amber-700 dark:text-amber-300">4. CX / Churn</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(dimensions?.improveCustomerExperience?.value || 0)}
+                </div>
+              </div>
+              <div className="p-2 rounded-lg bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900">
+                <div className="text-[9px] font-bold text-teal-700 dark:text-teal-300">5. Cost Saved</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(dimensions?.lowersCost?.value || 0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Summary */}
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-border font-semibold">
+              <span>
+                Total Value: <strong className="text-emerald-600 font-mono">{formatUSD(totalValue)}</strong>
+              </span>
+              <span>
+                Effort Cost: <strong className="font-mono">{formatUSD(cost.totalCost)}</strong>
+              </span>
+              <span>
+                ROI: <strong className="text-primary font-mono">{dimensions?.roiMultiple !== undefined ? formatROI(dimensions.roiMultiple) : roi.roiMultiple}</strong>
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -344,48 +437,6 @@ export function StoryCreateModal({
                 ))}
               </div>
             </div>
-          </div>
-
-          <div className="p-3 rounded-lg bg-violet-50 border border-violet-200">
-            <div className="flex items-center gap-1 text-[10px] text-violet-700 font-medium mb-1">
-              <Zap className="w-3 h-3" />
-              Direct Cost &amp; Execution Estimate
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <div className="text-sm font-bold text-violet-600 font-mono">
-                  {formatCost(cost.aiCost)}
-                </div>
-                <div className="text-[9px] text-violet-500">AI Tokens ({(estimatedTokens / 1000).toFixed(0)}k)</div>
-              </div>
-              <div>
-                <div className="text-sm font-bold text-blue-600 font-mono">
-                  {formatCost(cost.reviewCost)}
-                </div>
-                <div className="text-[9px] text-blue-500">
-                  Labor ({cost.reviewHours.toFixed(1)}h @ ${pricing.developerHourlyRate ?? 150}/hr)
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-bold text-emerald-600 font-mono">
-                  {formatCost(cost.totalCost)}
-                </div>
-                <div className="text-[9px] text-emerald-600 font-semibold">Total Cost</div>
-              </div>
-            </div>
-            {roi.estimatedValue > 0 && (
-              <div className="mt-2 pt-2 border-t border-violet-200 text-center">
-                <span
-                  className={`text-sm font-bold px-2 py-0.5 rounded border ${getVerdictColor(roi.verdict)}`}
-                >
-                  ROI: {roi.roiMultiple}
-                </span>
-                <span className="text-[9px] text-emerald-600 ml-2">
-                  Value {formatDollars(roi.estimatedValue)} / Cost{" "}
-                  {formatCost(roi.totalCost)}
-                </span>
-              </div>
-            )}
           </div>
 
           <div className="p-3 rounded-lg border border-border bg-muted/30">
@@ -463,6 +514,22 @@ export function StoryCreateModal({
           </button>
         </div>
       </form>
+
+      {/* Dollar Value Calculator Modal */}
+      {showCalculator && (
+        <DollarCalculatorModal
+          initialDimensions={dimensions}
+          estimatedHours={estimatedHours}
+          pricing={pricing}
+          title={`Calculate Value: ${title || "New Story"}`}
+          onApply={(dims) => {
+            setDimensions(dims);
+            setEstimatedValue(dims.totalValue);
+            setShowCalculator(false);
+          }}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
     </div>
   );
 }

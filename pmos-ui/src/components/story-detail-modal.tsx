@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   User,
@@ -13,6 +13,12 @@ import {
   FileText,
   TrendingUp,
   AlertTriangle,
+  Globe,
+  RefreshCw,
+  HeartHandshake,
+  PiggyBank,
+  Calculator,
+  Link as LinkIcon,
 } from "lucide-react";
 import {
   estimateTokenCost,
@@ -33,6 +39,10 @@ const DEFAULT_PRICING: PricingParams = {
 };
 
 // ── Types ──────────────────────────────────────────
+
+import type { ValueDimensions } from "@/types/pmos";
+import { DollarCalculatorModal } from "@/components/dollar-calculator-modal";
+import { formatUSD, formatROI } from "@/lib/roi-calculator";
 
 interface AcceptanceCriterion {
   scenario: string;
@@ -58,6 +68,8 @@ export interface StoryDetail {
   useCase?: { asA: string; iWant: string; soThat: string };
   businessGoal?: string;
   estimatedValue?: number;
+  objectiveId?: string;
+  dimensions?: ValueDimensions;
   acceptanceCriteria?: AcceptanceCriterion[];
   persona?: string;
   personaRole?: string;
@@ -137,11 +149,26 @@ export function StoryDetailModal({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ ...story });
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [okrs, setOkrs] = useState<{ id: string; title: string }[]>([]);
+
+  // Fetch available OKRs for linking
+  useEffect(() => {
+    fetch(`/api/projects/pmos/okrs`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setOkrs(data.map((o) => ({ id: o.id, title: o.title })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const hours = draft.estimatedHours ?? (draft.points ? draft.points * 0.35 : 1);
   const cost = estimateTokenCost(draft, pricing || DEFAULT_PRICING);
+  const storyVal = draft.dimensions?.totalValue || draft.estimatedValue || 0;
   const roi = calculateROI(
-    draft.estimatedValue,
+    storyVal,
     draft,
     pricing || DEFAULT_PRICING
   );
@@ -296,6 +323,108 @@ export function StoryDetailModal({
                 {draft.assignedAgent}
               </span>
             )}
+
+            {/* OKR Objective Linking Selector */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <LinkIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+              <select
+                value={draft.objectiveId || ""}
+                onChange={(e) => {
+                  const objId = e.target.value || undefined;
+                  const updated = { ...draft, objectiveId: objId };
+                  setDraft(updated);
+                  if (!editing) onSave(updated);
+                }}
+                className="text-xs px-2 py-1 rounded-lg border border-border bg-background font-semibold text-foreground focus:outline-none"
+              >
+                <option value="">(No OKR Linked)</option>
+                {okrs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    🎯 {o.id}: {o.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 5-Dimension Financial Scoring Breakdown */}
+          <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <span>5-Dimension Financial Value & ROI ($)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCalculator(true)}
+                className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-bold flex items-center gap-1 shadow-2xs transition-all"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>⚡ Dollar Calculator</span>
+              </button>
+            </div>
+
+            {/* 5 Dimension Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+              <div
+                className="p-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900"
+                title={`Strategic Logic: ${draft.dimensions?.strategicAlignment?.logic || "No rationale"}`}
+              >
+                <div className="text-[9px] font-bold text-blue-700 dark:text-blue-300">1. Strategic</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(draft.dimensions?.strategicAlignment?.value || 0)}
+                </div>
+              </div>
+              <div
+                className="p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900"
+                title={`New Revenue Logic: ${draft.dimensions?.newRevenueImpact?.logic || "No rationale"}`}
+              >
+                <div className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">2. New Rev</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(draft.dimensions?.newRevenueImpact?.value || 0)}
+                </div>
+              </div>
+              <div
+                className="p-2 rounded-lg bg-violet-50/50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900"
+                title={`Renewal Logic: ${draft.dimensions?.renewalRevenueImpact?.logic || "No rationale"}`}
+              >
+                <div className="text-[9px] font-bold text-violet-700 dark:text-violet-300">3. Renewal</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(draft.dimensions?.renewalRevenueImpact?.value || 0)}
+                </div>
+              </div>
+              <div
+                className="p-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900"
+                title={`CX Logic: ${draft.dimensions?.improveCustomerExperience?.logic || "No rationale"}`}
+              >
+                <div className="text-[9px] font-bold text-amber-700 dark:text-amber-300">4. CX / Churn</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(draft.dimensions?.improveCustomerExperience?.value || 0)}
+                </div>
+              </div>
+              <div
+                className="p-2 rounded-lg bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900"
+                title={`Cost Reduction Logic: ${draft.dimensions?.lowersCost?.logic || "No rationale"}`}
+              >
+                <div className="text-[9px] font-bold text-teal-700 dark:text-teal-300">5. Cost Saved</div>
+                <div className="font-mono font-bold text-foreground mt-0.5">
+                  {formatUSD(draft.dimensions?.lowersCost?.value || 0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Summary KPI Row */}
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-border/80 font-semibold">
+              <span>
+                Total Value: <strong className="text-emerald-600 font-mono">{formatUSD(storyVal)}</strong>
+              </span>
+              <span>
+                Dev Effort: <strong className="font-mono">{formatUSD(cost.totalCost)}</strong>
+              </span>
+              <span>
+                ROI Multiple: <strong className="text-primary font-mono">{draft.dimensions?.roiMultiple !== undefined ? formatROI(draft.dimensions.roiMultiple) : roi.roiMultiple}</strong>
+              </span>
+            </div>
           </div>
 
           {/* Use Case */}
@@ -399,124 +528,6 @@ export function StoryDetailModal({
             )}
           </div>
 
-          {/* Cost + ROI Grid */}
-          <div className="p-3 rounded-lg bg-card border border-border">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Left: Cost */}
-              <div>
-                <div className="flex items-center gap-1 text-xs font-medium text-violet-700 uppercase mb-2">
-                  <Zap className="w-3 h-3" />
-                  AI Agent Cost
-                </div>
-                <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                  <div>
-                    <div className="text-base font-bold text-violet-600">
-                      {formatCost(cost.aiCost)}
-                    </div>
-                    <div className="text-[9px] text-violet-500">
-                      7 Agents
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-base font-bold text-blue-600">
-                      {formatCost(cost.reviewCost)}
-                    </div>
-                    <div className="text-[9px] text-blue-500">
-                      Dev ({cost.reviewHours.toFixed(1)}h)
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-base font-bold text-green-600">
-                      {formatCost(cost.totalCost)}
-                    </div>
-                    <div className="text-[9px] text-green-500">Total</div>
-                  </div>
-                </div>
-                <CostBar aiCost={cost.aiCost} reviewCost={cost.reviewCost} />
-                <div className="flex items-center gap-3 mt-2 text-[9px] text-muted-foreground">
-                  <span>{formatTokens(cost.inputTokens)} in</span>
-                  <span>{formatTokens(cost.outputTokens)} out</span>
-                  <span>{cost.modelUsed}</span>
-                </div>
-              </div>
-
-              {/* Right: Value + ROI */}
-              <div>
-                <div className="flex items-center gap-1 text-xs font-medium text-emerald-700 uppercase mb-2">
-                  <TrendingUp className="w-3 h-3" />
-                  Estimated Value & ROI
-                </div>
-
-                {/* Estimated Value Input */}
-                <div className="mb-3">
-                  <label className="text-[10px] text-muted-foreground block mb-0.5">
-                    Estimated Business Value
-                  </label>
-                  {editing ? (
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                      <input
-                        type="number"
-                        value={draft.estimatedValue || ""}
-                        onChange={(e) =>
-                          setDraft({
-                            ...draft,
-                            estimatedValue: Number(e.target.value) || undefined,
-                          })
-                        }
-                        placeholder="e.g. 50000"
-                        className="flex-1 px-2 py-1 rounded border border-border bg-background text-sm font-mono"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-xl font-bold text-emerald-600">
-                      {draft.estimatedValue
-                        ? formatDollars(draft.estimatedValue)
-                        : "—"}
-                    </div>
-                  )}
-                </div>
-
-                {/* ROI Display */}
-                <div
-                  className={`p-2 rounded-lg border ${getVerdictColor(roi.verdict)}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] font-medium uppercase">
-                        ROI Multiple
-                      </div>
-                      <div className="text-2xl font-black">
-                        {roi.roiMultiple}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] font-medium uppercase">
-                        Verdict
-                      </div>
-                      <div className="text-sm font-bold capitalize">
-                        {roi.verdict}
-                      </div>
-                    </div>
-                  </div>
-                  {roi.estimatedValue > 0 && (
-                    <div className="mt-1.5 text-[9px] opacity-80">
-                      {formatDollars(roi.estimatedValue)} value ÷{" "}
-                      {formatCost(roi.totalCost)} cost = {roi.roiMultiple}{" "}
-                      return
-                    </div>
-                  )}
-                </div>
-
-                {/* Formula */}
-                <div className="mt-2 p-2 rounded bg-muted/30 text-[9px] text-muted-foreground font-mono">
-                  ROI = {formatDollars(roi.estimatedValue)} ÷{" "}
-                  {formatCost(cost.totalCost)} = {roi.roiMultiple}
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Acceptance Criteria */}
           <div className="p-3 rounded-lg bg-green-50/50 border border-green-200">
             <div className="flex items-center gap-1 text-xs font-medium text-green-700 uppercase mb-2">
@@ -563,6 +574,28 @@ export function StoryDetailModal({
           )}
         </div>
       </div>
+
+      {/* Dollar Value & ROI Calculator Wizard Modal */}
+      {showCalculator && (
+        <DollarCalculatorModal
+          initialDimensions={draft.dimensions}
+          estimatedHours={draft.estimatedHours ?? hours}
+          pricing={pricing}
+          title={`Dollar Calculator: ${draft.id} - ${draft.title}`}
+          onApply={(dims) => {
+            const updated = {
+              ...draft,
+              dimensions: dims,
+              estimatedValue: dims.totalValue,
+            };
+            setDraft(updated);
+            if (!editing) {
+              onSave(updated);
+            }
+          }}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
     </div>
   );
 }

@@ -41,6 +41,23 @@ export interface SourceLocation {
   };
 }
 
+export interface FinancialDimension {
+  value: number; // Value in USD ($)
+  logic: string; // Explanation of how the dollars were derived (e.g. "40 hrs saved × $75/hr")
+  inputs?: Record<string, number | string>;
+}
+
+export interface ValueDimensions {
+  strategicAlignment: FinancialDimension; // 1. Strategic Alignment ($): Greater visibility / new market
+  newRevenueImpact: FinancialDimension;   // 2. New Revenue Impact ($): New deals / sales
+  renewalRevenueImpact: FinancialDimension; // 3. Renewal Revenue Impact ($): Contract retention / renewal ARR
+  improveCustomerExperience: FinancialDimension; // 4. Improve Customer Experience ($): Lowers churn & friction
+  lowersCost: FinancialDimension;         // 5. Lowers Cost ($): Hours saved × rate / infra cost reduction
+  totalValue: number;                     // Sum of 5 dimensions ($)
+  effortCost: number;                     // Labor hours × dev hourly rate + token cost ($)
+  roiMultiple: number;                    // totalValue / effortCost ($ / $)
+}
+
 export interface Objective {
   id: string;
   title: string;
@@ -48,6 +65,10 @@ export interface Objective {
   quarter: string;
   owner: string;
   keyResults: KeyResult[];
+  dimensions?: ValueDimensions;
+  targetValue?: number;
+  effortCost?: number;
+  roiMultiple?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,6 +82,7 @@ export interface KeyResult {
   current: number;
   unit: string;
   owner: string;
+  targetValueUSD?: number;
 }
 
 export interface Story {
@@ -99,6 +121,7 @@ export interface Story {
   sourceSection?: string;
   category?: string;
   objectiveId?: string; // links to Objective.id
+  dimensions?: ValueDimensions; // 5-dimension dollar value breakdown and step-by-step logic
   assignedAgent?: string;
   /**
    * Background agent-work tracking.

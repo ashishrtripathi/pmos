@@ -62,6 +62,8 @@ import {
 
 // ── Types ──────────────────────────────────────────
 
+import type { ValueDimensions } from "@/types/pmos";
+
 interface KanbanStory {
   id: string;
   title: string;
@@ -76,6 +78,8 @@ interface KanbanStory {
   tokensUsed?: number;
   cost?: number;
   status: string;
+  objectiveId?: string;
+  dimensions?: ValueDimensions;
   useCase?: { asA: string; iWant: string; soThat: string };
   businessGoal?: string;
   estimatedValue?: number;
@@ -184,7 +188,8 @@ function KanbanStoryCard({
 
   const hours = story.estimatedHours ?? (story.points ? story.points * (pricing.hoursPerPoint || 0.5) : 1);
   const cost = estimateTokenCost(story, pricing);
-  const roi = calculateROI(story.estimatedValue, story, pricing);
+  const storyVal = story.dimensions?.totalValue || story.estimatedValue || 0;
+  const roi = calculateROI(storyVal, story, pricing);
   const isIntelligence = story.source === "intelligence";
   const agentBadge = getAgentBadge(story.assignedAgent);
   const tokens = story.tokensUsed ?? story.estimatedTokens ?? cost.inputTokens + cost.outputTokens;
@@ -286,6 +291,15 @@ ${criteriaText}`;
             <span className="text-[10px] font-mono text-muted-foreground">
               {story.id}
             </span>
+            {story.objectiveId && (
+              <span
+                className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-bold flex items-center gap-0.5"
+                title={`Linked to OKR: ${story.objectiveId}`}
+              >
+                <Target className="w-2 h-2" />
+                {story.objectiveId}
+              </span>
+            )}
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium" title={`${hours} estimated hours`}>
               {hours}h
             </span>

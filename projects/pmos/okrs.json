@@ -1,37 +1,185 @@
 [
   {
-    "id": "obj-1",
-    "title": "Test Objective",
-    "quarter": "Q3 2026",
-    "createdAt": "2026-07-30T18:39:56.812Z",
-    "updatedAt": "2026-07-30T18:39:56.812Z",
-    "keyResults": [],
-    "description": "Testing"
-  },
-  {
     "id": "OBJ-001",
-    "createdAt": "2026-08-15T19:53:17Z",
-    "progress": 85,
-    "description": "Complete core features, full database persistence, and documentation",
+    "title": "Ship PMOS 1.0 Production Readiness & Persistent Multi-Project DB",
+    "description": "Deliver complete enterprise-grade project workspace with full PostBase SQLite persistence, live agent runtime, and zero data loss.",
+    "quarter": "Q3 2026",
     "owner": "Product Manager",
+    "progress": 96,
+    "dimensions": {
+      "strategicAlignment": {
+        "value": 45000,
+        "logic": "Greater visibility into multi-agent orchestration market across 5 target customer segments"
+      },
+      "newRevenueImpact": {
+        "value": 60000,
+        "logic": "5 initial team pilots @ $1,000/mo = $60,000 ARR"
+      },
+      "renewalRevenueImpact": {
+        "value": 25000,
+        "logic": "Prevents pilot drop-off and secures annual conversion rate +20%"
+      },
+      "improveCustomerExperience": {
+        "value": 35000,
+        "logic": "Zero-friction state restoration and live execution indicators reduce user dropoff by 35%"
+      },
+      "lowersCost": {
+        "value": 48000,
+        "logic": "80 engineering hours/mo automated via harness tests @ $50/hr = $4,000/mo x 12 mo = $48,000/yr"
+      },
+      "totalValue": 213000,
+      "effortCost": 4500,
+      "roiMultiple": 47.3
+    },
+    "targetValue": 213000,
+    "effortCost": 4500,
+    "roiMultiple": 47.3,
     "keyResults": [
       {
-        "current": 100,
-        "title": "Zero TypeScript and ESLint errors",
-        "unit": "%",
         "id": "KR-001",
-        "target": 100
+        "title": "Zero TypeScript, build, or runtime console errors",
+        "metric": "error_rate",
+        "target": 100,
+        "current": 100,
+        "unit": "%",
+        "owner": "Engineering"
       },
       {
-        "current": 100,
-        "title": "All UI screens have full database persistence",
-        "unit": "%",
         "id": "KR-002",
-        "target": 100
+        "title": "All UI screens have full PostBase persistence",
+        "metric": "coverage",
+        "target": 100,
+        "current": 100,
+        "unit": "%",
+        "owner": "Engineering"
+      },
+      {
+        "id": "KR-003",
+        "title": "End-to-end multi-agent dispatch latency < 500ms",
+        "metric": "latency",
+        "target": 100,
+        "current": 92,
+        "unit": "%",
+        "owner": "AI Platform Lead"
       }
     ],
-    "updatedAt": "2026-08-15T19:53:17Z",
-    "title": "Ship PMOS 1.0 Production Release",
-    "quarter": "Q3 2026"
+    "createdAt": "2026-08-15T19:53:17Z",
+    "updatedAt": "2026-08-17T15:00:00Z"
+  },
+  {
+    "id": "OBJ-002",
+    "title": "Autonomous AionUI Agent Runtime & Zero-Modal Dispatch",
+    "description": "Direct bi-directional execution bridge between PMOS Kanban backlog and autonomous AionUi assistants with automated claiming.",
+    "quarter": "Q3 2026",
+    "owner": "AI Tech Lead",
+    "progress": 100,
+    "dimensions": {
+      "strategicAlignment": {
+        "value": 75000,
+        "logic": "Establishes PMOS as the premier AI-first product operating system integrated with local LLMs"
+      },
+      "newRevenueImpact": {
+        "value": 90000,
+        "logic": "3 Enterprise AI Tier licenses @ $30,000/yr = $90,000 ARR"
+      },
+      "renewalRevenueImpact": {
+        "value": 40000,
+        "logic": "High stickiness of autonomous agent execution loop eliminates customer churn"
+      },
+      "improveCustomerExperience": {
+        "value": 60000,
+        "logic": "Zero copy-paste modal elimination saves 15 min per story dispatch across 400 stories/yr"
+      },
+      "lowersCost": {
+        "value": 96000,
+        "logic": "160 developer hours/mo saved through autonomous coding & testing @ $50/hr = $8,000/mo x 12 mo"
+      },
+      "totalValue": 361000,
+      "effortCost": 5200,
+      "roiMultiple": 69.4
+    },
+    "targetValue": 361000,
+    "effortCost": 5200,
+    "roiMultiple": 69.4,
+    "keyResults": [
+      {
+        "id": "KR-004",
+        "title": "AionUI Cron Worker claims queued stories in < 15s",
+        "metric": "pickup_speed",
+        "target": 100,
+        "current": 100,
+        "unit": "%",
+        "owner": "AI Platform Lead"
+      },
+      {
+        "id": "KR-005",
+        "title": "100% zero-modal background dispatches on Doing transition",
+        "metric": "automation_rate",
+        "target": 100,
+        "current": 100,
+        "unit": "%",
+        "owner": "Product Engineer"
+      }
+    ],
+    "createdAt": "2026-08-16T10:00:00Z",
+    "updatedAt": "2026-08-17T15:00:00Z"
+  },
+  {
+    "id": "OBJ-003",
+    "title": "Persona-Driven Journey Builder & Value Matrix Ranking",
+    "description": "Visual persona journey mapping with 5-dimension dollar normalized scoring and real-time ROI ranking leaderboard.",
+    "quarter": "Q3 2026",
+    "owner": "UX Designer",
+    "progress": 90,
+    "dimensions": {
+      "strategicAlignment": {
+        "value": 30000,
+        "logic": "Standardize product management financial modeling for executive teams"
+      },
+      "newRevenueImpact": {
+        "value": 45000,
+        "logic": "Attract 15 PM team seats @ $250/mo = $45,000/yr"
+      },
+      "renewalRevenueImpact": {
+        "value": 30000,
+        "logic": "Deep workflow integration with executive financial reporting keeps retention at 95%"
+      },
+      "improveCustomerExperience": {
+        "value": 50000,
+        "logic": "Clear ROI proofs and dollar calculators help writers define business justification in 2 min"
+      },
+      "lowersCost": {
+        "value": 36000,
+        "logic": "60 analyst hours/mo saved in ROI modeling and portfolio prioritization @ $50/hr = $36,000/yr"
+      },
+      "totalValue": 191000,
+      "effortCost": 3600,
+      "roiMultiple": 53.1
+    },
+    "targetValue": 191000,
+    "effortCost": 3600,
+    "roiMultiple": 53.1,
+    "keyResults": [
+      {
+        "id": "KR-006",
+        "title": "5-dimension financial ranking matrix available on all OKRs",
+        "metric": "feature_completion",
+        "target": 100,
+        "current": 100,
+        "unit": "%",
+        "owner": "UX Designer"
+      },
+      {
+        "id": "KR-007",
+        "title": "Interactive dollar value calculator wizard for story writers",
+        "metric": "tooling",
+        "target": 100,
+        "current": 100,
+        "unit": "%",
+        "owner": "Frontend Engineer"
+      }
+    ],
+    "createdAt": "2026-08-16T14:00:00Z",
+    "updatedAt": "2026-08-17T15:00:00Z"
   }
 ]
