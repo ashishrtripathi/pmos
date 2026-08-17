@@ -83,6 +83,9 @@ export interface KeyResult {
   unit: string;
   owner: string;
   targetValueUSD?: number;
+  dimensions?: ValueDimensions;
+  effortCost?: number;
+  roiMultiple?: number;
 }
 
 export interface Story {
