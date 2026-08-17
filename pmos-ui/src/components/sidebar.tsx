@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "./global-search";
+import { ThemeToggle } from "./theme-toggle";
 
 const navItems = [
   { href: "", icon: LayoutDashboard, label: "Dashboard" },
@@ -97,6 +98,11 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Theme Toggle */}
+      <div className="px-3 py-2 border-t border-border">
+        <ThemeToggle />
+      </div>
 
       {/* Footer */}
       <div className="p-3 border-t border-border">

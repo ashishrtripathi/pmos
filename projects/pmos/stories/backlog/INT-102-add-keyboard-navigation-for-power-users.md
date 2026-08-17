@@ -2,7 +2,7 @@
 id: INT-102
 title: "Add Keyboard Navigation for Power Users"
 points: 5
-status: review
+status: backlog
 assigned-agent: ux-designer
 estimated-value: 25000
 category: UX/Product
