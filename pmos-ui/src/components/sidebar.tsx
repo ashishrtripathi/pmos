@@ -74,7 +74,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-0.5">
         {navItems.map((item) => {
-          const href = `/projects/${slug}${item.href ? `/${item.href}` : ""}`;
+          const href = item.href ? `/projects/${slug}${item.href}` : `/projects/${slug}`;
           const isActive =
             item.href === ""
               ? pathname === `/projects/${slug}` || pathname === `/projects/${slug}/`

@@ -16,13 +16,39 @@ import type {
 import { db, readDoc, writeDoc, readItems, writeItems, deleteDoc } from "./postbase";
 import { dispatchStoryToAionUi } from "./aionui-bridge";
 
-const PMOS_HOME = path.join(
-  process.env.HOME || process.env.USERPROFILE || "",
-  ".pmos"
-);
+function getPmosHome(): string {
+  if (process.env.PMOS_HOME && fs.existsSync(process.env.PMOS_HOME)) {
+    return process.env.PMOS_HOME;
+  }
+  const homePmos = path.join(
+    process.env.HOME || process.env.USERPROFILE || "",
+    ".pmos"
+  );
+  if (
+    fs.existsSync(path.join(homePmos, "projects")) ||
+    fs.existsSync(path.join(homePmos, "registry.json"))
+  ) {
+    return homePmos;
+  }
+  const cwd = process.cwd();
+  if (
+    fs.existsSync(path.join(cwd, "projects")) ||
+    fs.existsSync(path.join(cwd, "registry.json"))
+  ) {
+    return cwd;
+  }
+  const parent = path.resolve(cwd, "..");
+  if (
+    fs.existsSync(path.join(parent, "projects")) ||
+    fs.existsSync(path.join(parent, "registry.json"))
+  ) {
+    return parent;
+  }
+  return homePmos;
+}
 
 function pmosPath(...segments: string[]) {
-  return path.join(PMOS_HOME, ...segments);
+  return path.join(getPmosHome(), ...segments);
 }
 
 function readFileSafe(filePath: string): string | null {
