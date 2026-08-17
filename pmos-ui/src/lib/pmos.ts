@@ -708,11 +708,8 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
   const from = story.status;
   story.status = to;
 
-  // If moving to in-progress (Doing), auto-assign agent persona, initialize harness tracking, and auto-dispatch to AionUi
+  // When moving to in-progress (Doing), set to "waiting" status for the Product Manager to trigger execution
   if (to === "in-progress") {
-    if (!story.startedAt) {
-      story.startedAt = new Date().toISOString();
-    }
     let agentId = story.assignedAgent;
     if (!agentId) {
       if (story.category === "UX/Product" || story.persona) agentId = "ux-designer";
@@ -722,19 +719,14 @@ export async function updateStoryStatus(slug: string, storyId: string, to: Story
       story.assignedAgent = agentId;
     }
     story.agentWork = {
-      status: "queued",
+      status: "waiting",
       assignedAgent: agentId,
-      startedAt: story.startedAt,
-      notes: `Queued for ${agentId} in AionUi. Task: PMOS: implement story ${story.id} for ${slug}`,
+      notes: `Placed in Doing by Product Manager. Waiting for execution trigger.`,
     };
+  }
 
-    // Auto-dispatch directly to AionUi
-    try {
-      const sourceLoc = await getSourceLocation(slug);
-      await dispatchStoryToAionUi(slug, story, sourceLoc?.localPath);
-    } catch (err) {
-      console.warn("Auto-dispatch to AionUi warning:", err);
-    }
+  if (to === "backlog" && story.agentWork) {
+    story.agentWork.status = "waiting";
   }
 
   if (to === "done" && !story.completedAt) {
@@ -770,6 +762,7 @@ export async function updateStory(
 /**
  * Executes pending stories in the test harness directly on user trigger.
  * Automatically dispatches stories directly into AionUi agent queue and SQLite database.
+ * Only targets stories in the Doing column (in-progress) that are waiting for execution.
  */
 export async function executeStoriesInHarness(
   slug: string,
@@ -781,15 +774,16 @@ export async function executeStoriesInHarness(
   const logs: string[] = [];
   const dispatchCommands: string[] = [];
 
+  // If specific IDs provided, execute those; otherwise target ONLY stories in Doing (in-progress)
   const targets = storyIds && storyIds.length > 0
     ? stories.filter((s) => storyIds.includes(s.id))
-    : stories.filter((s) => s.status === "backlog" || s.status === "in-progress");
+    : stories.filter((s) => s.status === "in-progress" && (!s.agentWork || s.agentWork.status === "waiting" || s.agentWork.status === "queued"));
 
   if (targets.length === 0) {
     return {
       executedCount: 0,
       stories,
-      logs: ["No pending stories in backlog or in-progress to execute."],
+      logs: ["No stories waiting for execution in Doing column."],
       dispatchCommands: [],
     };
   }

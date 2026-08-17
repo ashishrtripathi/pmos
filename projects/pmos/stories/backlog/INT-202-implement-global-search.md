@@ -2,7 +2,7 @@
 id: INT-202
 title: "Implement: Global Search"
 points: 8
-status: in-progress
+status: backlog
 assigned-agent: software-engineer
 estimated-value: 40000
 category: Missing Feature

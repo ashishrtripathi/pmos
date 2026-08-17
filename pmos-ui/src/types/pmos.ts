@@ -130,7 +130,7 @@ export interface Story {
    * Background agent-work tracking.
    */
   agentWork?: {
-    status: "queued" | "working" | "done";
+    status: "waiting" | "queued" | "working" | "done";
     assignedAgent?: string;
     assignedAt?: string;
     startedAt?: string;

@@ -2,7 +2,7 @@
 id: INT-106
 title: "Add Pagination for Story Lists"
 points: 5
-status: in-progress
+status: backlog
 assigned-agent: software-engineer
 estimated-value: 15000
 category: Technical

@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   ChevronRight,
   RotateCcw,
+  RefreshCw,
   Copy,
   Check,
   Sparkles,
@@ -89,7 +90,7 @@ interface KanbanStory {
   journeyStep?: string;
   assignedAgent?: string;
   agentWork?: {
-    status: "queued" | "working" | "done";
+    status: "waiting" | "queued" | "working" | "done";
     assignedAgent?: string;
     assignedAt?: string;
     startedAt?: string;
@@ -383,29 +384,48 @@ ${criteriaText}`;
         </div>
       </div>
 
-      {/* Auto-Dispatched to AionUi status for In-Progress stories */}
+      {/* Execution Status for In-Progress stories */}
       {story.status === "in-progress" && (
-        <div className="mt-2.5 pt-2 border-t border-violet-100 dark:border-violet-950/50 flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1.5 text-[9px] text-violet-700 dark:text-violet-300 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Auto-Sent to AionUi</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleDirectDispatch}
-            disabled={dispatching}
-            className="px-2 py-0.5 rounded bg-violet-100 hover:bg-violet-200 text-violet-800 text-[9px] font-bold flex items-center gap-1 transition-all shadow-2xs"
-            title="Re-send task directly to AionUi agent queue"
-          >
-            {dispatching ? (
-              <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            ) : dispatchedSuccess ? (
-              <Check className="w-2.5 h-2.5 text-emerald-600" />
-            ) : (
-              <Zap className="w-2.5 h-2.5 fill-violet-600" />
-            )}
-            <span>{dispatchedSuccess ? "Dispatched!" : "Sync AionUi"}</span>
-          </button>
+        <div className="mt-2.5 pt-2 border-t border-border/80">
+          {!story.agentWork || story.agentWork.status === "waiting" ? (
+            <div className="flex items-center justify-between gap-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50">
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-800 dark:text-amber-300 font-bold">
+                <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
+                <span>⏳ Waiting for Execution</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDirectDispatch}
+                disabled={dispatching}
+                className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-2xs shrink-0"
+                title="Start execution for this story"
+              >
+                {dispatching ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Play className="w-2.5 h-2.5 fill-white" />
+                )}
+                <span>{dispatching ? "Starting..." : "Start"}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-1.5 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
+              <div className="flex items-center gap-1.5 text-[10px] text-emerald-800 dark:text-emerald-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                <span className="truncate">⚡ Executing in AionUi ({agentBadge?.name || story.assignedAgent || "Agent"})</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDirectDispatch}
+                disabled={dispatching}
+                className="px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[9px] font-bold flex items-center gap-1 transition-all shadow-2xs shrink-0"
+                title="Sync task status with AionUi"
+              >
+                <RefreshCw className={`w-2.5 h-2.5 ${dispatching ? "animate-spin" : ""}`} />
+                <span>Sync</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -589,18 +609,32 @@ export function KanbanBoard({
     totalIntel,
   } = totals;
 
-  const handleStartExecution = async () => {
+  const waitingDoingStories = useMemo(
+    () =>
+      stories.filter(
+        (s) => s.status === "in-progress" && (!s.agentWork || s.agentWork.status === "waiting")
+      ),
+    [stories]
+  );
+
+  const handleStartExecution = async (targetStoryIds?: string[]) => {
     setExecuting(true);
     try {
+      const ids =
+        targetStoryIds && targetStoryIds.length > 0
+          ? targetStoryIds
+          : waitingDoingStories.map((s) => s.id);
+
       const res = await fetch(`/api/projects/${slug}/stories/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyIds: ids.length > 0 ? ids : undefined }),
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.stories)) {
         setStories(data.stories);
         setPickupNotice(
-          `⚡ Automatically dispatched ${data.executedCount} stories directly to PMOS Agents in AionUi!`
+          `⚡ Successfully triggered execution for ${data.executedCount} stories in AionUi!`
         );
         setTimeout(() => setPickupNotice(null), 7000);
       }
@@ -876,20 +910,26 @@ export function KanbanBoard({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleStartExecution}
-            disabled={executing}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
-            title="Dispatch pending stories to PMOS Agents in Doing column"
+            onClick={() => handleStartExecution()}
+            disabled={executing || waitingDoingStories.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+              waitingDoingStories.length > 0
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+            }`}
+            title="Execute stories waiting in Doing column"
           >
             {executing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Dispatching Agents...</span>
+                <span>Dispatching to AionUi...</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4 fill-white" />
-                <span>Start Story Execution</span>
+                <Play className="w-4 h-4 fill-current" />
+                <span>
+                  Start Execution {waitingDoingStories.length > 0 ? `(${waitingDoingStories.length} Waiting)` : ""}
+                </span>
               </>
             )}
           </button>
@@ -909,12 +949,12 @@ export function KanbanBoard({
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 shrink-0" />
           <span>
-            <strong>PMOS Agent Execution Flow</strong>: Move stories to <strong>Doing</strong> or hit <strong>Start Story Execution</strong>. Stories in Doing receive assigned agent personas and one-click <strong>Copy AionUi Command</strong> buttons.
+            <strong>PMOS Execution Workflow</strong>: Move chosen stories from <strong>Backlog</strong> to <strong>Doing</strong> (marked <strong>⏳ Waiting for Execution</strong>). When ready, press <strong>Start Execution</strong> to send tasks to AionUi AI agents.
           </span>
         </div>
         <div className="font-mono text-blue-600 font-semibold flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-          AionUi Dispatch Ready
+          {waitingDoingStories.length > 0 ? `${waitingDoingStories.length} Staged in Doing` : "AionUi Ready"}
         </div>
       </div>
 
@@ -953,6 +993,23 @@ export function KanbanBoard({
                     <span>&middot;</span>
                     <span>{formatCost(col.stories.reduce((acc, s) => acc + estimateTokenCost(s, pricing).totalCost, 0))}</span>
                   </div>
+
+                  {/* Doing Column Quick Start Execution Button */}
+                  {col.id === "in-progress" && waitingDoingStories.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleStartExecution(waitingDoingStories.map((s) => s.id))}
+                      disabled={executing}
+                      className="mt-2.5 w-full py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      {executing ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-white" />
+                      )}
+                      <span>Start Execution ({waitingDoingStories.length} Waiting)</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Story List Droppable Zone */}
