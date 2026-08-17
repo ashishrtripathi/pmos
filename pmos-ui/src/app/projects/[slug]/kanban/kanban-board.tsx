@@ -25,7 +25,11 @@ import {
   Sparkles,
   Terminal,
   X,
+  Search,
+  Keyboard,
+  HelpCircle,
 } from "lucide-react";
+import { CostBar } from "@/components/cost-bar";
 import {
   DndContext,
   DragOverlay,
@@ -120,12 +124,14 @@ function KanbanStoryCard({
   story,
   pricing,
   slug,
+  isFocused,
   onClick,
   onMoveStatus,
 }: {
   story: KanbanStory;
   pricing: PricingParams;
   slug?: string;
+  isFocused?: boolean;
   onClick: () => void;
   onMoveStatus?: (storyId: string, newStatus: string) => void;
 }) {
@@ -149,12 +155,8 @@ function KanbanStoryCard({
   };
 
   const hours = story.estimatedHours ?? (story.points ? story.points * (pricing.hoursPerPoint || 0.5) : 1);
-  const cost = estimateTokenCost(story, pricing);
-  const storyVal = story.dimensions?.totalValue || story.estimatedValue || 0;
-  const roi = calculateROI(storyVal, story, pricing);
   const isIntelligence = story.source === "intelligence";
   const agentBadge = getAgentBadge(story.assignedAgent);
-  const tokens = story.tokensUsed ?? story.estimatedTokens ?? cost.inputTokens + cost.outputTokens;
 
   const handleDirectDispatch = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -186,10 +188,12 @@ function KanbanStoryCard({
 
     const fullPrompt = `PMOS: implement story ${story.id} for ${slug || "pmos"}
 
-Project: ${slug || "pmos"}
-Story: ${story.title}
+Target Project: ${slug || "pmos"}
+Codebase Location: C:\\Users\\ashis\\.pmos
+Story ID: ${story.id}
+Title: ${story.title}
 Assigned Persona: ${agentBadge?.name || story.assignedAgent || "Software Engineer"}
-Target User: ${story.persona || "User"}
+Target Persona: ${story.persona || "User"}
 Estimated Labor: ${hours}h
 
 Acceptance Criteria:
@@ -206,6 +210,8 @@ ${criteriaText}`;
       style={style}
       className={`p-3 rounded-xl border bg-background shadow-xs hover:shadow-md hover:border-primary/40 transition-all group select-none ${
         isIntelligence ? "border-l-[3px] border-l-amber-400" : "border-border"
+      } ${
+        isFocused ? "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary shadow-md scale-[1.01]" : ""
       }`}
     >
       <div className="flex items-start gap-2">
@@ -308,39 +314,9 @@ ${criteriaText}`;
             </div>
           )}
 
-          {/* Cost + Tokens + ROI */}
-          <div className="mt-1.5 pt-1.5 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <div className="flex items-center gap-0.5" title={`${hours}h labor + ${formatTokens(tokens)} tokens`}>
-                  <Zap className="w-2 h-2 text-violet-500" />
-                  <span className="text-[9px] font-mono text-violet-600 font-semibold">
-                    {formatCost(cost.totalCost)}
-                  </span>
-                  <span className="text-[8px] text-muted-foreground font-mono">
-                    ({formatTokens(tokens)} tok)
-                  </span>
-                </div>
-                {roi.estimatedValue > 0 && (
-                  <>
-                    <span className="text-[8px] text-muted-foreground">→</span>
-                    <div className="flex items-center gap-0.5">
-                      <TrendingUp className="w-2 h-2 text-emerald-500" />
-                      <span className="text-[9px] font-mono text-emerald-600">
-                        {formatDollars(roi.estimatedValue)}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-              {roi.estimatedValue > 0 && (
-                <span
-                  className={`text-[8px] px-1 py-0 rounded font-bold border ${getVerdictColor(roi.verdict)}`}
-                >
-                  {roi.roiMultiple}
-                </span>
-              )}
-            </div>
+          {/* Shared CostBar Component */}
+          <div className="mt-2 pt-1.5 border-t border-border/40">
+            <CostBar story={story} pricing={pricing} variant="compact" />
           </div>
         </div>
       </div>
@@ -572,17 +548,52 @@ export function KanbanBoard({
     });
   }, [intelStories]);
 
-  // Recalculate columns
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [focusedStoryId, setFocusedStoryId] = useState<string | null>(null);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Available categories for filtering
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    stories.forEach((s) => {
+      if (s.category) set.add(s.category);
+    });
+    return ["All", ...Array.from(set)];
+  }, [stories]);
+
+  // Filtered stories based on search query and category
+  const filteredStories = useMemo(() => {
+    return stories.filter((story) => {
+      if (selectedCategory !== "All" && story.category !== selectedCategory) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = story.title.toLowerCase().includes(q);
+        const matchId = story.id.toLowerCase().includes(q);
+        const matchDesc = (story.description || "").toLowerCase().includes(q);
+        const matchPersona = (story.persona || "").toLowerCase().includes(q);
+        const matchAgent = (story.assignedAgent || "").toLowerCase().includes(q);
+        const matchObjective = (story.objectiveId || "").toLowerCase().includes(q);
+        if (!matchTitle && !matchId && !matchDesc && !matchPersona && !matchAgent && !matchObjective) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [stories, searchQuery, selectedCategory]);
+
+  // Recalculate columns with filtered stories
   const columns = useMemo(() =>
     STATUS_COLUMNS.map((col) => {
-      const colStories = stories.filter((s) => s.status === col.id);
+      const colStories = filteredStories.filter((s) => s.status === col.id);
       const totalHours = colStories.reduce(
         (sum, s) => sum + (s.estimatedHours || (s.points ? s.points * (pricing.hoursPerPoint || 0.5) : 1)),
         0
       );
       return { ...col, stories: colStories, totalHours };
     }),
-    [stories, pricing]
+    [filteredStories, pricing]
   );
 
   const totals = useMemo(() => {
@@ -620,6 +631,63 @@ export function KanbanBoard({
       ),
     [stories]
   );
+
+  // Global Keyboard Navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
+        if (e.key === "Escape") {
+          (e.target as HTMLElement).blur();
+        }
+        return;
+      }
+
+      if (e.key === "/" || (e.ctrlKey && e.key === "k")) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+
+      if (e.key === "?") {
+        setShowShortcutsHelp((prev) => !prev);
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (showShortcutsHelp) setShowShortcutsHelp(false);
+        else if (detailStory) setDetailStory(null);
+        else if (focusedStoryId) setFocusedStoryId(null);
+        return;
+      }
+
+      const visibleStories = columns.flatMap((c) => c.stories);
+      if (visibleStories.length === 0) return;
+
+      const currentIndex = visibleStories.findIndex((s) => s.id === focusedStoryId);
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextIdx = currentIndex < visibleStories.length - 1 ? currentIndex + 1 : 0;
+        setFocusedStoryId(visibleStories[nextIdx].id);
+      } else if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const prevIdx = currentIndex > 0 ? currentIndex - 1 : visibleStories.length - 1;
+        setFocusedStoryId(visibleStories[prevIdx].id);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const target = visibleStories.find((s) => s.id === focusedStoryId);
+        if (target) setDetailStory(target);
+      } else if (e.key === "s") {
+        e.preventDefault();
+        if (waitingDoingStories.length > 0) {
+          handleStartExecution();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [columns, focusedStoryId, detailStory, showShortcutsHelp, waitingDoingStories]);
 
   const handleStartExecution = async (targetStoryIds?: string[]) => {
     setExecuting(true);
@@ -977,6 +1045,69 @@ export function KanbanBoard({
         </div>
       </div>
 
+      {/* Global Search & Filter Toolbar + Keyboard Navigation Helper */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-card border border-border shadow-2xs">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-1">
+          {/* Global Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search stories, personas, IDs, acceptance criteria... (Press '/' or Ctrl+K)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter Chips */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shadow-2xs ${
+                  selectedCategory === cat
+                    ? "bg-primary text-primary-foreground font-bold"
+                    : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Keyboard Shortcuts Button & Indicator */}
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setShowShortcutsHelp(true)}
+            className="px-2.5 py-1.5 rounded-xl border border-border hover:bg-muted text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-semibold transition-colors shadow-2xs"
+            title="Keyboard Shortcuts Cheat Sheet"
+          >
+            <Keyboard className="w-3.5 h-3.5 text-primary" />
+            <span>Shortcuts</span>
+            <kbd className="px-1.5 py-0.2 rounded bg-muted text-[10px] font-mono border border-border">?</kbd>
+          </button>
+
+          <span className="text-muted-foreground text-xs">
+            Showing <strong>{filteredStories.length}</strong> of {stories.length} stories
+          </span>
+        </div>
+      </div>
+
       {/* Kanban Grid — Status Columns */}
       <DndContext
         sensors={sensors}
@@ -1051,6 +1182,7 @@ export function KanbanBoard({
                         story={story}
                         pricing={pricing}
                         slug={slug}
+                        isFocused={focusedStoryId === story.id}
                         onClick={() => {
                           if (suppressClickRef.current) return;
                           setDetailStory(story);
@@ -1110,6 +1242,86 @@ export function KanbanBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Keyboard Shortcuts Help Modal */}
+      {showShortcutsHelp && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowShortcutsHelp(false)}
+        >
+          <div
+            className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-6 space-y-4 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Keyboard className="w-5 h-5 text-primary" />
+                <h3 className="text-base font-bold text-foreground">Keyboard Navigation Shortcuts</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShortcutsHelp(false)}
+                className="p-1 rounded-lg text-muted-foreground hover:bg-muted"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Navigate to Next Story</span>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">j</kbd>
+                  <span>or</span>
+                  <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">↓</kbd>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Navigate to Previous Story</span>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">k</kbd>
+                  <span>or</span>
+                  <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">↑</kbd>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Open Selected Story Details</span>
+                <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">Enter</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Focus Global Search</span>
+                <div className="flex items-center gap-1">
+                  <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">/</kbd>
+                  <span>or</span>
+                  <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">Ctrl + K</kbd>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Trigger Start Execution</span>
+                <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">s</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Close Modal / Clear Focus</span>
+                <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">Esc</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                <span className="font-semibold">Toggle This Cheat Sheet</span>
+                <kbd className="px-2 py-1 rounded bg-card border border-border font-mono font-bold">?</kbd>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-border flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowShortcutsHelp(false)}
+                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Story Detail Modal */}
       {detailStory && (
