@@ -1,7 +1,8 @@
 # Customer Journey — Priya (Senior Product Manager)
 
 **Persona**: Senior Product Manager, 35, Expert
-**Quote**: "I need to see the whole picture -- journey, stories, priorities -- without switching between 5 tools."
+**Quote**: "I need to see the whole picture — journey, stories, priorities — without switching between 5 tools."
+**Image**: https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80
 
 ---
 

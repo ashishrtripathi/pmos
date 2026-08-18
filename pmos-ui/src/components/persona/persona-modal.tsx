@@ -297,7 +297,7 @@ export function PersonaModal({
 
             {/* Avatar Selector UI */}
             {avatarTab === "preset" && (
-              <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-10 gap-2.5">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-12 gap-2.5">
                 {PRESET_PERSONA_AVATARS.map((av) => {
                   const isSelected = selectedAvatarId === av.id;
                   return (
@@ -314,7 +314,7 @@ export function PersonaModal({
                           ? "border-rose-600 ring-2 ring-rose-600/30 scale-105"
                           : "border-border hover:border-primary/50 opacity-80 hover:opacity-100"
                       }`}
-                      title={`${av.name} (${av.suggestedRole})`}
+                      title={`${av.name} (${av.gender === "female" ? "Woman" : "Man"}, ${av.ethnicity}) — ${av.suggestedRole}`}
                     >
                       <img src={av.url} alt={av.name} className="w-full h-full object-cover" />
                       {isSelected && (

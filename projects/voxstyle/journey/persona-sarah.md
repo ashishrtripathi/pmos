@@ -4,6 +4,7 @@
 
 **Persona**: Social Media Content Creator, 28, Intermediate
 **Quote**: "I just want to describe my idea and have a great video ready in minutes."
+**Image**: https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80
 
 ---
 

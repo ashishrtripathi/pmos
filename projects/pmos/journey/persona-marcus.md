@@ -1,7 +1,8 @@
-# Customer Journey — Dev (Full-Stack Developer)
+# Customer Journey — Marcus (Full-Stack Lead & Architect)
 
-**Persona**: Full-Stack Developer / Technical Lead, 32, Expert
-**Quote**: "I want to add features to PMOS without fighting the architecture. The file-based design should make this easy."
+**Persona**: Full-Stack Lead & Architect, 32, Expert
+**Quote**: "I want to add features to PMOS without fighting the architecture. The file-based design makes building and reviewing seamless."
+**Image**: https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80
 
 ---
 

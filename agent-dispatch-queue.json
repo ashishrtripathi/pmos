@@ -1,5 +1,18 @@
 [
   {
+    "taskId": "pmos-pmos-INT-102-1787075798642",
+    "slug": "pmos",
+    "storyId": "INT-102",
+    "title": "Add Keyboard Navigation for Power Users",
+    "agentId": "ux-designer",
+    "assistantId": "custom-1786033361044-3b45",
+    "assistantName": "PMOS UX Designer",
+    "command": "PMOS: implement story INT-102 for pmos",
+    "prompt": "PMOS: implement story INT-102 for pmos\n\nTarget Project: pmos\nCodebase Location: C:\\Users\\ashis\\.pmos\nStory ID: INT-102\nTitle: Add Keyboard Navigation for Power Users\nAssigned Persona: PMOS UX Designer (ux-designer)\nTarget Persona: Dev\nEstimated Labor: 1.75h\n\nAcceptance Criteria:\n- Scenario: Keyboard navigation shortcuts\n  Given: I am viewing the Kanban board\n  When: I press 'j' or 'k'\n  Then: focus moves smoothly between story cards with visual highlighting, and pressing 'Enter' opens story details",
+    "dispatchedAt": "2026-08-18T17:56:38.645Z",
+    "status": "in-progress"
+  },
+  {
     "taskId": "pmos-pmos-STORY-001-1786999458327",
     "slug": "pmos",
     "storyId": "STORY-001",
@@ -10,19 +23,6 @@
     "command": "PMOS: implement story STORY-001 for pmos",
     "prompt": "PMOS: implement story STORY-001 for pmos\n\nTarget Project: pmos\nCodebase Location: C:\\Users\\ashis\\.pmos\nStory ID: STORY-001\nTitle: Add dark mode support\nAssigned Persona: PMOS Software Engineer (software-engineer)\nTarget Persona: User\nEstimated Labor: 1.0499999999999998h\n\nAcceptance Criteria:\n- Scenario: To be defined\n  Given: TBD\n  When: TBD\n  Then: TBD",
     "dispatchedAt": "2026-08-17T20:44:18.330Z",
-    "status": "in-progress"
-  },
-  {
-    "taskId": "pmos-pmos-INT-102-1786992924748",
-    "slug": "pmos",
-    "storyId": "INT-102",
-    "title": "Add Keyboard Navigation for Power Users",
-    "agentId": "ux-designer",
-    "assistantId": "custom-1786033361044-3b45",
-    "assistantName": "PMOS UX Designer",
-    "command": "PMOS: implement story INT-102 for pmos",
-    "prompt": "PMOS: implement story INT-102 for pmos\n\nTarget Project: pmos\nCodebase Location: C:\\Users\\ashis\\.pmos\nStory ID: INT-102\nTitle: Add Keyboard Navigation for Power Users\nAssigned Persona: PMOS UX Designer (ux-designer)\nTarget Persona: Dev\nEstimated Labor: 1.75h\n\nAcceptance Criteria:\n- Scenario: Add Keyboard Navigation for Power Users\n  Given: I am using the application as Dev\n  When: I interact with this part of the product\n  Then: my experience is measurably improved through reduced friction, better usability, or added capability",
-    "dispatchedAt": "2026-08-17T18:55:24.750Z",
     "status": "in-progress"
   },
   {
