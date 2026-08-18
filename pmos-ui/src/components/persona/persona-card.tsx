@@ -110,9 +110,30 @@ export function PersonaCard({ persona, onEdit, onDelete, isCompact = false }: Pe
             {/* Gradient Overlay for text legibility */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
-            {/* Persona watermark badge (P emblem) */}
-            <div className="absolute top-4 right-4 w-9 h-9 rounded-lg bg-rose-600 flex items-center justify-center text-white font-black text-lg shadow-md">
-              P
+            {/* Persona watermark badge (P / AI / SYS emblem) */}
+            <div
+              className={`absolute top-4 right-4 w-9 h-9 rounded-lg flex items-center justify-center text-white font-black text-lg shadow-md ${
+                persona.personaId?.includes("agent") || persona.personaId?.includes("bot") || persona.personaId?.includes("robot") || persona.role?.toLowerCase().includes("agent") || persona.role?.toLowerCase().includes("ai")
+                  ? "bg-indigo-600"
+                  : persona.personaId?.includes("system") || persona.personaId?.includes("service") || persona.personaId?.includes("cron") || persona.personaId?.includes("pipeline") || persona.role?.toLowerCase().includes("system") || persona.role?.toLowerCase().includes("service")
+                  ? "bg-emerald-600"
+                  : "bg-rose-600"
+              }`}
+              title={
+                persona.personaId?.includes("agent") || persona.role?.toLowerCase().includes("agent")
+                  ? "AI Agent Persona"
+                  : persona.personaId?.includes("system") || persona.role?.toLowerCase().includes("system")
+                  ? "System Service Persona"
+                  : "User Persona"
+              }
+            >
+              {persona.personaId?.includes("agent") || persona.personaId?.includes("bot") || persona.personaId?.includes("robot") || persona.role?.toLowerCase().includes("agent") || persona.role?.toLowerCase().includes("ai") ? (
+                <Sparkles className="w-5 h-5" />
+              ) : persona.personaId?.includes("system") || persona.personaId?.includes("service") || persona.personaId?.includes("cron") || persona.personaId?.includes("pipeline") || persona.role?.toLowerCase().includes("system") || persona.role?.toLowerCase().includes("service") ? (
+                <span className="text-xs font-black">SYS</span>
+              ) : (
+                "P"
+              )}
             </div>
 
             {/* Text Overlay */}

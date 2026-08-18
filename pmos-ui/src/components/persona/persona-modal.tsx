@@ -297,9 +297,15 @@ export function PersonaModal({
 
             {/* Avatar Selector UI */}
             {avatarTab === "preset" && (
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-12 gap-2.5">
+              <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-7 lg:grid-cols-14 gap-2.5">
                 {PRESET_PERSONA_AVATARS.map((av) => {
                   const isSelected = selectedAvatarId === av.id;
+                  const label =
+                    av.personaType === "agent"
+                      ? "🤖 AI Agent"
+                      : av.personaType === "system"
+                      ? "⚙️ System Service"
+                      : `${av.gender === "female" ? "Woman" : "Man"} (${av.ethnicity})`;
                   return (
                     <button
                       key={av.id}
@@ -312,16 +318,26 @@ export function PersonaModal({
                       className={`group relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
                         isSelected
                           ? "border-rose-600 ring-2 ring-rose-600/30 scale-105"
-                          : "border-border hover:border-primary/50 opacity-80 hover:opacity-100"
-                      }`}
-                      title={`${av.name} (${av.gender === "female" ? "Woman" : "Man"}, ${av.ethnicity}) — ${av.suggestedRole}`}
+                          : "border-border hover:border-primary/50 opacity-85 hover:opacity-100"
+                      } ${av.personaType !== "human" ? "bg-slate-950 p-1" : ""}`}
+                      title={`${av.name} [${label}] — ${av.suggestedRole}`}
                     >
-                      <img src={av.url} alt={av.name} className="w-full h-full object-cover" />
+                      <img src={av.url} alt={av.name} className="w-full h-full object-cover rounded-lg" />
                       {isSelected && (
                         <div className="absolute inset-0 bg-rose-600/20 flex items-center justify-center">
-                          <div className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-md">
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
                           </div>
+                        </div>
+                      )}
+                      {av.personaType === "agent" && (
+                        <div className="absolute bottom-0.5 right-0.5 px-1 py-0.2 bg-indigo-600 text-[9px] font-bold text-white rounded shadow">
+                          AI
+                        </div>
+                      )}
+                      {av.personaType === "system" && (
+                        <div className="absolute bottom-0.5 right-0.5 px-1 py-0.2 bg-emerald-600 text-[9px] font-bold text-white rounded shadow">
+                          SYS
                         </div>
                       )}
                     </button>

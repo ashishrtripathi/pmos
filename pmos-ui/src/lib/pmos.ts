@@ -1452,6 +1452,15 @@ export interface PersonaJourney {
 }
 
 const DEFAULT_AVATARS: Record<string, string> = {
+  robot: "/avatars/robot-agent.svg",
+  agent: "/avatars/robot-agent.svg",
+  bot: "/avatars/robot-agent.svg",
+  coder: "/avatars/robot-agent.svg",
+  system: "/avatars/system-service.svg",
+  service: "/avatars/system-service.svg",
+  cron: "/avatars/system-service.svg",
+  pipeline: "/avatars/system-service.svg",
+  engine: "/avatars/system-service.svg",
   priya: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80",
   sarah: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80",
   amara: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&auto=format&fit=crop&q=80",
@@ -1461,7 +1470,6 @@ const DEFAULT_AVATARS: Record<string, string> = {
   marcus: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80",
   dev: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80",
   tariq: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&auto=format&fit=crop&q=80",
-  agent: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&auto=format&fit=crop&q=80",
   david: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80",
   kwame: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&auto=format&fit=crop&q=80",
   mateo: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=600&auto=format&fit=crop&q=80",
@@ -1474,7 +1482,7 @@ function resolvePersonaAvatar(name: string, id: string, customUrl?: string): str
   if (customUrl && (customUrl.startsWith("http") || customUrl.startsWith("data:") || customUrl.startsWith("/"))) {
     return customUrl;
   }
-  const key = id.toLowerCase();
+  const key = id.toLowerCase() + " " + name.toLowerCase();
   for (const [k, url] of Object.entries(DEFAULT_AVATARS)) {
     if (key.includes(k)) return url;
   }
