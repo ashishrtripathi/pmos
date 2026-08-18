@@ -3,8 +3,8 @@
 // Shared "Create User Story" modal used by both the Kanban board and the
 // User Story Map board. Persists via POST /api/projects/[slug]/stories.
 
-import { useState, useEffect } from "react";
-import { Target, Zap, Calculator, TrendingUp, Link as LinkIcon, DollarSign } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Target, Zap, Calculator, TrendingUp, Link as LinkIcon, DollarSign, UserCheck } from "lucide-react";
 import {
   estimateTokenCost,
   calculateROI,
@@ -16,6 +16,7 @@ import {
 import type { ValueDimensions } from "@/types/pmos";
 import { DollarCalculatorModal } from "@/components/dollar-calculator-modal";
 import { formatUSD, formatROI } from "@/lib/roi-calculator";
+import { PRESET_PERSONA_AVATARS } from "@/lib/persona-avatars";
 
 export interface CreateStoryInput {
   id: string;
@@ -85,6 +86,49 @@ export function StoryCreateModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Available Persona Roles for dropdown
+  const availableRoles = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...PRESET_PERSONA_AVATARS.map((a) => a.suggestedRole),
+        "Senior Product Manager",
+        "Full-Stack Lead & Architect",
+        "UX / UI Design Lead",
+        "AI Systems & DevOps Lead",
+        "QA & Reliability Engineer",
+        "Software Architect",
+        "Content Creator & Video Producer",
+        "Indie Motion Designer & Video Creator",
+        "Online Course Educator",
+        "Growth & Marketing Director",
+        "AI Autonomous Coder",
+        "Automated Pipeline & CI Engine",
+        "End User / Customer",
+        ...personas.filter(
+          (p) =>
+            p &&
+            ![
+              "Priya",
+              "Sarah",
+              "Dev",
+              "Marcus",
+              "Elena",
+              "Tariq",
+              "Amara",
+              "Mateo",
+              "Liam",
+              "David",
+              "Kwame",
+              "Mei",
+              "Clara",
+              "Agent",
+              "System",
+            ].includes(p)
+        ),
+      ])
+    );
+  }, [personas]);
+
   // Fetch available OKRs for linking
   useEffect(() => {
     fetch(`/api/projects/${slug}/okrs`)
@@ -115,7 +159,7 @@ export function StoryCreateModal({
       objectiveId: objectiveId || undefined,
       dimensions: dimensions || undefined,
       useCase: {
-        asA: asA.trim() || personaRole || persona || "product manager",
+        asA: asA.trim() || personaRole || "Product Manager",
         iWant: iWant.trim() || (description.trim() ? description.trim() : (title.trim().toLowerCase().startsWith("add ") || title.trim().toLowerCase().startsWith("implement ") || title.trim().toLowerCase().startsWith("fix ") ? title.trim().toLowerCase() : `have ${title.trim().toLowerCase()} available in the product`)),
         soThat: soThat.trim() || businessGoal.trim() || "I can accomplish my workflow efficiently and deliver customer value",
       },
@@ -134,7 +178,7 @@ export function StoryCreateModal({
             },
           ]
         : [],
-      persona: persona || undefined,
+      persona: persona || personaRole || undefined,
       personaRole: personaRole || undefined,
       journeyStep: stepName,
     };
@@ -148,19 +192,13 @@ export function StoryCreateModal({
         body: JSON.stringify({ story }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Failed to create story (${res.status})`);
+        throw new Error("Failed to save story");
       }
       const data = await res.json();
-      const created: CreateStoryInput = {
-        ...story,
-        // data is { id, filePath } from createStory
-        id: data.id || `STORY-${String(Math.floor(Math.random() * 900) + 100)}`,
-      };
-      onCreated(created);
+      onCreated(data.story || { ...story, id: data.id || "STORY-NEW" });
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create story");
+    } catch (err: any) {
+      setError(err.message || "Failed to create story");
       setSaving(false);
     }
   };
@@ -170,71 +208,82 @@ export function StoryCreateModal({
       className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 rounded-2xl bg-card border border-border shadow-2xl"
+      <div
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Create User Story</h2>
-            {stepName && (
-              <p className="text-xs text-muted-foreground">Step: {stepName}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-muted"
-          >
-            <span className="text-xl">&times;</span>
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Story Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Script Generation with Editable Scene Table"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              autoFocus
-            />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div>
+              <h2 className="text-lg font-semibold">Create User Story</h2>
+              {stepName && (
+                <p className="text-xs text-muted-foreground">Step: {stepName}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-muted"
+            >
+              <span className="text-xl">&times;</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Primary Persona
+                Story Title
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Script Generation with Editable Scene Table"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+              />
+            </div>
+
+            {/* Persona Role Dropdown (Replaces Name Dropdown & Separate Role Box) */}
+            <div>
+              <label className="text-sm font-medium mb-1 block flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-primary" />
+                  Persona Role
+                </span>
+                {personaRole && (
+                  <span className="text-[11px] font-normal text-muted-foreground">
+                    Auto-fills Use Case (&ldquo;As a {personaRole}&rdquo;)
+                  </span>
+                )}
               </label>
               <select
-                value={persona}
-                onChange={(e) => setPersona(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                value={personaRole}
+                onChange={(e) => {
+                  const selectedRole = e.target.value;
+                  setPersonaRole(selectedRole);
+                  const matchingPreset = PRESET_PERSONA_AVATARS.find(
+                    (a) => a.suggestedRole === selectedRole
+                  );
+                  if (matchingPreset) {
+                    setPersona(matchingPreset.name);
+                  } else {
+                    setPersona(selectedRole);
+                  }
+                  if (!asA || availableRoles.includes(asA)) {
+                    setAsA(selectedRole);
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="">Select persona...</option>
-                {personas.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                <option value="">Select persona role...</option>
+                {availableRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
                   </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Role</label>
-              <input
-                type="text"
-                value={personaRole}
-                onChange={(e) => setPersonaRole(e.target.value)}
-                placeholder="Content Creator"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
 
           <div className="p-3 rounded-lg border border-border bg-muted/30">
             <label className="text-sm font-medium mb-2 block">Use Case</label>
@@ -497,23 +546,24 @@ export function StoryCreateModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!title.trim() || saving}
-            className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? "Creating..." : "Create Story"}
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!title.trim() || saving}
+              className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {saving ? "Creating..." : "Create Story"}
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* Dollar Value Calculator Modal */}
       {showCalculator && (

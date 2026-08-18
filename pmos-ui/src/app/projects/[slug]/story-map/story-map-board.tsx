@@ -761,8 +761,8 @@ export function StoryMapBoard({
 
   const allPersonas = [
     ...new Set([
-      ...journeys.map((j) => j.personaName),
-      ...stories.map((s) => s.persona).filter(Boolean),
+      ...journeys.map((j) => j.role || j.personaName),
+      ...stories.map((s) => s.personaRole || s.persona).filter(Boolean),
     ]),
   ] as string[];
 

@@ -753,13 +753,13 @@ export function KanbanBoard({
   const allPersonas = [
     ...new Set([
       ...journeyPersonas,
-      ...stories.map((s) => s.persona).filter(Boolean),
+      ...stories.map((s) => s.personaRole || s.persona).filter(Boolean),
     ]),
   ] as string[];
   const personaOptions =
     allPersonas.length > 0
       ? allPersonas
-      : ["Product Manager", "Developer", "Designer"];
+      : ["Senior Product Manager", "Full-Stack Lead & Architect", "UX / UI Design Lead"];
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

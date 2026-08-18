@@ -13,7 +13,7 @@ export default async function KanbanPage({
 }) {
   const allStories = await getAllStories(params.slug);
   const personas = (await getPersonaJourneys(params.slug)).map(
-    (j) => j.personaName
+    (j) => j.role || j.personaName
   );
 
   return (
