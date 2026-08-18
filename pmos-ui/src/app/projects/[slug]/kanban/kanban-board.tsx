@@ -749,17 +749,8 @@ export function KanbanBoard({
     }
   };
 
-  // Persona options
-  const allPersonas = [
-    ...new Set([
-      ...journeyPersonas,
-      ...stories.map((s) => s.personaRole || s.persona).filter(Boolean),
-    ]),
-  ] as string[];
-  const personaOptions =
-    allPersonas.length > 0
-      ? allPersonas
-      : ["Senior Product Manager", "Full-Stack Lead & Architect", "UX / UI Design Lead"];
+  // Persona options strictly from customer journeys
+  const personaOptions = Array.from(new Set(journeyPersonas.filter(Boolean)));
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

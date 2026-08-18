@@ -85,49 +85,31 @@ export function StoryCreateModal({
   const [acThen, setAcThen] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [journeyPersonas, setJourneyPersonas] = useState<string[]>(personas);
 
-  // Available Persona Roles for dropdown
-  const availableRoles = useMemo(() => {
-    return Array.from(
-      new Set([
-        ...PRESET_PERSONA_AVATARS.map((a) => a.suggestedRole),
-        "Senior Product Manager",
-        "Full-Stack Lead & Architect",
-        "UX / UI Design Lead",
-        "AI Systems & DevOps Lead",
-        "QA & Reliability Engineer",
-        "Software Architect",
-        "Content Creator & Video Producer",
-        "Indie Motion Designer & Video Creator",
-        "Online Course Educator",
-        "Growth & Marketing Director",
-        "AI Autonomous Coder",
-        "Automated Pipeline & CI Engine",
-        "End User / Customer",
-        ...personas.filter(
-          (p) =>
-            p &&
-            ![
-              "Priya",
-              "Sarah",
-              "Dev",
-              "Marcus",
-              "Elena",
-              "Tariq",
-              "Amara",
-              "Mateo",
-              "Liam",
-              "David",
-              "Kwame",
-              "Mei",
-              "Clara",
-              "Agent",
-              "System",
-            ].includes(p)
-        ),
-      ])
-    );
-  }, [personas]);
+  // Fetch only the customer journey personas for this specific project
+  useEffect(() => {
+    if (personas && personas.length > 0) {
+      setJourneyPersonas(personas);
+      return;
+    }
+    fetch(`/api/projects/${slug}/journeys`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const list = data
+            .map((j: any) => j.role || j.personaName)
+            .filter(Boolean);
+          if (list.length > 0) setJourneyPersonas(list);
+        }
+      })
+      .catch(() => {});
+  }, [slug, personas]);
+
+  // Project-specific journey persona options only (no global/external agents)
+  const projectJourneyRoles = useMemo(() => {
+    return Array.from(new Set(journeyPersonas.filter(Boolean)));
+  }, [journeyPersonas]);
 
   // Fetch available OKRs for linking
   useEffect(() => {
@@ -244,12 +226,12 @@ export function StoryCreateModal({
               />
             </div>
 
-            {/* Persona Role Dropdown (Replaces Name Dropdown & Separate Role Box) */}
-            <div>
-              <label className="text-sm font-medium mb-1 block flex items-center justify-between">
+            {/* Persona / Role Input (Only project journey personas in datalist, can be blank, can be custom text) */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium block flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-primary" />
-                  Persona Role
+                  Persona / Role <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
                 </span>
                 {personaRole && (
                   <span className="text-[11px] font-normal text-muted-foreground">
@@ -257,32 +239,76 @@ export function StoryCreateModal({
                   </span>
                 )}
               </label>
-              <select
-                value={personaRole}
-                onChange={(e) => {
-                  const selectedRole = e.target.value;
-                  setPersonaRole(selectedRole);
-                  const matchingPreset = PRESET_PERSONA_AVATARS.find(
-                    (a) => a.suggestedRole === selectedRole
-                  );
-                  if (matchingPreset) {
-                    setPersona(matchingPreset.name);
-                  } else {
-                    setPersona(selectedRole);
-                  }
-                  if (!asA || availableRoles.includes(asA)) {
-                    setAsA(selectedRole);
-                  }
-                }}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Select persona role...</option>
-                {availableRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  list="project-journey-personas-list"
+                  value={personaRole}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPersonaRole(val);
+                    setPersona(val);
+                    if (!asA || projectJourneyRoles.includes(asA)) {
+                      setAsA(val);
+                    }
+                  }}
+                  placeholder="Select from journey or enter custom role (or leave blank)..."
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <datalist id="project-journey-personas-list">
+                  {projectJourneyRoles.map((role) => (
+                    <option key={role} value={role} />
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Journey Persona Quick-Pills for this project */}
+              {projectJourneyRoles.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[11px] text-muted-foreground mr-1">Journey Personas:</span>
+                  {projectJourneyRoles.map((role) => {
+                    const isSelected = personaRole === role;
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setPersonaRole("");
+                            setPersona("");
+                          } else {
+                            setPersonaRole(role);
+                            setPersona(role);
+                            if (!asA || projectJourneyRoles.includes(asA)) {
+                              setAsA(role);
+                            }
+                          }
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                            : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+                        }`}
+                        title={isSelected ? "Click to deselect" : `Select ${role}`}
+                      >
+                        {role}
+                      </button>
+                    );
+                  })}
+                  {personaRole && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPersonaRole("");
+                        setPersona("");
+                      }}
+                      className="text-[10px] text-muted-foreground hover:text-destructive underline ml-1 cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
           <div className="p-3 rounded-lg border border-border bg-muted/30">

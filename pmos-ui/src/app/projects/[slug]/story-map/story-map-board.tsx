@@ -759,12 +759,9 @@ export function StoryMapBoard({
   const totalCost = stories.reduce((sum, s) => sum + estimateTokenCost(s, pricing || DEFAULT_PRICING).totalCost, 0);
   const totalValue = stories.reduce((sum, s) => sum + (s.estimatedValue || 0), 0);
 
-  const allPersonas = [
-    ...new Set([
-      ...journeys.map((j) => j.role || j.personaName),
-      ...stories.map((s) => s.personaRole || s.persona).filter(Boolean),
-    ]),
-  ] as string[];
+  const journeyPersonas = Array.from(
+    new Set(journeys.map((j) => j.role || j.personaName).filter(Boolean))
+  );
 
   const storiesByStep: Record<string, Story[]> = {};
   backbone.forEach((step) => {
@@ -986,7 +983,7 @@ export function StoryMapBoard({
           onClose={() => { setShowCreate(false); setCreateForStep(""); }}
           onCreated={handleCreateStory}
           stepName={createForStep || undefined}
-          personas={allPersonas.length > 0 ? allPersonas : ["Product Manager", "Developer", "Designer"]}
+          personas={journeyPersonas}
           pricing={pricing || DEFAULT_PRICING}
         />
       )}
@@ -996,7 +993,7 @@ export function StoryMapBoard({
           story={detailStory}
           onClose={() => setDetailStory(null)}
           onSave={handleStorySave}
-          personas={allPersonas.length > 0 ? allPersonas : ["Product Manager", "Developer", "Designer"]}
+          personas={journeyPersonas}
           pricing={pricing || undefined}
         />
       )}
