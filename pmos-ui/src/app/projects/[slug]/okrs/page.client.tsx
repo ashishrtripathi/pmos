@@ -70,6 +70,7 @@ type SortField =
   | "cx"
   | "cost"
   | "totalValue"
+  | "calculatedCost"
   | "effort"
   | "roi"
   | "progress";
@@ -460,7 +461,7 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
         "Customer Experience ($)",
         "Lowers Cost ($)",
         "Total Value ($)",
-        "Effort Cost ($)",
+        "Calculated Cost ($)",
         "ROI Multiple",
         "Linked Stories Count",
       ],
@@ -489,6 +490,12 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
 
       obj.keyResults.forEach((kr) => {
         const pct = kr.target > 0 ? Math.round((kr.current / kr.target) * 100) : 0;
+        const krCost =
+          kr.effortCost !== undefined
+            ? kr.effortCost
+            : obj.keyResults.length > 0
+            ? Math.round(agg.effortCost / obj.keyResults.length)
+            : 0;
         rows.push([
           "  Key Result",
           kr.id,
@@ -501,9 +508,9 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
           "-",
           "-",
           "-",
-          "-",
-          "-",
-          "-",
+          kr.targetValueUSD ? String(kr.targetValueUSD) : "-",
+          String(krCost),
+          kr.roiMultiple ? String(kr.roiMultiple) : "-",
           "-",
         ]);
       });
@@ -577,6 +584,7 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
           valA = a.agg.totalValue || 0;
           valB = b.agg.totalValue || 0;
           break;
+        case "calculatedCost":
         case "effort":
           valA = a.agg.effortCost || 0;
           valB = b.agg.effortCost || 0;
@@ -953,12 +961,13 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                     </div>
                   </th>
                   <th
-                    className="p-3 text-right cursor-pointer hover:bg-muted/90 transition-colors w-[100px]"
-                    onClick={() => handleSortClick("effort")}
+                    className="p-3 text-right cursor-pointer hover:bg-muted/90 transition-colors w-[130px]"
+                    onClick={() => handleSortClick("calculatedCost")}
+                    title="Sort by Calculated Cost to create this objective"
                   >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Effort ($)</span>
-                      {renderSortIndicator("effort")}
+                    <div className="flex items-center justify-end gap-1 font-bold text-foreground">
+                      <span>Calculated Cost ($)</span>
+                      {renderSortIndicator("calculatedCost")}
                     </div>
                   </th>
                   <th
@@ -1251,7 +1260,7 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                           </span>
                         </td>
 
-                        {/* Effort Cost ($) Cell */}
+                        {/* Calculated Creation Cost ($) Cell */}
                         <td className="p-2 text-right align-middle">
                           <div className="inline-flex items-center justify-end w-full">
                             <span className="text-muted-foreground text-[10px] mr-1">$</span>
@@ -1261,8 +1270,8 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                               value={agg.effortCost}
                               onChange={(e) => handleUpdateEffortCost(item.id, Number(e.target.value))}
                               onBlur={() => handleSaveAllOKRs()}
-                              className="w-20 text-right font-mono font-bold text-foreground bg-muted/40 px-1.5 py-1 rounded-lg border border-transparent hover:border-border focus:border-primary focus:outline-none"
-                              title="Estimated Dev Labor & Token Cost"
+                              className="w-24 text-right font-mono font-bold text-foreground bg-muted/40 px-1.5 py-1 rounded-lg border border-transparent hover:border-border focus:border-primary focus:outline-none"
+                              title="Calculated cost to build this objective (derived from stories or estimated hours/tokens)"
                             />
                           </div>
                         </td>
@@ -1339,6 +1348,12 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                         item.keyResults.map((kr) => {
                           const pct =
                             kr.target > 0 ? Math.min(100, Math.round((kr.current / kr.target) * 100)) : 0;
+                          const krCalculatedCost =
+                            kr.effortCost !== undefined
+                              ? kr.effortCost
+                              : item.keyResults.length > 0
+                              ? Math.round(agg.effortCost / item.keyResults.length)
+                              : 0;
 
                           return (
                             <tr
@@ -1401,15 +1416,34 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                                 </div>
                               </td>
 
-                              {/* Blank columns for child rollup */}
+                              {/* Total Value Target for KR */}
                               <td className="p-2 text-right align-middle text-muted-foreground font-mono text-[10px]">
-                                -
+                                {kr.targetValueUSD ? formatUSD(kr.targetValueUSD) : "-"}
                               </td>
-                              <td className="p-2 text-right align-middle text-muted-foreground font-mono text-[10px]">
-                                -
+
+                              {/* Calculated Creation Cost Cell for Key Result */}
+                              <td className="p-2 text-right align-middle">
+                                <div className="inline-flex items-center justify-end w-full">
+                                  <span className="text-muted-foreground text-[10px] mr-0.5">$</span>
+                                  <input
+                                    type="number"
+                                    step="100"
+                                    value={krCalculatedCost}
+                                    onChange={(e) =>
+                                      handleUpdateKR(item.id, kr.id, {
+                                        effortCost: Number(e.target.value),
+                                      })
+                                    }
+                                    onBlur={() => handleSaveAllOKRs()}
+                                    className="w-20 text-right font-mono font-bold text-foreground bg-background/80 px-1 py-0.5 rounded border border-border/70 hover:border-primary focus:border-primary focus:outline-none text-[11px]"
+                                    title="Calculated creation cost for this Key Result"
+                                  />
+                                </div>
                               </td>
+
+                              {/* ROI Multiple for KR */}
                               <td className="p-2 text-center align-middle text-muted-foreground font-mono text-[10px]">
-                                -
+                                {kr.roiMultiple ? formatROI(kr.roiMultiple) : "-"}
                               </td>
 
                               {/* Progress of KR */}
@@ -1526,7 +1560,7 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                           {formatUSD(agg.totalValue)}
                         </div>
                         <div className="text-[10px] text-muted-foreground font-mono">
-                          Effort Cost: {formatUSD(agg.effortCost)}
+                          Calculated Cost: {formatUSD(agg.effortCost)}
                         </div>
                       </div>
 
@@ -1622,8 +1656,57 @@ export function OKRsPageClient({ params }: { params: { slug: string } }) {
                   </div>
                 </div>
 
-                {/* Linked User Stories & Key Results */}
-                <div className="p-4 space-y-3">
+                {/* Key Results Section in Cards View */}
+                {item.keyResults.length > 0 && (
+                  <div className="p-4 pt-3 space-y-2 border-t border-border/40">
+                    <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-primary" />
+                        Key Results ({item.keyResults.length}):
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {item.keyResults.map((kr) => {
+                        const pct =
+                          kr.target > 0 ? Math.min(100, Math.round((kr.current / kr.target) * 100)) : 0;
+                        const krCost =
+                          kr.effortCost !== undefined
+                            ? kr.effortCost
+                            : item.keyResults.length > 0
+                            ? Math.round(agg.effortCost / item.keyResults.length)
+                            : 0;
+                        return (
+                          <div
+                            key={kr.id}
+                            className="p-2.5 rounded-lg border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-muted">
+                                {kr.id}
+                              </span>
+                              <span className="font-medium text-foreground">{kr.title}</span>
+                            </div>
+                            <div className="flex items-center gap-3 self-end sm:self-auto font-mono text-[11px]">
+                              <span className="text-muted-foreground">
+                                Target: {kr.target} {kr.unit} (Current: {kr.current})
+                              </span>
+                              <span
+                                className="font-bold text-foreground bg-muted/60 px-2 py-0.5 rounded border border-border/40"
+                                title="Calculated Creation Cost for Key Result"
+                              >
+                                Cost: {formatUSD(krCost)}
+                              </span>
+                              <span className="font-bold text-primary">{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Linked User Stories */}
+                <div className="p-4 pt-3 space-y-3 border-t border-border/40">
                   <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-primary" />
