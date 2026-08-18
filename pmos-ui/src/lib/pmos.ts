@@ -1651,9 +1651,56 @@ export async function getPersonaJourneys(slug: string): Promise<PersonaJourney[]
   return fromFiles;
 }
 
+/** Helper to recursively strip undefined values to prevent YAML dumping errors */
+export function removeUndefined(obj: any): any {
+  if (obj === null || obj === undefined) return undefined;
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined).filter((v) => v !== undefined);
+  }
+  if (typeof obj === "object") {
+    const clean: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined) {
+        const cleanedVal = removeUndefined(v);
+        if (cleanedVal !== undefined) {
+          clean[k] = cleanedVal;
+        }
+      }
+    }
+    return clean;
+  }
+  return obj;
+}
+
+/** Decodes base64 image data URLs and writes them as static files in public/uploads/ */
+export function saveBase64Image(slug: string, personaId: string, dataUrl?: string): string | undefined {
+  if (!dataUrl) return undefined;
+  if (!dataUrl.startsWith("data:image/")) return dataUrl;
+  try {
+    const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    if (!matches) return dataUrl;
+    const ext = matches[1] === "jpeg" ? "jpg" : matches[1].replace("+xml", "");
+    const buffer = Buffer.from(matches[2], "base64");
+
+    const pmosHome = getPmosHome();
+    const publicUploadsDir = path.join(pmosHome, "pmos-ui", "public", "uploads", slug);
+    if (!fs.existsSync(publicUploadsDir)) {
+      fs.mkdirSync(publicUploadsDir, { recursive: true });
+    }
+    const safePersonaId = personaId.replace(/[^a-z0-9]+/g, "-");
+    const fileName = `persona-${safePersonaId}-${Date.now()}.${ext}`;
+    const filePath = path.join(publicUploadsDir, fileName);
+    fs.writeFileSync(filePath, buffer);
+    return `/uploads/${slug}/${fileName}`;
+  } catch (err) {
+    console.warn("Failed to write image file from base64:", err);
+    return dataUrl;
+  }
+}
+
 /** Reverse of parsePersonaJourney — builds the markdown source from a journey. */
 export function serializePersonaJourney(j: PersonaJourney): string {
-  const frontmatterData: Record<string, any> = {
+  const frontmatterData = removeUndefined({
     personaId: j.personaId,
     personaName: j.personaName,
     role: j.role,
@@ -1664,13 +1711,14 @@ export function serializePersonaJourney(j: PersonaJourney): string {
     habits: j.habits,
     frustrations: j.frustrations,
     metrics: j.metrics,
-  };
+  });
 
   const lines: string[] = [];
   lines.push(`# Customer Journey — ${j.personaName} (${j.role})`);
   lines.push("");
   if (j.personaBlurb) lines.push(`**Persona**: ${j.personaBlurb}`);
   if (j.quote) lines.push(`**Quote**: "${j.quote}"`);
+  if (j.avatarUrl) lines.push(`**Image**: ${j.avatarUrl}`);
   lines.push("");
   lines.push("| Step | Activity | Tasks | Pain Points | Screenshot |");
   lines.push("|------|----------|-------|-------------|------------|");
@@ -1681,7 +1729,7 @@ export function serializePersonaJourney(j: PersonaJourney): string {
       )} | ${s.painPoints.join(", ")} | ${s.screen} |`
     );
   }
-  const stepsWithStories = j.steps.filter((s) => s.stories.length > 0);
+  const stepsWithStories = j.steps.filter((s) => s.stories && s.stories.length > 0);
   if (stepsWithStories.length > 0) {
     lines.push("");
     lines.push("| Story | Step | Points | Status |");
@@ -1696,7 +1744,7 @@ export function serializePersonaJourney(j: PersonaJourney): string {
   }
 
   const content = lines.join("\n") + "\n";
-  return matter.stringify(content, frontmatterData);
+  return matter.stringify(content, frontmatterData || {});
 }
 
 /**
@@ -1708,12 +1756,21 @@ export async function savePersonaJourney(
   slug: string,
   journey: PersonaJourney
 ): Promise<PersonaJourney> {
-  const md = serializePersonaJourney(journey);
-  await writeDoc("persona_journeys", personaJourneyDocId(slug, journey.personaId), {
+  const processedAvatarUrl = journey.avatarUrl?.startsWith("data:image/")
+    ? saveBase64Image(slug, journey.personaId, journey.avatarUrl)
+    : journey.avatarUrl;
+
+  const journeyToSave: PersonaJourney = {
+    ...journey,
+    avatarUrl: processedAvatarUrl,
+  };
+
+  const md = serializePersonaJourney(journeyToSave);
+  await writeDoc("persona_journeys", personaJourneyDocId(slug, journeyToSave.personaId), {
     markdown: md,
   });
   writeFile(
-    pmosPath("projects", slug, "journey", `persona-${journey.personaId}.md`),
+    pmosPath("projects", slug, "journey", `persona-${journeyToSave.personaId}.md`),
     md
   );
   return parsePersonaJourney(md);
@@ -1738,6 +1795,10 @@ export async function createPersona(
   const personaId =
     input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ||
     `persona-${Date.now()}`;
+
+  const savedAvatarUrl = input.avatarUrl?.startsWith("data:image/")
+    ? saveBase64Image(slug, personaId, input.avatarUrl)
+    : input.avatarUrl;
 
   const defaultSteps: PersonaJourneyStep[] = input.initialSteps || [
     {
