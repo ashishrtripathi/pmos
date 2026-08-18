@@ -11,30 +11,27 @@ effort: M
 source: intelligence
 source-file: intelligence/features.md
 source-section: "Missing / Partial Features"
-
-
 ---
 
 # Implement: Activity Feed
 
 ## Use Case
 
-- **As a** product manager
-- **I want to** to have activity feed fully available in the application
-- **so that** users have a complete, competitive feature set that meets market expectations
+- **As a** Product Manager
+- **I want to** view a chronological Activity Feed of all story status changes, OKR updates, and agent execution events
+- **so that** the entire team has full transparency into recent product decisions and work progression
 
 ## Description
 
-No history of changes to stories or pipeline. This feature is entirely missing from the application. Estimated value: $40,000 in product completeness and market competitiveness.
+Missing Feature: Chronological audit trail and activity feed for all project updates.
 
 ## Business Goal
 
-Fills a critical gap in the product offering. Estimated $40,000 in competitive positioning and customer acquisition.
+Provides team-wide auditability and accountability. Estimated $40,000 in communication efficiency.
 
 ## Acceptance Criteria
 
-- **Scenario:** Activity Feed
-  - **Given:** the application is running
-    this feature is missing
-  - **When:** this feature is implemented
-  - **Then:** it works end-to-end without gaps: no history of changes to stories or pipeline
+- **Scenario:** Real-time activity audit stream
+  - **Given:** changes occur to stories or OKRs
+  - **When:** the user views the activity feed
+  - **Then:** events are listed with timestamps, actor/agent names, and before/after transition states

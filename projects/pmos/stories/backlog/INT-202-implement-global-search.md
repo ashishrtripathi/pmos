@@ -11,30 +11,27 @@ effort: M
 source: intelligence
 source-file: intelligence/features.md
 source-section: "Missing / Partial Features"
-
-
 ---
 
 # Implement: Global Search
 
 ## Use Case
 
-- **As a** product manager
-- **I want to** to have global search fully available in the application
-- **so that** users have a complete, competitive feature set that meets market expectations
+- **As a** Product Manager
+- **I want to** search across all stories, OKRs, customer journeys, bug reports, and intelligence documents from anywhere in PMOS
+- **so that** I can quickly navigate to any artifact and cross-reference product information
 
 ## Description
 
-No search across all stories, journeys, or intelligence. This feature is entirely missing from the application. Estimated value: $40,000 in product completeness and market competitiveness.
+Missing Feature: Global search across all project entities and boards.
 
 ## Business Goal
 
-Fills a critical gap in the product offering. Estimated $40,000 in competitive positioning and customer acquisition.
+Accelerates daily product management workflows. Estimated $40,000 in productivity value.
 
 ## Acceptance Criteria
 
-- **Scenario:** Global Search
-  - **Given:** the application is running
-    this feature is missing
-  - **When:** this feature is implemented
-  - **Then:** it works end-to-end without gaps: no search across all stories, journeys, or intelligence
+- **Scenario:** Universal cross-entity search
+  - **Given:** various entities exist across PMOS boards
+  - **When:** a user executes a search
+  - **Then:** matching stories, OKRs, journey steps, and bugs are categorized and link directly to their respective views

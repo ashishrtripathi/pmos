@@ -11,29 +11,29 @@ effort: Medium
 source: intelligence
 source-file: intelligence/improvements.md
 source-section: "UX / Product Improvements"
-persona: Dev
-persona-role: Developer
+persona: "Dev"
+persona-role: "Developer"
 ---
 
 # Add Keyboard Navigation for Power Users
 
 ## Use Case
 
-- **As a** Developer
-- **I want to** to add keyboard navigation for power users
-- **so that** my experience is significantly improved, reducing friction and increasing satisfaction with the product
+- **As a** Developer & Power User
+- **I want to** navigate Kanban boards, trigger story executions, and open story details using keyboard shortcuts (j, k, Enter, s, ?)
+- **so that** I can operate the board rapidly without touching the mouse
 
 ## Description
 
-UX/Product improvement for Dev persona (Developer): Add Keyboard Navigation for Power Users. Impact: Medium. Estimated value: $25,000 in customer retention.
+UX/Product improvement for Dev persona (Developer): Add Keyboard Navigation across Kanban and Story Map.
 
 ## Business Goal
 
-Improves customer experience for Dev persona, reducing churn. Estimated $25,000 in retention value.
+Accelerates daily developer and PM workflows. Estimated $25,000 in user satisfaction and time saved.
 
 ## Acceptance Criteria
 
-- **Scenario:** Add Keyboard Navigation for Power Users
-  - **Given:** I am using the application as Dev
-  - **When:** I interact with this part of the product
-  - **Then:** my experience is measurably improved through reduced friction, better usability, or added capability
+- **Scenario:** Keyboard navigation shortcuts
+  - **Given:** I am viewing the Kanban board
+  - **When:** I press 'j' or 'k'
+  - **Then:** focus moves smoothly between story cards with visual highlighting, and pressing 'Enter' opens story details

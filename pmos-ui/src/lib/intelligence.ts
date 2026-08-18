@@ -132,6 +132,33 @@ export function effortToPoints(effort: string): number {
   return 5;
 }
 
+// ── Helpers for robust story generation ─────────────
+
+export function isTableSeparator(str?: string): boolean {
+  if (!str) return true;
+  const t = str.trim();
+  return /^[-:\s|]+$/.test(t) || t.length === 0;
+}
+
+export function formatIWant(action: string, category: string): string {
+  const clean = action.trim();
+  const lower = clean.toLowerCase();
+
+  if (lower.startsWith("add ") || lower.startsWith("implement ") || lower.startsWith("create ") || lower.startsWith("build ") || lower.startsWith("enable ") || lower.startsWith("support ")) {
+    return lower;
+  }
+  if (lower.startsWith("fix ") || lower.startsWith("resolve ")) {
+    return `fix and resolve the issue with ${lower.replace(/^(fix|resolve)\s*(:\s*)?/, "")}`;
+  }
+  if (lower.startsWith("remove ") || lower.startsWith("refactor ") || lower.startsWith("standardize ") || lower.startsWith("extract ")) {
+    return lower;
+  }
+  if (category.toLowerCase().includes("security") || category.toLowerCase().includes("quality")) {
+    return `ensure ${lower} is resolved and verified`;
+  }
+  return `have ${lower} available in the application`;
+}
+
 // ── Parse Improvements ─────────────────────────────
 
 export function parseImprovements(
@@ -147,7 +174,7 @@ export function parseImprovements(
   );
   if (codeAnalysisSection) {
     const tableRows = codeAnalysisSection[1].match(
-      /\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|/g
+      /\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|/g
     );
     if (tableRows) {
       for (const row of tableRows) {
@@ -155,9 +182,9 @@ export function parseImprovements(
           .split("|")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        if (cells.length >= 4 && cells[0] !== "Improvement") {
+        if (cells.length >= 4 && cells[0] !== "Improvement" && !isTableSeparator(cells[0])) {
           const [improvement, category, existingStory, effort] = cells;
-          if (existingStory.trim() === "New" && improvement) {
+          if (existingStory.trim() === "New" && improvement && !isTableSeparator(improvement)) {
             const points = effortToPoints(effort);
             const assignedAgent = assignAgent(category, "From Code Analysis", improvement);
             const estValue = estimateBusinessValue(category, "From Code Analysis", improvement, "high");
@@ -176,8 +203,8 @@ export function parseImprovements(
               businessGoal: `Prevents production issues and improves ${category.toLowerCase()} of the application. Estimated value: $${estValue.toLocaleString()} in risk mitigation and operational efficiency.`,
               assignedAgent,
               useCase: {
-                asA: assignedAgent === "qa-engineer" ? "QA engineer" : assignedAgent === "architect" ? "architect" : "software engineer",
-                iWant: `to resolve "${improvement.toLowerCase()}"`,
+                asA: assignedAgent === "qa-engineer" ? "QA engineer" : assignedAgent === "architect" ? "software architect" : "software engineer",
+                iWant: formatIWant(improvement, category),
                 soThat: `the application is more reliable, secure, and maintainable, preventing potential ${category.toLowerCase()} incidents`,
               },
               acceptanceCriteria: [
@@ -203,7 +230,7 @@ export function parseImprovements(
   );
   if (uxSection) {
     const tableRows = uxSection[1].match(
-      /\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|/g
+      /\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|/g
     );
     if (tableRows) {
       for (const row of tableRows) {
@@ -211,12 +238,12 @@ export function parseImprovements(
           .split("|")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        if (cells.length >= 3 && cells[0] !== "Improvement") {
+        if (cells.length >= 3 && cells[0] !== "Improvement" && !isTableSeparator(cells[0])) {
           const [improvement, persona, impact] = cells;
-          if (!improvement) continue;
+          if (!improvement || isTableSeparator(improvement)) continue;
 
-          const personaName = persona.split("(")[0].trim();
-          const personaRole = persona.match(/\((.+?)\)/)?.[1] || "";
+          const personaName = persona.split("(")[0].trim() || "User";
+          const personaRole = persona.match(/\((.+?)\)/)?.[1] || personaName;
           const impactLower = impact.trim().toLowerCase();
           const points = impactLower === "high" ? 8 : impactLower === "medium" ? 5 : 3;
           const estValue = estimateBusinessValue("UX/Product", "UX / Product Improvements", improvement, impactLower === "high" ? "high" : "medium");
@@ -237,14 +264,14 @@ export function parseImprovements(
             businessGoal: `Improves customer experience for ${personaName} persona, reducing churn. Estimated $${estValue.toLocaleString()} in retention value.`,
             assignedAgent: "ux-designer",
             useCase: {
-              asA: personaRole || personaName.toLowerCase(),
-              iWant: `to ${improvement.toLowerCase()}`,
+              asA: personaRole.toLowerCase(),
+              iWant: formatIWant(improvement, "UX/Product"),
               soThat: `my experience is significantly improved, reducing friction and increasing satisfaction with the product`,
             },
             acceptanceCriteria: [
               {
                 scenario: improvement,
-                given: [`I am using the application as ${personaName}`],
+                given: [`I am using the application as ${personaName} (${personaRole})`],
                 when: `I interact with this part of the product`,
                 then: `my experience is measurably improved through reduced friction, better usability, or added capability`,
               },
@@ -263,7 +290,7 @@ export function parseImprovements(
   );
   if (techSection) {
     const tableRows = techSection[1].match(
-      /\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|/g
+      /\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|/g
     );
     if (tableRows) {
       for (const row of tableRows) {
@@ -271,9 +298,9 @@ export function parseImprovements(
           .split("|")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        if (cells.length >= 3 && cells[0] !== "Improvement") {
+        if (cells.length >= 3 && cells[0] !== "Improvement" && !isTableSeparator(cells[0])) {
           const [improvement, area, effort] = cells;
-          if (!improvement) continue;
+          if (!improvement || isTableSeparator(improvement)) continue;
 
           const points = effortToPoints(effort);
           const assignedAgent = assignAgent("Technical", "Technical Improvements", improvement);
@@ -293,8 +320,8 @@ export function parseImprovements(
             businessGoal: `Improves ${area.toLowerCase()} performance and reliability. Estimated $${estValue.toLocaleString()} in reduced operational costs.`,
             assignedAgent,
             useCase: {
-              asA: assignedAgent === "architect" ? "architect" : "software engineer",
-              iWant: `to implement ${improvement.toLowerCase()}`,
+              asA: assignedAgent === "architect" ? "software architect" : "software engineer",
+              iWant: formatIWant(improvement, "Technical"),
               soThat: `the ${area.toLowerCase()} is measurably improved, leading to better performance and fewer incidents`,
             },
             acceptanceCriteria: [
@@ -330,7 +357,7 @@ export function parseMissingFeatures(
   );
   if (missingSection) {
     const tableRows = missingSection[1].match(
-      /\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|/g
+      /\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|/g
     );
     if (tableRows) {
       for (const row of tableRows) {
@@ -338,9 +365,9 @@ export function parseMissingFeatures(
           .split("|")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        if (cells.length >= 3 && cells[0] !== "Feature") {
+        if (cells.length >= 3 && cells[0] !== "Feature" && !isTableSeparator(cells[0])) {
           const [feature, status, gap] = cells;
-          if (!feature) continue;
+          if (!feature || isTableSeparator(feature)) continue;
           const isMissing = status.includes("Missing");
           const isPartial = status.includes("Partial");
           if (!isMissing && !isPartial) continue;
@@ -363,7 +390,7 @@ export function parseMissingFeatures(
             assignedAgent: "software-engineer",
             useCase: {
               asA: "product manager",
-              iWant: `to have ${feature.toLowerCase()} fully available in the application`,
+              iWant: formatIWant(feature, "Missing Feature"),
               soThat: "users have a complete, competitive feature set that meets market expectations",
             },
             acceptanceCriteria: [
@@ -400,7 +427,7 @@ export function parseCodeQuality(
   );
   if (criticalSection) {
     const tableRows = criticalSection[1].match(
-      /\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|/g
+      /\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|/g
     );
     if (tableRows) {
       for (const row of tableRows) {
@@ -408,9 +435,9 @@ export function parseCodeQuality(
           .split("|")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        if (cells.length >= 3 && cells[0] !== "Issue") {
+        if (cells.length >= 3 && cells[0] !== "Issue" && !isTableSeparator(cells[0])) {
           const [issue, file, description] = cells;
-          if (!issue) continue;
+          if (!issue || isTableSeparator(issue)) continue;
 
           const estValue = estimateBusinessValue("Critical Issue", "Critical (Production Blockers)", issue, "critical");
 
@@ -429,7 +456,7 @@ export function parseCodeQuality(
             assignedAgent: "qa-engineer",
             useCase: {
               asA: "QA engineer",
-              iWant: `to ensure ${issue.toLowerCase()} is fixed and verified`,
+              iWant: formatIWant(`fix ${issue}`, "Critical Issue"),
               soThat: "the application is production-safe and will not expose users to this critical issue",
             },
             acceptanceCriteria: [
@@ -454,7 +481,7 @@ export function parseCodeQuality(
   );
   if (highSection) {
     const tableRows = highSection[1].match(
-      /\|\s*\|(.+)\|\s*\|(.+)\|\s*\|(.+)\|/g
+      /\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|\s*\|?([^|\r\n]+)\|/g
     );
     if (tableRows) {
       for (const row of tableRows) {
@@ -462,9 +489,9 @@ export function parseCodeQuality(
           .split("|")
           .map((c: string) => c.trim())
           .filter(Boolean);
-        if (cells.length >= 3 && cells[0] !== "Issue") {
+        if (cells.length >= 3 && cells[0] !== "Issue" && !isTableSeparator(cells[0])) {
           const [issue, file, description] = cells;
-          if (!issue) continue;
+          if (!issue || isTableSeparator(issue)) continue;
 
           const estValue = estimateBusinessValue("High Priority Issue", "High Priority", issue, "high");
 
@@ -483,7 +510,7 @@ export function parseCodeQuality(
             assignedAgent: "qa-engineer",
             useCase: {
               asA: "QA engineer",
-              iWant: `to ensure ${issue.toLowerCase()} is resolved`,
+              iWant: formatIWant(`fix ${issue}`, "High Priority Issue"),
               soThat: "the codebase is more reliable and produces fewer bugs in production",
             },
             acceptanceCriteria: [

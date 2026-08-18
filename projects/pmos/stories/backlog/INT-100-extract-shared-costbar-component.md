@@ -3,7 +3,7 @@ id: INT-100
 title: "Extract Shared CostBar Component"
 points: 2
 status: backlog
-assigned-agent: none
+assigned-agent: software-engineer
 estimated-value: 10000
 category: Code Quality
 priority: high
@@ -11,8 +11,6 @@ effort: XS
 source: intelligence
 source-file: intelligence/improvements.md
 source-section: "From Code Analysis"
-
-
 ---
 
 # Extract Shared CostBar Component
@@ -20,21 +18,20 @@ source-section: "From Code Analysis"
 ## Use Case
 
 - **As a** software engineer
-- **I want to** to resolve "extract shared costbar component"
-- **so that** the application is more reliable, secure, and maintainable, preventing potential code quality incidents
+- **I want to** extract and share the CostBar component across all cards, modals, and headers
+- **so that** labor hours, token counts, and ROI metrics are calculated consistently in a single reusable component without code duplication
 
 ## Description
 
-Intelligence-identified improvement in Code Quality: Extract Shared CostBar Component. Currently no existing story addresses this.
+Intelligence-identified improvement in Code Quality: Extract Shared CostBar Component into src/components/cost-bar.tsx.
 
 ## Business Goal
 
-Prevents production issues and improves code quality of the application. Estimated value: $10,000 in risk mitigation and operational efficiency.
+Prevents calculation drift and eliminates code duplication. Estimated value: $10,000 in maintainability and developer efficiency.
 
 ## Acceptance Criteria
 
-- **Scenario:** Extract Shared CostBar Component
-  - **Given:** the current codebase is analyzed
-    this is categorized as Code Quality
-  - **When:** this improvement is implemented
-  - **Then:** the code quality concern is resolved and verified with automated tests
+- **Scenario:** Unified CostBar rendering
+  - **Given:** the Kanban board and Story Map boards are loaded
+  - **When:** story cards and modals display cost breakdowns
+  - **Then:** all views render labor cost, token usage, and ROI multiple using the shared CostBar component

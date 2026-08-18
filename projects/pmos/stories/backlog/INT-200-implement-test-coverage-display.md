@@ -11,30 +11,27 @@ effort: M
 source: intelligence
 source-file: intelligence/features.md
 source-section: "Missing / Partial Features"
-
-
 ---
 
 # Implement: Test Coverage Display
 
 ## Use Case
 
-- **As a** product manager
-- **I want to** to have test coverage display fully available in the application
-- **so that** users have a complete, competitive feature set that meets market expectations
+- **As a** Product Manager & QA Engineer
+- **I want to** view automated test run results and code coverage percentages on the project health dashboard
+- **so that** I can verify release quality and catch untested features before deploying to production
 
 ## Description
 
-No test metrics or coverage reports shown in dashboard. This feature is entirely missing from the application. Estimated value: $40,000 in product completeness and market competitiveness.
+Missing Feature: Display automated test coverage metrics and test pass/fail history in the PMOS dashboard.
 
 ## Business Goal
 
-Fills a critical gap in the product offering. Estimated $40,000 in competitive positioning and customer acquisition.
+Fills a critical gap in product health visibility. Estimated $40,000 in quality assurance value.
 
 ## Acceptance Criteria
 
-- **Scenario:** Test Coverage Display
-  - **Given:** the application is running
-    this feature is missing
-  - **When:** this feature is implemented
-  - **Then:** it works end-to-end without gaps: no test metrics or coverage reports shown in dashboard
+- **Scenario:** Test coverage metrics widget
+  - **Given:** a project has automated test suites
+  - **When:** the PM opens the project dashboard
+  - **Then:** overall test coverage percentage, unit test count, and pass rates are prominently displayed

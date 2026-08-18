@@ -115,9 +115,9 @@ export function StoryCreateModal({
       objectiveId: objectiveId || undefined,
       dimensions: dimensions || undefined,
       useCase: {
-        asA: asA.trim() || personaRole || "a user",
-        iWant: iWant.trim(),
-        soThat: soThat.trim(),
+        asA: asA.trim() || personaRole || persona || "product manager",
+        iWant: iWant.trim() || (description.trim() ? description.trim() : (title.trim().toLowerCase().startsWith("add ") || title.trim().toLowerCase().startsWith("implement ") || title.trim().toLowerCase().startsWith("fix ") ? title.trim().toLowerCase() : `have ${title.trim().toLowerCase()} available in the product`)),
+        soThat: soThat.trim() || businessGoal.trim() || "I can accomplish my workflow efficiently and deliver customer value",
       },
       businessGoal: businessGoal.trim() || undefined,
       estimatedValue: totalValue || undefined,
