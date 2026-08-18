@@ -326,13 +326,15 @@ The secret weapon. It continuously watches the repo and asks:
 
 ## 🐕 The Dogfood Principle
 
-**VOXStyle Video Creator** is the first project and the reference implementation.
+**PMOS itself is the primary project and reference implementation.**
+
+PMOS is built, planned, tracked, and iterated on using PMOS. Every feature, story, bug fix, OKR, and customer journey added to PMOS is managed and executed through PMOS itself.
 
 Every feature added to PMOS must first answer:
 
-> "Does this make managing VOXStyle Video Creator easier?"
+> "Does this make managing and evolving PMOS itself easier, faster, and more reliable?"
 
-If not, it probably isn't MVP. Real-world validation instead of designing in the abstract.
+If not, it probably isn't MVP. Real-world validation through self-hosting and continuous dogfooding instead of designing in the abstract.
 
 ---
 
@@ -476,6 +478,8 @@ This project is licensed under the MIT License.
 
 This project draws architectural inspiration from:
 
+- **gstack by Garry Tan** — AI agent framework and workflow architecture for rapid full-stack software building  
+  <https://github.com/garrytan/gstack>
 - **AionUI** — AI conversation platform with skill architecture and shared context  
   <https://github.com/aionui/aionui>
 - **OmniRoute** — Free AI gateway aggregating 271+ providers behind a single OpenAI-compatible endpoint  
